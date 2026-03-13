@@ -7,6 +7,9 @@
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+.serena/
+.claude/
+.original_spec
 .DS_Store
 /build
 /captures
