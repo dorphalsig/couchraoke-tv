@@ -31,7 +31,17 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- Confirm the proposal preserves Couchraoke's LAN-only operating model and keeps the TV Host as
+  the authoritative game engine.
+- Confirm all new libraries and APIs stay within the platform-approved technology stack and do
+  not introduce constitution-forbidden alternatives.
+- Confirm architecture keeps business logic outside UI layers and respects Domain/Data/
+  Presentation/DI boundaries.
+- Confirm networking, streaming, and scoring behavior preserves direct asset streaming, fixed
+  pitch transport, and relevant performance constraints.
+- Confirm the plan includes the tests and quality gates needed for changed code.
+- Confirm how the implementation branch/worktree will be cleaned up after merge so only active
+  branches remain.
 
 ## Project Structure
 

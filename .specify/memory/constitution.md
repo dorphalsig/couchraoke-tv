@@ -1,50 +1,275 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+- Version change: 1.0.0 -> 1.1.0
+- Modified principles: V. Testing, Quality & Branch Hygiene — materially expanded; all normative
+  content from testing_policy.md folded in; no external reference required
+- Added sections: none (expansion is within existing Section V)
+- Removed sections: none
+- Templates requiring updates:
+  ✅ reviewed .specify/templates/plan-template.md (Constitution Check already covers testing; no change required)
+  ✅ reviewed .specify/templates/spec-template.md (no change required)
+  ✅ updated .specify/templates/tasks-template.md (TDD mandate now explicit; "Tests OPTIONAL" note corrected)
+  ✅ reviewed .specify/templates/constitution-template.md (source template only; no change required)
+  ✅ no .specify/templates/commands/ directory present; no updates required
+  ✅ runtime guidance scan completed; no README/docs files present to update
+- Follow-up TODOs: none
+-->
+# Couchraoke Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Platform Identity & LAN-Only Operation
+Couchraoke is a LAN-only karaoke system with no backend cloud services. The Android TV app
+MUST act as the authoritative TV Host and game engine. Companion platforms MUST discover and
+pair with the TV Host over mDNS, serve local song assets over HTTP, and exchange real-time
+session and scoring data only over the local network. Violations of the LAN-only operating
+model MUST be treated as constitution failures, not implementation shortcuts.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Approved Platform Technology Stack
+Platform implementations MUST use the approved stack for their target surface.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+- TV Host code MUST use Kotlin, Jetpack Compose for TV, coroutines with Flow,
+  kotlinx-serialization-json, Media3, Coil, JmDNS, Ktor server CIO with WebSockets,
+  DataStore, Hilt, and the declared testing stack.
+- Android Companion code MUST keep to the Android-specific networking, storage, and audio
+  constraints defined by the platform constitution source.
+- iOS Companion code MUST keep to the Network.framework, URLSessionWebSocketTask, Swifter,
+  and protocol-driven dependency boundaries defined by the platform constitution source.
+- New work MUST NOT introduce forbidden alternatives called out by the governing platform
+  rules, including cloud backends, legacy media stacks, reflection-based JSON parsing,
+  or unauthorized dependency-injection patterns.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### III. Clean Architecture Boundaries
+Business logic MUST live outside UI code and MUST follow the platform boundary rules.
+ViewModels are the single source of UI state. Android framework types MUST remain in `data/`
+or `di/` layers on Android and TV. iOS hardware and framework dependencies MUST be hidden
+behind Domain protocols. Directory structures for each platform MUST continue to reflect the
+Domain/Data/Presentation/DI separation established by the governing platform design.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### IV. Streaming, Networking & Performance Contracts
+Playback, scoring, and transport behavior are contractual.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+- Song assets MUST stream directly from companion devices; hosts MUST NOT persist remote song
+  assets locally.
+- Control payloads MUST remain small JSON messages on the LAN; pitch transport MUST use fixed
+  16-byte UDP packets with invalid frames dropped rather than retried through a different
+  transport.
+- The TV scoring loop MUST remain decoupled from UI rendering and preserve the required polling
+  cadence.
+- Implementations MUST honor platform performance targets for startup, discovery, latency,
+  memory, and frame rate.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### V. Testing, Quality & Branch Hygiene
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+#### Test-Driven Development
+Tests MUST be written before or alongside the production code they cover. No production code
+is merged without corresponding tests. This is a CI gate, not a suggestion.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+#### Coverage Requirements
+Coverage is measured across the full test suite (unit + integration + acceptance). Running only
+unit tests does not satisfy the target.
+
+| Threshold | Value |
+|---|---|
+| Overall project line coverage | ≥ 80% |
+| Per-file minimum | ≥ 60% |
+| Tiny file exemption | Files with ≤ 30 non-comment, non-blank lines |
+| Generated code exemption | Protobuf stubs, schema-generated types |
+
+CI MUST fail the build if either threshold is not met on any qualifying file.
+Coverage tooling: **JaCoCo** for Android (configured in Gradle); **Xcode code coverage** (`LLVM_COV`)
+for iOS.
+
+#### Test Categories
+| Category | Definition | Annotation |
+|---|---|---|
+| **Unit [U]** | Single class/function in isolation; all I/O mocked | (default) |
+| **Instrumented [I]** | Requires real OS resource: socket, filesystem, hardware | Android: `@MediumTest` or `@LargeTest`; iOS: on-simulator/device |
+| **Acceptance** | Fixture-driven; consumes `fixtures/` and asserts against `expected.*` files | Android: `@Tag("acceptance")`; iOS: `XCTestCase` subclass suffixed `AcceptanceTests` |
+
+Instrumented tests MUST NOT run in the unit test CI job. They run in a separate job that
+provisions an emulator or simulator.
+
+#### Test Naming Conventions
+Android (Kotlin):
+```kotlin
+fun `given <context>, when <action>, then <expected outcome>`()
+// Example:
+fun `given toneValid false, when encoding pitchFrame, then midiNote byte is 255`()
+```
+
+iOS (Swift):
+```swift
+func test_<subject>_<action>_<expectedOutcome>()
+// Example:
+func test_pitchFrameEncoder_toneValidFalse_setsMidiNoteTo255()
+```
+
+One assertion focus per test. A test that validates 5 unrelated behaviours is 5 tests.
+
+#### Test Isolation
+- Tests MUST NOT share mutable state. No `static` / `companion object` fields that accumulate
+  state across tests.
+- Tests MUST NOT depend on execution order. Each test sets up and tears down its own state.
+- Tests MUST NOT touch the real filesystem, real network, or real clock unless explicitly
+  tagged `[I]`.
+- **Clock**: inject a `FakeClock` / `TestCoroutineScheduler` — never call
+  `System.currentTimeMillis()` or `Date()` directly in testable code.
+
+#### Coroutine Testing (Android)
+- Use `StandardTestDispatcher` (not `UnconfinedTestDispatcher`) as the default in all unit
+  tests. `UnconfinedTestDispatcher` masks ordering bugs by running coroutines eagerly.
+- Wrap test bodies with `runTest { }` from `kotlinx-coroutines-test`.
+- Inject dispatchers via constructor — never hardcode `Dispatchers.IO` or `Dispatchers.Main`
+  in production classes that need to be tested.
+
+```kotlin
+// Production
+class SongScanner(private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO)
+// Test
+val scanner = SongScanner(ioDispatcher = StandardTestDispatcher(testScheduler))
+```
+
+#### Skip / Disable Policy
+A test MAY be skipped only under one of these three conditions:
+
+| Condition | Required action |
+|---|---|
+| Blocked by a known spec ambiguity | Annotate with `@Disabled("SPEC-<issue>: <reason>")` (Android) or `try XCTSkip("SPEC-<issue>: ...")` (iOS). Must link to a tracked issue. |
+| Hardware-only test in unit CI job | Move to the instrumented job instead. Do not skip — fix the job configuration. |
+| Demonstrably flaky (≥ 2 failures in 10 runs) | Move to quarantine (see Flaky Test Quarantine below). |
+
+Blanket `@Disabled` on a test class is PROHIBITED. Disable individual test methods only.
+Skipped tests count against coverage. A file full of skipped tests will fail the per-file
+coverage gate.
+
+#### Flaky Test Quarantine
+A test is **flaky** if it fails intermittently without code changes (timing sensitivity,
+uncontrolled I/O, etc.).
+
+1. Move the test to a `quarantine` source set / test target separate from the main suite.
+2. Open a tracking issue with: test name, failure mode, reproduction rate.
+3. The quarantine suite runs on a nightly schedule, not on every PR.
+4. A quarantined test MUST be fixed or deleted within **2 sprints**. Indefinite quarantine is
+   not permitted.
+5. Quarantined tests are excluded from coverage measurement until restored.
+
+#### Static Analysis
+Static analysis is a CI gate — the build fails if any rule configured as `error` is violated.
+
+**Android**
+
+| Tool | Role | Config file | CI gate |
+|---|---|---|---|
+| **Detekt** `1.23.x` | Kotlin code smells, complexity, style | `detekt.yml` in repo root | Yes — error-level findings fail build |
+| **ktlint** `1.2.x` | Formatting (via Detekt `detekt-formatting` plugin) | `.editorconfig` | Yes |
+| **Android Lint** | Android-specific issues (missing permissions, deprecated APIs) | `lint.xml` | Yes — `abortOnError true` |
+
+Detekt rules in scope:
+```yaml
+complexity:
+  LongMethod:
+    threshold: 40        # test methods exempt via @Suppress if genuinely data-driven
+  CyclomaticComplexMethod:
+    threshold: 10
+style:
+  MagicNumber:
+    active: true
+    ignoreTests: true    # fixture numeric literals in tests are fine
+naming:
+  FunctionNaming:
+    active: true
+    functionPattern: '^[a-z`][a-zA-Z0-9 ,_`<>()?.]*$'   # allows backtick test names
+```
+
+**iOS**
+
+| Tool | Role | Config file | CI gate |
+|---|---|---|---|
+| **SwiftLint** `0.57.x` | Swift style and code smells | `.swiftlint.yml` in repo root | Yes — errors fail build, warnings do not |
+
+SwiftLint rules enabled beyond defaults:
+```yaml
+opt_in_rules:
+  - force_unwrapping        # error: no force-unwrap in production code
+  - explicit_init
+  - closure_spacing
+disabled_rules:
+  - todo                    # TODOs allowed with ticket reference; enforced by PR review
+```
+
+Force-unwrap (`!`) in test files is permitted where the test will immediately crash and clearly
+indicate the failure. It is NOT permitted in production code.
+
+#### CI Job Structure
+```text
+PR gate (runs on every commit):
+  ├── unit-tests-android      [U] only — JUnit5, no emulator
+  ├── unit-tests-ios          [U] only — XCTest, no simulator hardware
+  ├── lint-android            Detekt + ktlint + Android Lint
+  ├── lint-ios                SwiftLint
+  └── coverage-check          Fails build if thresholds not met
+Nightly:
+  ├── instrumented-android    [I] — emulator required
+  ├── instrumented-ios        [I] — simulator required
+  └── quarantine-suite        Flaky tests; results reported but do not block
+```
+
+#### Explicitly Out of Scope
+The following are not tested and MUST NOT be added to coverage calculations:
+
+- `AudioRecord` / `AVAudioEngine` hardware latency characterisation
+- ExoPlayer streaming latency (only seek accuracy is tested)
+- mDNS advertisement timing and multi-device discovery (manual integration test only)
+- Advanced Search — POST-MVP
+- Screenshot / snapshot regression tests
+- ISO-8859-1 legacy encoding (`F02 encoding_legacy_honors`) — explicitly skipped
+
+#### Branch Hygiene
+After development is complete and a worktree or feature branch has been merged into `master`,
+that branch MUST be removed. Only active branches may remain in the repository. Temporary
+isolation is encouraged during development, but branch cleanup after merge is mandatory.
+
+## Additional Constraints
+
+Platform-specific operational rules from the governing Couchraoke platform constitution remain
+normative, including:
+
+- TV Host progressive HTTP streaming via Media3, direct remote playback, dedicated scoring
+  polling, and cleartext allowlisting only for RFC-1918 LAN addresses.
+- Android Companion requirements for SAF-backed file access, HTTP Range support, mDNS browsing,
+  and UDP pitch transmission.
+- iOS Companion requirements for `NWBrowser`, `NWConnection` UDP transport, Range-serving HTTP,
+  security-scoped file access, and active-session device lifecycle handling.
+- Platform performance ceilings and memory budgets remain release-blocking requirements.
+
+## Development Workflow
+
+Every implementation, review, and merge decision MUST verify constitutional compliance.
+
+- Before design or implementation begins, plans MUST confirm alignment with LAN-only operation,
+  approved stack choices, architecture boundaries, streaming/networking contracts, and test
+  expectations.
+- After every task, teams MUST verify test coverage updates, absence of unintended adjacent
+  regressions, and any platform-specific checklist items relevant to the changed code.
+- Before merge, reviewers MUST confirm that quality gates passed and that any worktree or
+  temporary development branch has a cleanup path.
+- After merge to `master`, the merged worktree branch or feature branch MUST be deleted
+  immediately unless it is still actively carrying unmerged work.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes conflicting local habits and ad hoc workflow choices for the
+Couchraoke repository.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+- Amendments MUST be documented in `.specify/memory/constitution.md`, include a Sync Impact
+  Report, and update any affected templates or runtime guidance in the same change.
+- Compliance reviews MUST occur during planning, code review, and pre-merge verification.
+  Non-compliance MUST be fixed or explicitly approved as a documented exception before merge.
+- Semantic versioning governs this constitution: MAJOR for incompatible governance changes,
+  MINOR for new principles or materially expanded obligations, and PATCH for clarifications or
+  editorial refinements.
+- Repository hygiene is part of compliance. Branches and worktrees that no longer represent
+  active work MUST be removed after merge.
+
+**Version**: 1.1.0 | **Ratified**: 2026-03-13 | **Last Amended**: 2026-03-13
