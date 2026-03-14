@@ -227,8 +227,8 @@ The following are not tested and MUST NOT be added to coverage calculations:
 
 #### Branch Hygiene
 After development is complete and a worktree or feature branch has been merged into `master`,
-that branch MUST be removed. Only active branches may remain in the repository. Temporary
-isolation is encouraged during development, but branch cleanup after merge is mandatory.
+that branch MUST be renamed to [✓] <original branch name>. Temporary isolation is encouraged 
+during development, but branch cleanup after merge is mandatory.
 
 ## Additional Constraints
 
