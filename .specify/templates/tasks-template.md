@@ -51,7 +51,7 @@ description: "Task list template for feature implementation"
 - [ ] T001 Create project structure per implementation plan
 - [ ] T002 Initialize [language] project with [framework] dependencies
 - [ ] T003 [P] Configure linting and formatting tools
-- [ ] T004 Define branch/worktree approach for this feature and the post-merge cleanup owner
+- [ ] T004 Define branch/worktree approach for this feature and the post-merge closure owner
 
 ---
 
@@ -155,7 +155,7 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation
-- [ ] TXXX Delete merged worktree/feature branch so only active branches remain
+- [ ] TXXX Mark merged worktree/feature branch closed by renaming it to `[✓] <original branch name>`
 
 ---
 
@@ -225,7 +225,7 @@ Task: "Create [Entity2] model in src/models/[entity2].py"
 2. Add User Story 1 → Test independently → Deploy/Demo (MVP!)
 3. Add User Story 2 → Test independently → Deploy/Demo
 4. Add User Story 3 → Test independently → Deploy/Demo
-5. Delete merged worktree/feature branch after integration so only active branches remain
+5. Mark the merged worktree/feature branch closed after integration by renaming it to `[✓] <original branch name>`
 
 ### Parallel Team Strategy
 
@@ -237,7 +237,7 @@ With multiple developers:
    - Developer B: User Story 2
    - Developer C: User Story 3
 3. Stories complete and integrate independently
-4. After merge, the merged branch/worktree is removed unless it still carries active work
+4. After merge, the merged branch/worktree is renamed to `[✓] <original branch name>` unless it still carries active work
 
 ---
 
@@ -249,5 +249,5 @@ With multiple developers:
 - Verify tests fail before implementing
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
-- Clean up merged worktrees/branches as part of done criteria
+- Mark merged worktrees/branches closed with a `[✓]` prefix as part of done criteria
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence

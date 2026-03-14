@@ -1,17 +1,16 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.0 -> 1.1.0
-- Modified principles: V. Testing, Quality & Branch Hygiene — materially expanded; all normative
-  content from testing_policy.md folded in; no external reference required
-- Added sections: none (expansion is within existing Section V)
+- Version change: 2.0.0 -> 2.0.1
+- Modified principles: V. Testing, Quality & Branch Hygiene — branch hygiene clarified to keep closed branches by renaming them with a checkmark instead of deleting them
+- Added sections: none
 - Removed sections: none
 - Templates requiring updates:
-  ✅ reviewed .specify/templates/plan-template.md (Constitution Check already covers testing; no change required)
+  ✅ updated .specify/templates/plan-template.md (post-merge branch/worktree handling now points to checkmark closure, not deletion)
   ✅ reviewed .specify/templates/spec-template.md (no change required)
-  ✅ updated .specify/templates/tasks-template.md (TDD mandate now explicit; "Tests OPTIONAL" note corrected)
+  ✅ updated .specify/templates/tasks-template.md (sample tasks now use checkmark closure instead of deletion)
   ✅ reviewed .specify/templates/constitution-template.md (source template only; no change required)
   ✅ no .specify/templates/commands/ directory present; no updates required
-  ✅ runtime guidance scan completed; no README/docs files present to update
+  ✅ reviewed CLAUDE.md (no branch-hygiene references; no change required)
 - Follow-up TODOs: none
 -->
 # Couchraoke Constitution
@@ -81,11 +80,15 @@ Coverage tooling: **JaCoCo** for Android (configured in Gradle); **Xcode code co
 for iOS.
 
 #### Test Categories
+Android unit and instrumented tests MUST use JUnit4-only tooling. JUnit5/Jupiter APIs,
+engines, tags, and extensions MUST NOT be introduced for Android test execution unless the
+constitution is amended again.
+
 | Category | Definition | Annotation |
 |---|---|---|
-| **Unit [U]** | Single class/function in isolation; all I/O mocked | (default) |
+| **Unit [U]** | Single class/function in isolation; all I/O mocked | JUnit4 test class/method conventions |
 | **Instrumented [I]** | Requires real OS resource: socket, filesystem, hardware | Android: `@MediumTest` or `@LargeTest`; iOS: on-simulator/device |
-| **Acceptance** | Fixture-driven; consumes `fixtures/` and asserts against `expected.*` files | Android: `@Tag("acceptance")`; iOS: `XCTestCase` subclass suffixed `AcceptanceTests` |
+| **Acceptance** | Fixture-driven; consumes `fixtures/` and asserts against `expected.*` files | Android: dedicated `*AcceptanceTest` classes or an acceptance source set/task selected by Gradle naming/task configuration; iOS: `XCTestCase` subclass suffixed `AcceptanceTests` |
 
 Instrumented tests MUST NOT run in the unit test CI job. They run in a separate job that
 provisions an emulator or simulator.
@@ -135,11 +138,11 @@ A test MAY be skipped only under one of these three conditions:
 
 | Condition | Required action |
 |---|---|
-| Blocked by a known spec ambiguity | Annotate with `@Disabled("SPEC-<issue>: <reason>")` (Android) or `try XCTSkip("SPEC-<issue>: ...")` (iOS). Must link to a tracked issue. |
+| Blocked by a known spec ambiguity | Annotate with `@Ignore("SPEC-<issue>: <reason>")` (Android) or `try XCTSkip("SPEC-<issue>: ...")` (iOS). Must link to a tracked issue. |
 | Hardware-only test in unit CI job | Move to the instrumented job instead. Do not skip — fix the job configuration. |
 | Demonstrably flaky (≥ 2 failures in 10 runs) | Move to quarantine (see Flaky Test Quarantine below). |
 
-Blanket `@Disabled` on a test class is PROHIBITED. Disable individual test methods only.
+Blanket `@Ignore` on a test class is PROHIBITED. Disable individual test methods only.
 Skipped tests count against coverage. A file full of skipped tests will fail the per-file
 coverage gate.
 
@@ -204,7 +207,7 @@ indicate the failure. It is NOT permitted in production code.
 #### CI Job Structure
 ```text
 PR gate (runs on every commit):
-  ├── unit-tests-android      [U] only — JUnit5, no emulator
+  ├── unit-tests-android      [U] only — JUnit4, no emulator
   ├── unit-tests-ios          [U] only — XCTest, no simulator hardware
   ├── lint-android            Detekt + ktlint + Android Lint
   ├── lint-ios                SwiftLint
@@ -227,8 +230,9 @@ The following are not tested and MUST NOT be added to coverage calculations:
 
 #### Branch Hygiene
 After development is complete and a worktree or feature branch has been merged into `master`,
-that branch MUST be renamed to [✓] <original branch name>. Temporary isolation is encouraged 
-during development, but branch cleanup after merge is mandatory.
+that branch MUST be marked closed by renaming it to `[✓] <original branch name>`. Temporary
+isolation is encouraged during development, but post-merge closure is mandatory. Closed branches
+MUST NOT be deleted solely as a hygiene step.
 
 ## Additional Constraints
 
@@ -254,8 +258,8 @@ Every implementation, review, and merge decision MUST verify constitutional comp
   regressions, and any platform-specific checklist items relevant to the changed code.
 - Before merge, reviewers MUST confirm that quality gates passed and that any worktree or
   temporary development branch has a cleanup path.
-- After merge to `master`, the merged worktree branch or feature branch MUST be deleted
-  immediately unless it is still actively carrying unmerged work.
+- After merge to `master`, the merged worktree branch or feature branch MUST be renamed to
+  `[✓] <original branch name>` unless it is still actively carrying unmerged work.
 
 ## Governance
 
@@ -270,6 +274,7 @@ Couchraoke repository.
   MINOR for new principles or materially expanded obligations, and PATCH for clarifications or
   editorial refinements.
 - Repository hygiene is part of compliance. Branches and worktrees that no longer represent
-  active work MUST be removed after merge.
+  active work MUST be clearly marked closed after merge by renaming them to
+  `[✓] <original branch name>`.
 
-**Version**: 1.1.0 | **Ratified**: 2026-03-13 | **Last Amended**: 2026-03-13
+**Version**: 2.0.1 | **Ratified**: 2026-03-13 | **Last Amended**: 2026-03-14

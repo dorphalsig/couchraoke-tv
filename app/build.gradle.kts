@@ -127,6 +127,46 @@ tasks.register("ciUnitTests") {
     dependsOn(jacocoTestReport, jacocoTestCoverageVerification)
 }
 
+// Parser-focused JVM test tasks (T003)
+tasks.register<Test>("parserUnitTest") {
+    group = "verification"
+    description = "Runs parser-focused unit tests excluding acceptance tests."
+    useJUnit()
+
+    // Reuse test classpath and compiled classes without running the full JVM test task first.
+    val testTask = tasks.named<Test>("testDebugUnitTest")
+    classpath = testTask.get().classpath
+    testClassesDirs = testTask.get().testClassesDirs
+
+    // Include parser unit tests, exclude acceptance tests.
+    include("**/domain/parser/**/*Test.class")
+    exclude("**/domain/parser/**/*AcceptanceTest.class")
+
+    dependsOn(testTask.get().taskDependencies.getDependencies(testTask.get()))
+}
+
+tasks.register<Test>("parserAcceptanceTest") {
+    group = "verification"
+    description = "Runs parser-focused acceptance tests."
+    useJUnit()
+
+    // Reuse test classpath and compiled classes without running the full JVM test task first.
+    val testTask = tasks.named<Test>("testDebugUnitTest")
+    classpath = testTask.get().classpath
+    testClassesDirs = testTask.get().testClassesDirs
+
+    // Include only parser acceptance tests.
+    include("**/domain/parser/**/*AcceptanceTest.class")
+
+    dependsOn(testTask.get().taskDependencies.getDependencies(testTask.get()))
+}
+
+tasks.register("parserTest") {
+    group = "verification"
+    description = "Runs all parser-focused tests (unit + acceptance)."
+    dependsOn("parserUnitTest", "parserAcceptanceTest")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

@@ -28,7 +28,7 @@ Build a pure Kotlin USDX TXT parser inside the Android TV app that parses one so
 - **Architecture boundaries**: PASS — parser code is planned as pure domain logic with I/O abstracted behind an interface.
 - **Networking / streaming / scoring contracts**: PASS — no transport, streaming, or scoring behavior is changed in this feature.
 - **Tests and quality gates**: PASS — plan requires TDD, JVM unit tests, fixture-driven acceptance tests, JaCoCo coverage tooling, documented enforcement of constitution coverage thresholds/exemptions, and Gradle verification including `jacocoTestCoverageVerification`.
-- **Branch cleanup**: PASS — feature branch `001-usdx-parser` is temporary and must be removed after merge per constitution branch hygiene.
+- **Branch cleanup**: PASS — after merge, feature branch `001-usdx-parser` must be marked closed by renaming it to `[✓] 001-usdx-parser` per constitution branch hygiene.
 
 ## Project Structure
 
@@ -117,7 +117,7 @@ See [`quickstart.md`](./quickstart.md).
 - **Architecture boundaries**: PASS — parser/domain, file resolver abstraction, and later data-layer adapter keep boundaries clean.
 - **Networking / streaming / scoring contracts**: PASS — untouched by this design.
 - **Tests and quality gates**: PASS — design includes TDD, unit tests, acceptance fixtures, JaCoCo coverage tooling, documented enforcement of constitution coverage thresholds/exemptions, and Gradle verification including coverage verification gate.
-- **Branch cleanup**: PASS — feature branch remains disposable after merge.
+- **Branch cleanup**: PASS — feature branch must be marked closed after merge by renaming it to `[✓] 001-usdx-parser`.
 
 ## Complexity Tracking
 

@@ -17,11 +17,11 @@
 
 **Purpose**: Create the Kotlin source/test layout and test/build scaffolding needed for parser work.
 
-- [ ] T001 Create parser source and test directory structure under `app/src/main/kotlin/com/couchraoke/tv/domain/parser/` and `app/src/test/kotlin/com/couchraoke/tv/domain/parser/`
-- [ ] T002 Create fixture directory structure under `app/src/test/resources/fixtures/parser/valid/`, `app/src/test/resources/fixtures/parser/invalid/`, `app/src/test/resources/fixtures/parser/duet/`, `app/src/test/resources/fixtures/parser/derived/`, and `app/src/test/resources/fixtures/parser/edge/`, sourcing canonical fixture inputs from `original_spec/fixtures/song_txt_variants/`
-- [ ] T003 Update JVM test configuration in `app/build.gradle.kts` for parser-focused unit and acceptance tests
-- [ ] T004 Configure JaCoCo coverage reporting and verification in `app/build.gradle.kts`, document how constitution coverage thresholds and exemptions are enforced for the parser feature, and add a `jacocoTestCoverageVerification` task
-- [ ] T005 Define branch/worktree cleanup note for feature completion in `specs/001-usdx-parser/quickstart.md`
+- [X] T001 Create parser source and test directory structure under `app/src/main/kotlin/com/couchraoke/tv/domain/parser/` and `app/src/test/kotlin/com/couchraoke/tv/domain/parser/`
+- [X] T002 Create fixture directory structure under `app/src/test/resources/fixtures/parser/valid/`, `app/src/test/resources/fixtures/parser/invalid/`, `app/src/test/resources/fixtures/parser/duet/`, `app/src/test/resources/fixtures/parser/derived/`, and `app/src/test/resources/fixtures/parser/edge/`, sourcing canonical fixture inputs from `original_spec/fixtures/song_txt_variants/`
+- [X] T003 Update JVM test configuration in `app/build.gradle.kts` for parser-focused unit and acceptance tests
+- [X] T004 Configure JaCoCo coverage reporting and verification in `app/build.gradle.kts`, document how constitution coverage thresholds and exemptions are enforced for the parser feature, and add a `jacocoTestCoverageVerification` task
+- [X] T005 Define branch/worktree closure note for feature completion in `specs/001-usdx-parser/quickstart.md`
 
 ---
 
@@ -31,14 +31,14 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T006 Write failing shared model tests in `app/src/test/kotlin/com/couchraoke/tv/domain/parser/ParsedSongModelTest.kt`
-- [ ] T007 [P] Implement `DiagnosticEntry` and supporting severity/code types in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/DiagnosticEntry.kt`
-- [ ] T008 [P] Implement `CustomTag`, `SongHeader`, and version model in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/SongHeader.kt`
-- [ ] T009 [P] Implement `NoteEvent` variants in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/NoteEvent.kt`
-- [ ] T010 [P] Implement `Line` and `Track` models in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/Track.kt`
-- [ ] T011 [P] Implement `DerivedSongSummary`, `ParsedSong`, `ParseResult`, and `FileResolver` in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/DerivedSongSummary.kt`, `app/src/main/kotlin/com/couchraoke/tv/domain/parser/ParsedSong.kt`, `app/src/main/kotlin/com/couchraoke/tv/domain/parser/ParseResult.kt`, and `app/src/main/kotlin/com/couchraoke/tv/domain/parser/FileResolver.kt`
-- [ ] T012 Implement the production file resolver adapter in `app/src/main/kotlin/com/couchraoke/tv/data/files/LocalFileResolver.kt`
-- [ ] T013 Run `./gradlew test` to verify the foundational parser model tests pass
+- [X] T006 Write failing shared model tests in `app/src/test/kotlin/com/couchraoke/tv/domain/parser/ParsedSongModelTest.kt`
+- [X] T007 [P] Implement `DiagnosticEntry` and supporting severity/code types in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/DiagnosticEntry.kt`
+- [X] T008 [P] Implement `CustomTag`, `SongHeader`, and version model in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/SongHeader.kt`
+- [X] T009 [P] Implement `NoteEvent` variants in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/NoteEvent.kt`
+- [X] T010 [P] Implement `Track` in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/Track.kt` and `Line` in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/Line.kt`
+- [X] T011 [P] Implement `DerivedSongSummary`, `ParsedSong`, `ParseResult`, and `FileResolver` in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/DerivedSongSummary.kt`, `app/src/main/kotlin/com/couchraoke/tv/domain/parser/ParsedSong.kt`, `app/src/main/kotlin/com/couchraoke/tv/domain/parser/ParseResult.kt`, and `app/src/main/kotlin/com/couchraoke/tv/domain/parser/FileResolver.kt`
+- [X] T012 Implement the production file resolver adapter in `app/src/main/kotlin/com/couchraoke/tv/data/files/LocalFileResolver.kt`
+- [X] T013 Run `./gradlew test` to verify the foundational parser model tests pass
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -52,18 +52,18 @@
 
 ### Tests for User Story 1 *(write first — must FAIL before implementation)*
 
-- [ ] T014 [P] [US1] Write failing header parsing tests in `app/src/test/kotlin/com/couchraoke/tv/domain/parser/HeaderParserTest.kt`
-- [ ] T015 [P] [US1] Write failing body parsing and duet-routing tests in `app/src/test/kotlin/com/couchraoke/tv/domain/parser/BodyParserTest.kt`
-- [ ] T016 [P] [US1] Add valid single-track and duet acceptance fixtures under `app/src/test/resources/fixtures/parser/valid/` and `app/src/test/resources/fixtures/parser/duet/`
-- [ ] T017 [P] [US1] Write failing valid-song acceptance tests in `app/src/test/kotlin/com/couchraoke/tv/domain/parser/UsdxParserAcceptanceTest.kt`
+- [X] T014 [P] [US1] Write failing header parsing tests in `app/src/test/kotlin/com/couchraoke/tv/domain/parser/HeaderParserTest.kt`
+- [X] T015 [P] [US1] Write failing body parsing and duet-routing tests in `app/src/test/kotlin/com/couchraoke/tv/domain/parser/BodyParserTest.kt`
+- [X] T016 [P] [US1] Add valid single-track and duet acceptance fixtures under `app/src/test/resources/fixtures/parser/valid/` and `app/src/test/resources/fixtures/parser/duet/`
+- [X] T017 [P] [US1] Write failing valid-song acceptance tests in `app/src/test/kotlin/com/couchraoke/tv/domain/parser/UsdxParserAcceptanceTest.kt`
 
 ### Implementation for User Story 1
 
-- [ ] T018 [US1] Implement known header tag parsing in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/HeaderParser.kt`
-- [ ] T019 [US1] Implement note, sentence, and duet body parsing in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/BodyParser.kt`
-- [ ] T020 [US1] Implement parser orchestration for valid songs in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/UsdxParser.kt`
-- [ ] T021 [US1] Implement post-parse line creation and cleanup rules for valid songs in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/PostParseValidator.kt`
-- [ ] T022 [US1] Run `./gradlew test --tests "com.couchraoke.tv.domain.parser.HeaderParserTest" --tests "com.couchraoke.tv.domain.parser.BodyParserTest" --tests "com.couchraoke.tv.domain.parser.UsdxParserAcceptanceTest"` to verify User Story 1 passes
+- [X] T018 [US1] Implement known header tag parsing in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/HeaderParser.kt`
+- [X] T019 [US1] Implement note, sentence, and duet body parsing in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/BodyParser.kt`
+- [X] T020 [US1] Implement parser orchestration for valid songs in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/UsdxParser.kt`
+- [X] T021 [US1] Implement post-parse line creation and cleanup rules for valid songs in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/PostParseValidator.kt`
+- [X] T022 [US1] Run `./gradlew :app:testDebugUnitTest --tests "com.couchraoke.tv.domain.parser.HeaderParserTest" --tests "com.couchraoke.tv.domain.parser.BodyParserTest" --tests "com.couchraoke.tv.domain.parser.UsdxParserAcceptanceTest"` to verify User Story 1 passes
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -77,17 +77,17 @@
 
 ### Tests for User Story 2 *(write first — must FAIL before implementation)*
 
-- [ ] T023 [P] [US2] Add invalid-song acceptance fixtures under `app/src/test/resources/fixtures/parser/invalid/`, including missing required headers, missing required audio files, malformed body numbers, unsupported variable BPM, unsupported relative format, invalid duet markers, and empty-track cleanup failure
-- [ ] T024 [P] [US2] Write failing invalid-song acceptance tests in `app/src/test/kotlin/com/couchraoke/tv/domain/parser/UsdxParserAcceptanceTest.kt`
-- [ ] T025 [P] [US2] Write failing post-parse validation tests in `app/src/test/kotlin/com/couchraoke/tv/domain/parser/PostParseValidatorTest.kt`
+- [X] T023 [P] [US2] Add invalid-song acceptance fixtures under `app/src/test/resources/fixtures/parser/invalid/`, including missing required headers, missing required audio files, malformed body numbers, unsupported variable BPM, unsupported relative format, invalid duet markers, and empty-track cleanup failure
+- [X] T024 [P] [US2] Write failing invalid-song acceptance tests in `app/src/test/kotlin/com/couchraoke/tv/domain/parser/UsdxParserAcceptanceTest.kt`
+- [X] T025 [P] [US2] Write failing post-parse validation tests in `app/src/test/kotlin/com/couchraoke/tv/domain/parser/PostParseValidatorTest.kt`
 
 ### Implementation for User Story 2
 
-- [ ] T026 [US2] Implement required-header and required-audio validation in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/HeaderParser.kt`
-- [ ] T027 [US2] Implement fatal body error handling and invalid duet marker handling in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/BodyParser.kt`
-- [ ] T028 [US2] Implement invalidation code mapping and diagnostic accumulation in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/DiagnosticEntry.kt` and `app/src/main/kotlin/com/couchraoke/tv/domain/parser/UsdxParser.kt`
-- [ ] T029 [US2] Implement empty-line cleanup, no-notes validation, and final validity decision in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/PostParseValidator.kt`
-- [ ] T030 [US2] Run `./gradlew test --tests "com.couchraoke.tv.domain.parser.PostParseValidatorTest" --tests "com.couchraoke.tv.domain.parser.UsdxParserAcceptanceTest"` to verify User Story 2 passes
+- [X] T026 [US2] Implement required-header and required-audio validation in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/HeaderParser.kt`
+- [X] T027 [US2] Implement fatal body error handling and invalid duet marker handling in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/BodyParser.kt`
+- [X] T028 [US2] Implement invalidation code mapping and diagnostic accumulation in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/DiagnosticEntry.kt` and `app/src/main/kotlin/com/couchraoke/tv/domain/parser/UsdxParser.kt`
+- [X] T029 [US2] Implement empty-line cleanup, no-notes validation, and final validity decision in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/PostParseValidator.kt`
+- [X] T030 [US2] Run `./gradlew :app:testDebugUnitTest --tests "com.couchraoke.tv.domain.parser.PostParseValidatorTest" --tests "com.couchraoke.tv.domain.parser.UsdxParserAcceptanceTest"` to verify User Story 2 passes
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -101,17 +101,17 @@
 
 ### Tests for User Story 3 *(write first — must FAIL before implementation)*
 
-- [ ] T031 [P] [US3] Add derived-metadata and edge-case fixtures under `app/src/test/resources/fixtures/parser/derived/` and `app/src/test/resources/fixtures/parser/edge/`, including external video reference cases that must not count as local optional video assets
-- [ ] T032 [P] [US3] Write failing derived-metadata acceptance tests in `app/src/test/kotlin/com/couchraoke/tv/domain/parser/UsdxParserAcceptanceTest.kt`
-- [ ] T033 [P] [US3] Write failing custom-tag and zero-duration note unit tests in `app/src/test/kotlin/com/couchraoke/tv/domain/parser/HeaderParserTest.kt` and `app/src/test/kotlin/com/couchraoke/tv/domain/parser/BodyParserTest.kt`
+- [X] T031 [P] [US3] Add derived-metadata and edge-case fixtures under `app/src/test/resources/fixtures/parser/derived/` and `app/src/test/resources/fixtures/parser/edge/`, reusing `original_spec/fixtures/song_txt_variants/03_unknown_header_tags/` for empty-value and no-separator optional header coverage and including external video reference cases that must not count as local optional video assets
+- [X] T032 [P] [US3] Write failing derived-metadata acceptance tests in `app/src/test/kotlin/com/couchraoke/tv/domain/parser/UsdxParserAcceptanceTest.kt`, including one test per optional malformed header case
+- [X] T033 [P] [US3] Write failing custom-tag, malformed-optional-header, and zero-duration note unit tests in `app/src/test/kotlin/com/couchraoke/tv/domain/parser/HeaderParserTest.kt` and `app/src/test/kotlin/com/couchraoke/tv/domain/parser/BodyParserTest.kt`
 
 ### Implementation for User Story 3
 
-- [ ] T034 [US3] Implement unknown-tag preservation, duplicate-tag last-wins behavior, and version handling in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/HeaderParser.kt`
-- [ ] T035 [US3] Implement zero-duration freestyle conversion and non-fatal unknown-token handling in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/BodyParser.kt`
-- [ ] T036 [US3] Implement derived summary computation for duet, rap, preview, medley, and optional assets in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/PostParseValidator.kt`
-- [ ] T037 [US3] Finalize parser output contract assembly in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/UsdxParser.kt`
-- [ ] T038 [US3] Run `./gradlew test --tests "com.couchraoke.tv.domain.parser.HeaderParserTest" --tests "com.couchraoke.tv.domain.parser.BodyParserTest" --tests "com.couchraoke.tv.domain.parser.UsdxParserAcceptanceTest"` to verify User Story 3 passes
+- [X] T034 [US3] Implement unknown-tag preservation, malformed-optional-header diagnostics, duplicate-tag last-wins behavior, and version handling in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/HeaderParser.kt`
+- [X] T035 [US3] Implement zero-duration freestyle conversion and non-fatal unknown-token handling in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/BodyParser.kt`
+- [X] T036 [US3] Implement derived summary computation for duet, rap, preview, medley, and optional assets in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/PostParseValidator.kt`
+- [X] T037 [US3] Finalize parser output contract assembly in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/UsdxParser.kt`
+- [X] T038 [US3] Run `./gradlew :app:testDebugUnitTest --tests "com.couchraoke.tv.domain.parser.HeaderParserTest" --tests "com.couchraoke.tv.domain.parser.BodyParserTest" --tests "com.couchraoke.tv.domain.parser.UsdxParserAcceptanceTest"` to verify User Story 3 passes
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -121,10 +121,10 @@
 
 **Purpose**: Finish shared verification, documentation alignment, and cross-story cleanup.
 
-- [ ] T039 [P] Document parser fixture coverage and execution notes in `specs/001-usdx-parser/quickstart.md`
+- [X] T039 [P] Document parser fixture coverage and execution notes in `specs/001-usdx-parser/quickstart.md`
 - [ ] T040 Run full verification with `./gradlew test`, `./gradlew lint`, and `./gradlew jacocoTestCoverageVerification`
 - [ ] T041 [P] Review parser files for naming, formatting, and constitution compliance in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/` and `app/src/test/kotlin/com/couchraoke/tv/domain/parser/`
-- [ ] T042 Delete the merged feature branch/worktree after integration per branch hygiene
+- [ ] T042 Mark the merged feature branch/worktree closed by renaming it to `[✓] 001-usdx-parser` after integration per branch hygiene
 
 ---
 
@@ -212,7 +212,7 @@ Task: "Write failing custom-tag and zero-duration note unit tests in app/src/tes
 2. Add User Story 1 → Test independently → MVP parser for valid songs
 3. Add User Story 2 → Test independently → invalid-song rejection and diagnostics
 4. Add User Story 3 → Test independently → derived metadata and edge-case completion
-5. Run full verification and remove the merged feature branch/worktree after integration
+5. Run full verification and mark the merged feature branch/worktree closed after integration by renaming it to `[✓] 001-usdx-parser`
 
 ### Parallel Team Strategy
 
@@ -224,7 +224,7 @@ With multiple developers:
    - Developer B: User Story 2 invalidation fixtures/tests (after parser skeleton is available)
    - Developer C: User Story 3 derived-metadata fixtures/tests (after parser skeleton is available)
 3. Integrate by story in priority order and verify each story independently
-4. Remove the merged feature branch/worktree once the work is integrated
+4. Mark the merged feature branch/worktree closed once the work is integrated by renaming it to `[✓] 001-usdx-parser`
 
 ---
 

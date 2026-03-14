@@ -39,9 +39,10 @@
   Presentation/DI boundaries.
 - Confirm networking, streaming, and scoring behavior preserves direct asset streaming, fixed
   pitch transport, and relevant performance constraints.
-- Confirm the plan includes the tests and quality gates needed for changed code.
-- Confirm how the implementation branch/worktree will be cleaned up after merge so only active
-  branches remain.
+- Confirm the plan includes the tests and quality gates needed for changed code and uses
+  JUnit4-only Android test tooling where Android tests are involved.
+- Confirm how the implementation branch/worktree will be marked closed after merge by renaming
+  it to `[✓] <original branch name>` so only active branches remain unmarked.
 
 ## Project Structure
 
