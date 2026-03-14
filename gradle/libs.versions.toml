@@ -14,6 +14,7 @@ coil = "3.4.0"
 zxing = "4.3.0"
 datastore = "1.2.1"
 jmdns = "3.6.3"
+jacoco = "0.8.12"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -51,3 +52,4 @@ jmdns = { group = "org.jmdns", name = "jmdns", version.ref = "jmdns" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+jacoco = { id = "org.jacoco", version.ref = "jacoco" }
