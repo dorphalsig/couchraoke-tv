@@ -122,7 +122,7 @@
 **Purpose**: Finish shared verification, documentation alignment, and cross-story cleanup.
 
 - [X] T039 [P] Document parser fixture coverage and execution notes in `specs/001-usdx-parser/quickstart.md`
-- [ ] T040 Run full verification with `./gradlew test`, `./gradlew lint`, and `./gradlew jacocoTestCoverageVerification`
+- [X] T040 Run full verification with `./gradlew test`, `./gradlew lint`, and `./gradlew jacocoTestCoverageVerification`
 - [ ] T041 [P] Review parser files for naming, formatting, and constitution compliance in `app/src/main/kotlin/com/couchraoke/tv/domain/parser/` and `app/src/test/kotlin/com/couchraoke/tv/domain/parser/`
 - [ ] T042 Mark the merged feature branch/worktree closed by renaming it to `[✓] 001-usdx-parser` after integration per branch hygiene
 
