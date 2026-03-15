@@ -1,0 +1,8 @@
+[
+  {"hits":3, "n":3, "noteScore":10000.0,  "accumulator":"SCORE"},
+  {"hits":1, "n":1, "noteScore":10000.0,  "accumulator":"SCORE_GOLDEN"},
+  {"hits":2, "n":3, "noteScore":6666.67,  "accumulator":"SCORE"},
+  {"hits":0, "n":0, "noteScore":0.0,      "accumulator":"SCORE"},
+  {"hits":1, "n":1, "noteScore":0.0,      "accumulator":"SCORE"},
+  {"hits":2, "n":2, "noteScore":5000.0,   "accumulator":"SCORE"}
+]

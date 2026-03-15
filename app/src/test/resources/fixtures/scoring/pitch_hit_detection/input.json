@@ -1,0 +1,9 @@
+[
+  {"noteType": "NORMAL",    "targetTone": 0, "midiNote": 36, "toneValid": false, "difficulty": "MEDIUM"},
+  {"noteType": "NORMAL",    "targetTone": 0, "midiNote": 36, "toneValid": true,  "difficulty": "MEDIUM"},
+  {"noteType": "NORMAL",    "targetTone": 0, "midiNote": 37, "toneValid": true,  "difficulty": "MEDIUM"},
+  {"noteType": "NORMAL",    "targetTone": 0, "midiNote": 38, "toneValid": true,  "difficulty": "MEDIUM"},
+  {"noteType": "FREESTYLE", "targetTone": 0, "midiNote": 36, "toneValid": true,  "difficulty": "MEDIUM"},
+  {"noteType": "NORMAL",    "targetTone": 0, "midiNote": 42, "toneValid": true,  "difficulty": "EASY"},
+  {"noteType": "NORMAL",    "targetTone": 0, "midiNote": 48, "toneValid": true,  "difficulty": "MEDIUM"}
+]

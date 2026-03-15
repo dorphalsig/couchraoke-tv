@@ -1,0 +1,7 @@
+[
+  {"lineScore":10.0, "maxLineScore":10.0, "lineBonusPerLine":100.0},
+  {"lineScore":5.0,  "maxLineScore":2.0,  "lineBonusPerLine":50.0},
+  {"lineScore":4.0,  "maxLineScore":10.0, "lineBonusPerLine":100.0},
+  {"lineScore":0.0,  "maxLineScore":10.0, "lineBonusPerLine":100.0},
+  {"lineScore":10.0, "maxLineScore":10.0, "lineBonusPerLine":0.0}
+]
