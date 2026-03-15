@@ -58,7 +58,7 @@ data class PlaybackBounds(
             val initialSongTimeSec = context.startSec ?: 0.0
             val endsFromHeader = context.endMs != null && context.endMs > 0
             val effectiveSongEndSec = if (endsFromHeader) {
-                context.endMs!! / 1000.0
+                context.endMs / 1000.0
             } else {
                 context.mediaDurationSec
             }

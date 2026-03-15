@@ -3,124 +3,90 @@ package com.couchraoke.tv.domain.timing
 import com.couchraoke.tv.domain.parser.NoteEvent
 import com.couchraoke.tv.domain.parser.NoteType
 import com.couchraoke.tv.domain.parser.TrackId
-import org.junit.Test
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.double
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import org.junit.Assert.*
+import org.junit.Test
 
 class BeatTimingEngineAcceptanceTest {
+
+    private fun loadFixture(path: String): String {
+        val stream = checkNotNull(javaClass.classLoader).getResourceAsStream(path)
+            ?: error("fixture not found: $path")
+        return stream.bufferedReader().readText()
+    }
 
     // US1 — Acceptance: baseline and gap/start fixture
     @Test
     fun `fixture 18 baseline beat cursors match expected values`() {
-        val stream = javaClass.classLoader.getResourceAsStream(
-            "fixtures/parser/derived/18_beat_timing_basic/expected.beat_cursors.json"
-        ) ?: error("fixture 18 not found")
-        val json = stream.bufferedReader().readText()
-
-        val root = org.json.JSONObject(json)
-        val inputs = root.getJSONObject("inputs")
-        val bpmFile = inputs.getDouble("BPM_file")
-        val gapMs = inputs.getDouble("GAPms").toInt()
-        val micDelayMs = inputs.getDouble("micDelayMs").toInt()
-
+        val root = Json.parseToJsonElement(
+            loadFixture("fixtures/parser/derived/18_beat_timing_basic/expected.beat_cursors.json")
+        ).jsonObject
+        val inputs = root["inputs"]!!.jsonObject
         val context = TimingContext(
             songIdentifier = "fixture-18",
-            bpmFile = bpmFile,
-            gapMs = gapMs,
-            micDelayMs = micDelayMs,
+            bpmFile = inputs["BPM_file"]!!.jsonPrimitive.double,
+            gapMs = inputs["GAPms"]!!.jsonPrimitive.double.toInt(),
+            micDelayMs = inputs["micDelayMs"]!!.jsonPrimitive.double.toInt(),
         )
 
-        val samples = root.getJSONArray("samples")
-        for (i in 0 until samples.length()) {
-            val sample = samples.getJSONObject(i)
-            val lyricsTimeSec = sample.getDouble("lyricsTimeSec")
-            val expectedHighlightTimeSec = sample.getDouble("highlightTimeSec")
-            val expectedMidBeat = sample.getDouble("midBeat")
-            val expectedCurrentBeat = sample.getInt("currentBeat")
-
-            val cursor = BeatTimingEngine.computeBeatCursor(context, lyricsTimeSec)
-
-            assertEquals(
-                "sample[$i] highlightTimeSec",
-                expectedHighlightTimeSec,
-                cursor.highlightTimeSec,
-                0.0001,
+        val samples = root["samples"]!!.jsonArray
+        for ((i, el) in samples.withIndex()) {
+            val s = el.jsonObject
+            val cursor = BeatTimingEngine.computeBeatCursor(
+                context, s["lyricsTimeSec"]!!.jsonPrimitive.double
             )
-            assertEquals(
-                "sample[$i] midBeat",
-                expectedMidBeat,
-                cursor.midBeat,
-                0.0001,
-            )
-            assertEquals(
-                "sample[$i] currentBeat",
-                expectedCurrentBeat,
-                cursor.currentBeat,
-            )
+            assertEquals("sample[$i] highlightTimeSec",
+                s["highlightTimeSec"]!!.jsonPrimitive.double, cursor.highlightTimeSec, 0.0001)
+            assertEquals("sample[$i] midBeat",
+                s["midBeat"]!!.jsonPrimitive.double, cursor.midBeat, 0.0001)
+            assertEquals("sample[$i] currentBeat",
+                s["currentBeat"]!!.jsonPrimitive.int, cursor.currentBeat)
         }
     }
 
     // US1 — Acceptance: pre-roll and start offset
     @Test
     fun `fixture 19 gap-aware pre-roll and start offset cursors match expected values`() {
-        val stream = javaClass.classLoader.getResourceAsStream(
-            "fixtures/parser/derived/19_beat_timing_gap_and_start/expected.beat_cursors.json"
-        ) ?: error("fixture 19 not found")
-        val json = stream.bufferedReader().readText()
-
-        val root = org.json.JSONObject(json)
-        val inputs = root.getJSONObject("inputs")
-        val bpmFile = inputs.getDouble("BPM_file")
-        val gapMs = inputs.getDouble("GAPms").toInt()
-        val startSec = inputs.getDouble("startSec")
-
+        val root = Json.parseToJsonElement(
+            loadFixture("fixtures/parser/derived/19_beat_timing_gap_and_start/expected.beat_cursors.json")
+        ).jsonObject
+        val inputs = root["inputs"]!!.jsonObject
         val context = TimingContext(
             songIdentifier = "fixture-19",
-            bpmFile = bpmFile,
-            gapMs = gapMs,
-            startSec = startSec,
+            bpmFile = inputs["BPM_file"]!!.jsonPrimitive.double,
+            gapMs = inputs["GAPms"]!!.jsonPrimitive.double.toInt(),
+            startSec = inputs["startSec"]!!.jsonPrimitive.double,
         )
 
-        val samples = root.getJSONArray("samples")
-        assertEquals("fixture 19 should have 3 samples", 3, samples.length())
-
-        for (i in 0 until samples.length()) {
-            val sample = samples.getJSONObject(i)
-            val lyricsTimeSec = sample.getDouble("lyricsTimeSec")
-            val expectedHighlightTimeSec = sample.getDouble("highlightTimeSec")
-            val expectedMidBeat = sample.getDouble("midBeat")
-            val expectedCurrentBeat = sample.getInt("currentBeat")
-
-            val cursor = BeatTimingEngine.computeBeatCursor(context, lyricsTimeSec)
-
-            assertEquals(
-                "sample[$i] highlightTimeSec",
-                expectedHighlightTimeSec,
-                cursor.highlightTimeSec,
-                0.0001,
+        val samples = root["samples"]!!.jsonArray
+        assertEquals("fixture 19 should have 3 samples", 3, samples.size)
+        for ((i, el) in samples.withIndex()) {
+            val s = el.jsonObject
+            val cursor = BeatTimingEngine.computeBeatCursor(
+                context, s["lyricsTimeSec"]!!.jsonPrimitive.double
             )
-            assertEquals(
-                "sample[$i] midBeat",
-                expectedMidBeat,
-                cursor.midBeat,
-                0.0001,
-            )
-            assertEquals(
-                "sample[$i] currentBeat",
-                expectedCurrentBeat,
-                cursor.currentBeat,
-            )
+            assertEquals("sample[$i] highlightTimeSec",
+                s["highlightTimeSec"]!!.jsonPrimitive.double, cursor.highlightTimeSec, 0.0001)
+            assertEquals("sample[$i] midBeat",
+                s["midBeat"]!!.jsonPrimitive.double, cursor.midBeat, 0.0001)
+            assertEquals("sample[$i] currentBeat",
+                s["currentBeat"]!!.jsonPrimitive.int, cursor.currentBeat)
         }
     }
 
     // US2 — Acceptance: note boundary membership
     @Test
     fun `fixture 20 note boundary membership matches expected values`() {
-        val stream = javaClass.classLoader.getResourceAsStream(
-            "fixtures/parser/edge/20_beat_timing_boundary_case/expected.note_windows.json"
-        ) ?: error("fixture 20 not found")
-        val json = stream.bufferedReader().readText()
-
-        val root = org.json.JSONObject(json)
+        val root = Json.parseToJsonElement(
+            loadFixture("fixtures/parser/edge/20_beat_timing_boundary_case/expected.note_windows.json")
+        ).jsonObject
         val context = TimingContext(
             songIdentifier = "fixture-20",
             bpmFile = 120.0,
@@ -129,45 +95,29 @@ class BeatTimingEngineAcceptanceTest {
             micDelayMs = 0,
         )
 
-        val noteWindows = root.getJSONArray("noteWindows")
-        for (i in 0 until noteWindows.length()) {
-            val nw = noteWindows.getJSONObject(i)
-            val id = nw.getString("id")
-            val startBeat = nw.getInt("startBeat")
-            val durationBeats = nw.getInt("durationBeats")
-            val expectedNoteStartTvMs = nw.getLong("noteStartTvMs")
-            val expectedNoteEndTvMs = nw.getLong("noteEndTvMs")
-            val expectedFinalizationTvMs = nw.getLong("finalizationTvMs")
-
+        for ((i, el) in root["noteWindows"]!!.jsonArray.withIndex()) {
+            val nw = el.jsonObject
+            val id = nw["id"]!!.jsonPrimitive.content
             val note = NoteEvent.Note(
                 noteType = NoteType.NORMAL,
-                startBeat = startBeat,
-                durationBeats = durationBeats,
+                startBeat = nw["startBeat"]!!.jsonPrimitive.int,
+                durationBeats = nw["durationBeats"]!!.jsonPrimitive.int,
                 tone = 0,
                 lyricText = "",
             )
-            val window = BeatTimingEngine.computeNoteTimingWindow(
-                context = context,
-                trackId = TrackId.P1,
-                lineStartBeat = 0,
-                note = note,
-            )
-
-            assertEquals("$id noteStartTvMs", expectedNoteStartTvMs, window.noteStartTvMs)
-            assertEquals("$id noteEndTvMs", expectedNoteEndTvMs, window.noteEndTvMs)
-            assertEquals("$id finalizationTvMs", expectedFinalizationTvMs, window.finalizationTvMs)
+            val window = BeatTimingEngine.computeNoteTimingWindow(context, TrackId.P1, 0, note)
+            assertEquals("$id noteStartTvMs", nw["noteStartTvMs"]!!.jsonPrimitive.long, window.noteStartTvMs)
+            assertEquals("$id noteEndTvMs", nw["noteEndTvMs"]!!.jsonPrimitive.long, window.noteEndTvMs)
+            assertEquals("$id finalizationTvMs", nw["finalizationTvMs"]!!.jsonPrimitive.long, window.finalizationTvMs)
         }
     }
 
     // US2 — Acceptance: late-frame rejection when latenessMs > 450
     @Test
     fun `fixture 20 frames with latenessMs over 450 are explicitly rejected`() {
-        val stream = javaClass.classLoader.getResourceAsStream(
-            "fixtures/parser/edge/20_beat_timing_boundary_case/expected.note_windows.json"
-        ) ?: error("fixture 20 not found")
-        val json = stream.bufferedReader().readText()
-
-        val root = org.json.JSONObject(json)
+        val root = Json.parseToJsonElement(
+            loadFixture("fixtures/parser/edge/20_beat_timing_boundary_case/expected.note_windows.json")
+        ).jsonObject
         val context = TimingContext(
             songIdentifier = "fixture-20",
             bpmFile = 120.0,
@@ -176,50 +126,27 @@ class BeatTimingEngineAcceptanceTest {
             micDelayMs = 0,
         )
 
-        // Build a map from window id -> NoteTimingWindow
-        val noteWindowsArray = root.getJSONArray("noteWindows")
-        val windowMap = mutableMapOf<String, NoteTimingWindow>()
-        for (i in 0 until noteWindowsArray.length()) {
-            val nw = noteWindowsArray.getJSONObject(i)
-            val id = nw.getString("id")
-            val startBeat = nw.getInt("startBeat")
-            val durationBeats = nw.getInt("durationBeats")
-            val note = NoteEvent.Note(
-                noteType = NoteType.NORMAL,
-                startBeat = startBeat,
-                durationBeats = durationBeats,
-                tone = 0,
-                lyricText = "",
-            )
-            windowMap[id] = BeatTimingEngine.computeNoteTimingWindow(
-                context = context,
-                trackId = TrackId.P1,
-                lineStartBeat = 0,
-                note = note,
-            )
+        val windowMap = root["noteWindows"]!!.jsonArray.associate { el ->
+            val nw = el.jsonObject
+            val note = NoteEvent.Note(NoteType.NORMAL,
+                nw["startBeat"]!!.jsonPrimitive.int,
+                nw["durationBeats"]!!.jsonPrimitive.int, 0, "")
+            nw["id"]!!.jsonPrimitive.content to
+                BeatTimingEngine.computeNoteTimingWindow(context, TrackId.P1, 0, note)
         }
 
-        val eligibilityTests = root.getJSONArray("frameEligibilityTests")
-        for (i in 0 until eligibilityTests.length()) {
-            val test = eligibilityTests.getJSONObject(i)
-            val windowId = test.getString("windowId")
-            val frameTimestampTvMs = test.getLong("frameTimestampTvMs")
-            val arrivalTimeTvMs = test.getLong("arrivalTimeTvMs")
-            val expectEligible = test.getBoolean("expectEligible")
-
-            val window = windowMap[windowId]
-                ?: error("Window $windowId not found in map")
-            val frame = PitchFrameTiming(
-                frameTimestampTvMs = frameTimestampTvMs,
-                arrivalTimeTvMs = arrivalTimeTvMs,
-                eligibleForCollection = true,
-            )
-
-            val result = BeatTimingEngine.isPitchFrameEligible(frame, window)
+        for ((i, el) in root["frameEligibilityTests"]!!.jsonArray.withIndex()) {
+            val t = el.jsonObject
+            val windowId = t["windowId"]!!.jsonPrimitive.content
+            val frameTs = t["frameTimestampTvMs"]!!.jsonPrimitive.long
+            val arrivalTs = t["arrivalTimeTvMs"]!!.jsonPrimitive.long
+            val expectEligible = t["expectEligible"]!!.jsonPrimitive.boolean
+            val window = windowMap[windowId] ?: error("Window $windowId not found")
+            val frame = PitchFrameTiming(frameTs, arrivalTs, eligibleForCollection = true)
             assertEquals(
-                "test[$i] windowId=$windowId frame=$frameTimestampTvMs arrival=$arrivalTimeTvMs",
+                "test[$i] windowId=$windowId frame=$frameTs arrival=$arrivalTs",
                 expectEligible,
-                result,
+                BeatTimingEngine.isPitchFrameEligible(frame, window),
             )
         }
     }
@@ -227,56 +154,13 @@ class BeatTimingEngineAcceptanceTest {
     // US3 — Acceptance: mic-delay shifts and end boundary
     @Test
     fun `fixture 19 mic-delay shifts note windows without changing authored beats`() {
-        val context0 = TimingContext(
-            songIdentifier = "fixture-19-mic-delay",
-            bpmFile = 120.0,
-            gapMs = 2000,
-            songStartTvMs = 10000L,
-            micDelayMs = 0,
-        )
-        val context100 = TimingContext(
-            songIdentifier = "fixture-19-mic-delay",
-            bpmFile = 120.0,
-            gapMs = 2000,
-            songStartTvMs = 10000L,
-            micDelayMs = 100,
-        )
-
-        val note = NoteEvent.Note(
-            noteType = NoteType.NORMAL,
-            startBeat = 0,
-            durationBeats = 4,
-            tone = 0,
-            lyricText = "",
-        )
-
-        val window0 = BeatTimingEngine.computeNoteTimingWindow(
-            context = context0,
-            trackId = TrackId.P1,
-            lineStartBeat = 0,
-            note = note,
-        )
-        val window100 = BeatTimingEngine.computeNoteTimingWindow(
-            context = context100,
-            trackId = TrackId.P1,
-            lineStartBeat = 0,
-            note = note,
-        )
-
-        assertEquals(
-            "micDelay=100 shifts noteStartTvMs by 100ms",
-            window0.noteStartTvMs + 100L,
-            window100.noteStartTvMs,
-        )
-        assertEquals(
-            "micDelay=100 shifts noteEndTvMs by 100ms",
-            window0.noteEndTvMs + 100L,
-            window100.noteEndTvMs,
-        )
-        assertEquals(
-            "authored startBeat unchanged across micDelay contexts",
-            window0.startBeat,
-            window100.startBeat,
-        )
+        val note = NoteEvent.Note(NoteType.NORMAL, startBeat = 0, durationBeats = 4, tone = 0, lyricText = "")
+        val base = TimingContext("fixture-19-mic", 120.0, 2000, songStartTvMs = 10000L, micDelayMs = 0)
+        val delayed = TimingContext("fixture-19-mic", 120.0, 2000, songStartTvMs = 10000L, micDelayMs = 100)
+        val w0 = BeatTimingEngine.computeNoteTimingWindow(base, TrackId.P1, 0, note)
+        val w100 = BeatTimingEngine.computeNoteTimingWindow(delayed, TrackId.P1, 0, note)
+        assertEquals("micDelay shifts noteStartTvMs by 100ms", w0.noteStartTvMs + 100L, w100.noteStartTvMs)
+        assertEquals("micDelay shifts noteEndTvMs by 100ms", w0.noteEndTvMs + 100L, w100.noteEndTvMs)
+        assertEquals("authored startBeat unchanged", w0.startBeat, w100.startBeat)
     }
 }
