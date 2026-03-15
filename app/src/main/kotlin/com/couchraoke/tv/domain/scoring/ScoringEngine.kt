@@ -68,8 +68,29 @@ class DefaultScoringEngine : ScoringEngine {
         }
     }
 
-    override fun evaluateNote(window: NoteTimingWindow, note: NoteEvent, frames: List<PitchFrame>, profile: TrackScoringProfile): NoteResult =
-        throw NotImplementedError("not yet implemented")
+    override fun evaluateNote(window: NoteTimingWindow, note: NoteEvent, frames: List<PitchFrame>, profile: TrackScoringProfile): NoteResult {
+        val noteNote = note as NoteEvent.Note
+
+        if (noteNote.noteType == NoteType.FREESTYLE) {
+            return NoteResult(window, hits = 0, n = frames.size, noteScore = 0.0, maxNoteScore = 0.0, accumulator = ScoreAccumulator.NONE)
+        }
+
+        val scoreFactor = SCORE_FACTOR[noteNote.noteType]!!
+        val maxNoteScore = if (profile.trackScoreValue == 0.0) 0.0
+            else (profile.maxSongPoints.toDouble() / profile.trackScoreValue) * scoreFactor * noteNote.durationBeats
+
+        val n = frames.size
+        val hits = frames.count { frame -> isPitchMatch(frame.midiNote, frame.toneValid, noteNote.noteType, noteNote.tone, profile.difficulty) }
+
+        val noteScore = if (n > 0) maxNoteScore * (hits.toDouble() / n) else 0.0
+
+        val accumulator = when (noteNote.noteType) {
+            NoteType.GOLDEN, NoteType.RAP_GOLDEN -> ScoreAccumulator.SCORE_GOLDEN
+            else -> ScoreAccumulator.SCORE
+        }
+
+        return NoteResult(window, hits, n, noteScore, maxNoteScore, accumulator)
+    }
 
     override fun accumulateNote(current: PlayerScore, result: NoteResult): PlayerScore {
         return when (result.accumulator) {
