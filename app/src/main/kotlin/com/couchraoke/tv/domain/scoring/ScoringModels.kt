@@ -25,6 +25,7 @@ data class TrackScoringProfile(
     val medleyStartBeat: Int?,
     val medleyEndBeat: Int?,
     val maxSongPoints: Int,
+    val difficulty: Difficulty = DEFAULT_DIFFICULTY,
 )
 
 data class NoteResult(
