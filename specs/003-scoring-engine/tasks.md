@@ -147,7 +147,7 @@
 - [X] T038 Run `./gradlew jacocoTestCoverageVerification` — bundle-level line coverage ≥ 80%; per-file line coverage ≥ 60% for all scoring domain files; fix any gaps
 - [X] T039 [P] Run `./gradlew lint` — resolve any Detekt/ktlint findings in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/` and `app/src/test/kotlin/com/couchraoke/tv/domain/scoring/`
 - [X] T040 Run `./gradlew test` — no regressions in parser or timing tests; full test suite passes
-- [ ] T041 After merge to master, rename feature branch from `003-scoring-engine` to `[✓] 003-scoring-engine` per constitution branch hygiene
+- [X] T041 After merge to master, rename feature branch from `003-scoring-engine` to `[✓] 003-scoring-engine` per constitution branch hygiene
 
 ---
 
