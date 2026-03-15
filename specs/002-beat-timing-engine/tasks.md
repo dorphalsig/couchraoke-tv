@@ -25,9 +25,9 @@
 
 **Purpose**: Create the timing-engine scaffolding and targeted verification entry points.
 
-- [ ] T001 Create timing package scaffolding in `app/src/main/kotlin/com/couchraoke/tv/domain/timing/` and `app/src/test/kotlin/com/couchraoke/tv/domain/timing/`
-- [ ] T002 [P] Create timing fixture directories in `app/src/test/resources/fixtures/parser/derived/18_beat_timing_basic/`, `app/src/test/resources/fixtures/parser/derived/19_beat_timing_gap_and_start/`, and `app/src/test/resources/fixtures/parser/edge/20_beat_timing_boundary_case/`
-- [ ] T003 [P] Configure `timingUnitTest`, `timingAcceptanceTest`, and `timingTest` selectors in `app/build.gradle.kts`
+- [x] T001 Create timing package scaffolding in `app/src/main/kotlin/com/couchraoke/tv/domain/timing/` and `app/src/test/kotlin/com/couchraoke/tv/domain/timing/`
+- [x] T002 [P] Create timing fixture directories in `app/src/test/resources/fixtures/parser/derived/18_beat_timing_basic/`, `app/src/test/resources/fixtures/parser/derived/19_beat_timing_gap_and_start/`, and `app/src/test/resources/fixtures/parser/edge/20_beat_timing_boundary_case/`
+- [x] T003 [P] Configure `timingUnitTest`, `timingAcceptanceTest`, and `timingTest` selectors in `app/build.gradle.kts`
 
 ---
 
@@ -37,9 +37,9 @@
 
 **⚠️ CRITICAL**: No user story work should begin until this phase is complete.
 
-- [ ] T004 Create failing timing test shells in `app/src/test/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngineTest.kt` and `app/src/test/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngineAcceptanceTest.kt`
-- [ ] T005 Implement shared immutable timing data types in `app/src/main/kotlin/com/couchraoke/tv/domain/timing/BeatTimingModels.kt`
-- [ ] T006 Implement the base `ParsedSong` timing entry points and fixed-BPM conversion helpers in `app/src/main/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngine.kt`
+- [x] T004 Create failing timing test shells in `app/src/test/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngineTest.kt` and `app/src/test/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngineAcceptanceTest.kt`
+- [x] T005 Implement shared immutable timing data types in `app/src/main/kotlin/com/couchraoke/tv/domain/timing/BeatTimingModels.kt`
+- [x] T006 Implement the base `ParsedSong` timing entry points and fixed-BPM conversion helpers in `app/src/main/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngine.kt`
 
 **Checkpoint**: Shared timing package, models, and test entry points exist; story work can proceed.
 
@@ -53,14 +53,14 @@
 
 ### Tests for User Story 1 *(write first — must FAIL before implementation)*
 
-- [ ] T007 [P] [US1] Add failing beat-cursor unit tests for baseline conversion, negative pre-roll, and beat round-trip behavior in `app/src/test/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngineTest.kt`
-- [ ] T008 [P] [US1] Add failing acceptance tests for baseline and gap/start playback positions in `app/src/test/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngineAcceptanceTest.kt`
+- [x] T007 [P] [US1] Add failing beat-cursor unit tests for baseline conversion, negative pre-roll, and beat round-trip behavior in `app/src/test/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngineTest.kt`
+- [x] T008 [P] [US1] Add failing acceptance tests for baseline and gap/start playback positions in `app/src/test/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngineAcceptanceTest.kt`
 
 ### Implementation for User Story 1
 
-- [ ] T009 [P] [US1] Add baseline and gap/start fixture inputs plus expected cursor snapshots in `app/src/test/resources/fixtures/parser/derived/18_beat_timing_basic/` and `app/src/test/resources/fixtures/parser/derived/19_beat_timing_gap_and_start/`
-- [ ] T010 [US1] Finalize `TimingContext`, `PlaybackBounds`, and `BeatCursor` fields for cursor evaluation in `app/src/main/kotlin/com/couchraoke/tv/domain/timing/BeatTimingModels.kt`
-- [ ] T011 [US1] Implement beat-cursor APIs, gap-aware highlight time, floored current-beat output, and start-offset initialization in `app/src/main/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngine.kt`
+- [x] T009 [P] [US1] Add baseline and gap/start fixture inputs plus expected cursor snapshots in `app/src/test/resources/fixtures/parser/derived/18_beat_timing_basic/` and `app/src/test/resources/fixtures/parser/derived/19_beat_timing_gap_and_start/`
+- [x] T010 [US1] Finalize `TimingContext`, `PlaybackBounds`, and `BeatCursor` fields for cursor evaluation in `app/src/main/kotlin/com/couchraoke/tv/domain/timing/BeatTimingModels.kt`
+- [x] T011 [US1] Implement beat-cursor APIs, gap-aware highlight time, floored current-beat output, and start-offset initialization in `app/src/main/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngine.kt`
 
 **Checkpoint**: User Story 1 should now return stable beat cursors for baseline, pre-roll, and start-offset playback.
 
@@ -74,14 +74,14 @@
 
 ### Tests for User Story 2 *(write first — must FAIL before implementation)*
 
-- [ ] T012 [P] [US2] Add failing unit tests for note-window derivation, zero-duration notes, and start-inclusive/end-exclusive membership in `app/src/test/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngineTest.kt`
-- [ ] T013 [P] [US2] Add failing acceptance tests for note-boundary membership, explicit late-frame rejection when `latenessMs > 450`, and late-finalization behavior in `app/src/test/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngineAcceptanceTest.kt`
+- [x] T012 [P] [US2] Add failing unit tests for note-window derivation, zero-duration notes, and start-inclusive/end-exclusive membership in `app/src/test/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngineTest.kt`
+- [x] T013 [P] [US2] Add failing acceptance tests for note-boundary membership, explicit late-frame rejection when `latenessMs > 450`, and late-finalization behavior in `app/src/test/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngineAcceptanceTest.kt`
 
 ### Implementation for User Story 2
 
-- [ ] T014 [P] [US2] Add boundary and late-frame fixture expectations in `app/src/test/resources/fixtures/parser/edge/20_beat_timing_boundary_case/`
-- [ ] T015 [US2] Add `NoteTimingWindow` and `PitchFrameTiming` outputs to `app/src/main/kotlin/com/couchraoke/tv/domain/timing/BeatTimingModels.kt`
-- [ ] T016 [US2] Implement note-window derivation from the shared playback timeline, start-inclusive/end-exclusive boundary membership checks, frame-eligibility evaluation that drops frames when `latenessMs > 450`, and `finalizationTvMs = noteEndTvMs + 450` in `app/src/main/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngine.kt`
+- [x] T014 [P] [US2] Add boundary and late-frame fixture expectations in `app/src/test/resources/fixtures/parser/edge/20_beat_timing_boundary_case/`
+- [x] T015 [US2] Add `NoteTimingWindow` and `PitchFrameTiming` outputs to `app/src/main/kotlin/com/couchraoke/tv/domain/timing/BeatTimingModels.kt`
+- [x] T016 [US2] Implement note-window derivation from the shared playback timeline, start-inclusive/end-exclusive boundary membership checks, frame-eligibility evaluation that drops frames when `latenessMs > 450`, and `finalizationTvMs = noteEndTvMs + 450` in `app/src/main/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngine.kt`
 
 **Checkpoint**: User Story 2 should now derive note windows and eligibility decisions deterministically from parsed notes.
 
@@ -95,14 +95,14 @@
 
 ### Tests for User Story 3 *(write first — must FAIL before implementation)*
 
-- [ ] T017 [P] [US3] Add failing unit tests for `micDelayMs` default/range validation and playback-end selection in `app/src/test/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngineTest.kt`
-- [ ] T018 [P] [US3] Add failing acceptance tests for mic-delay shifts and explicit-end versus media-duration fallback in `app/src/test/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngineAcceptanceTest.kt`
+- [x] T017 [P] [US3] Add failing unit tests for `micDelayMs` default/range validation and playback-end selection in `app/src/test/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngineTest.kt`
+- [x] T018 [P] [US3] Add failing acceptance tests for mic-delay shifts and explicit-end versus media-duration fallback in `app/src/test/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngineAcceptanceTest.kt`
 
 ### Implementation for User Story 3
 
-- [ ] T019 [P] [US3] Add calibration and playback-bound expectation data in `app/src/test/resources/fixtures/parser/derived/19_beat_timing_gap_and_start/` and `app/src/test/resources/fixtures/parser/edge/20_beat_timing_boundary_case/`
-- [ ] T020 [US3] Finalize `TimingContext` and `PlaybackBounds` validation rules for `micDelayMs`, `startSec`, `endMs`, and media-duration fallback in `app/src/main/kotlin/com/couchraoke/tv/domain/timing/BeatTimingModels.kt`
-- [ ] T021 [US3] Implement `micDelayMs` default/range handling, note-window shifting on the shared playback timeline, explicit `endMs` handling, and media-duration fallback in `app/src/main/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngine.kt`
+- [x] T019 [P] [US3] Add calibration and playback-bound expectation data in `app/src/test/resources/fixtures/parser/derived/19_beat_timing_gap_and_start/` and `app/src/test/resources/fixtures/parser/edge/20_beat_timing_boundary_case/`
+- [x] T020 [US3] Finalize `TimingContext` and `PlaybackBounds` validation rules for `micDelayMs`, `startSec`, `endMs`, and media-duration fallback in `app/src/main/kotlin/com/couchraoke/tv/domain/timing/BeatTimingModels.kt`
+- [x] T021 [US3] Implement `micDelayMs` default/range handling, note-window shifting on the shared playback timeline, explicit `endMs` handling, and media-duration fallback in `app/src/main/kotlin/com/couchraoke/tv/domain/timing/BeatTimingEngine.kt`
 
 **Checkpoint**: All user stories should now be independently functional, including calibration and playback bounds.
 
@@ -112,9 +112,9 @@
 
 **Purpose**: Run feature-wide verification and close the feature branch/worktree after integration.
 
-- [ ] T022 [P] Verify the quickstart command set from `specs/002-beat-timing-engine/quickstart.md` against the timing tasks configured in `app/build.gradle.kts`
-- [ ] T023 [P] Run the timing verification and coverage flow referenced by `app/build.gradle.kts` and record any missing acceptance coverage follow-ups in `specs/002-beat-timing-engine/tasks.md`
-- [ ] T024 Record feature closure in `specs/002-beat-timing-engine/tasks.md` after renaming the merged worktree/branch `002-beat-timing-engine` to `[✓] 002-beat-timing-engine`
+- [x] T022 [P] Verify the quickstart command set from `specs/002-beat-timing-engine/quickstart.md` against the timing tasks configured in `app/build.gradle.kts`
+- [x] T023 [P] Run the timing verification and coverage flow referenced by `app/build.gradle.kts` and record any missing acceptance coverage follow-ups in `specs/002-beat-timing-engine/tasks.md`
+- [x] T024 Record feature closure in `specs/002-beat-timing-engine/tasks.md` after renaming the merged worktree/branch `002-beat-timing-engine` to `[✓] 002-beat-timing-engine`
 
 ---
 
