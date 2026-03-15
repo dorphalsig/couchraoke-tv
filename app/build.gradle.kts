@@ -167,6 +167,41 @@ tasks.register("parserTest") {
     dependsOn("parserUnitTest", "parserAcceptanceTest")
 }
 
+tasks.register<Test>("timingUnitTest") {
+    group = "verification"
+    description = "Runs timing-focused unit tests excluding acceptance tests."
+    useJUnit()
+
+    val testTask = tasks.named<Test>("testDebugUnitTest")
+    classpath = testTask.get().classpath
+    testClassesDirs = testTask.get().testClassesDirs
+
+    include("**/domain/timing/**/*Test.class")
+    exclude("**/domain/timing/**/*AcceptanceTest.class")
+
+    dependsOn(testTask.get().taskDependencies.getDependencies(testTask.get()))
+}
+
+tasks.register<Test>("timingAcceptanceTest") {
+    group = "verification"
+    description = "Runs timing-focused acceptance tests."
+    useJUnit()
+
+    val testTask = tasks.named<Test>("testDebugUnitTest")
+    classpath = testTask.get().classpath
+    testClassesDirs = testTask.get().testClassesDirs
+
+    include("**/domain/timing/**/*AcceptanceTest.class")
+
+    dependsOn(testTask.get().taskDependencies.getDependencies(testTask.get()))
+}
+
+tasks.register("timingTest") {
+    group = "verification"
+    description = "Runs all timing-focused tests (unit + acceptance)."
+    dependsOn("timingUnitTest", "timingAcceptanceTest")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

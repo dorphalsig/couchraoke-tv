@@ -1,0 +1,31 @@
+{
+  "description": "Gap-aware pre-roll and start-offset beat cursors.",
+  "inputs": {
+    "BPM_file": 120.0,
+    "GAPms": 2000.0,
+    "startSec": 1.5
+  },
+  "samples": [
+    {
+      "lyricsTimeSec": 0.5,
+      "highlightTimeSec": -1.5,
+      "midBeat": -12.0,
+      "currentBeat": -12,
+      "note": "pre-roll: lyricsTimeSec before gap elapses"
+    },
+    {
+      "lyricsTimeSec": 3.5,
+      "highlightTimeSec": 1.5,
+      "midBeat": 12.0,
+      "currentBeat": 12,
+      "note": "active playback after gap"
+    },
+    {
+      "lyricsTimeSec": 5.0,
+      "highlightTimeSec": 3.0,
+      "midBeat": 24.0,
+      "currentBeat": 24,
+      "note": "start-offset song: beat math is unaffected by startSec"
+    }
+  ]
+}

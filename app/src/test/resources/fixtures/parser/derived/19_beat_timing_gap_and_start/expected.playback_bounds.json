@@ -1,0 +1,20 @@
+{
+  "description": "PlaybackBounds derivation: explicit endMs, media-duration fallback, and absent end.",
+  "scenarios": [
+    {
+      "id": "explicit-end",
+      "inputs": { "startSec": 1.5, "endMs": 60000, "mediaDurationSec": null },
+      "expected": { "initialSongTimeSec": 1.5, "effectiveSongEndSec": 60.0, "endsFromHeader": true }
+    },
+    {
+      "id": "media-fallback",
+      "inputs": { "startSec": 1.5, "endMs": null, "mediaDurationSec": 90.0 },
+      "expected": { "initialSongTimeSec": 1.5, "effectiveSongEndSec": 90.0, "endsFromHeader": false }
+    },
+    {
+      "id": "no-end",
+      "inputs": { "startSec": null, "endMs": null, "mediaDurationSec": null },
+      "expected": { "initialSongTimeSec": 0.0, "effectiveSongEndSec": null, "endsFromHeader": false }
+    }
+  ]
+}
