@@ -1,0 +1,78 @@
+{
+  "description": "Note-window derivation, boundary membership, and late-frame rejection.",
+  "timingContext": {
+    "BPM_file": 120.0,
+    "GAPms": 2000,
+    "songStartTvMs": 10000,
+    "micDelayMs": 0
+  },
+  "noteWindows": [
+    {
+      "id": "NW1",
+      "startBeat": 0,
+      "durationBeats": 4,
+      "noteStartTvMs": 12000,
+      "noteEndTvMs": 12500,
+      "finalizationTvMs": 12950
+    },
+    {
+      "id": "NW2",
+      "startBeat": 8,
+      "durationBeats": 0,
+      "noteStartTvMs": 13000,
+      "noteEndTvMs": 13000,
+      "finalizationTvMs": 13450,
+      "note": "zero-duration window"
+    }
+  ],
+  "frameEligibilityTests": [
+    {
+      "description": "start boundary is inclusive",
+      "windowId": "NW1",
+      "frameTimestampTvMs": 12000,
+      "arrivalTimeTvMs": 12000,
+      "latenessMs": 0,
+      "expectEligible": true
+    },
+    {
+      "description": "within window",
+      "windowId": "NW1",
+      "frameTimestampTvMs": 12499,
+      "arrivalTimeTvMs": 12499,
+      "latenessMs": 0,
+      "expectEligible": true
+    },
+    {
+      "description": "end boundary is exclusive",
+      "windowId": "NW1",
+      "frameTimestampTvMs": 12500,
+      "arrivalTimeTvMs": 12500,
+      "latenessMs": 0,
+      "expectEligible": false
+    },
+    {
+      "description": "late frame: latenessMs > 450 is rejected",
+      "windowId": "NW1",
+      "frameTimestampTvMs": 12000,
+      "arrivalTimeTvMs": 12451,
+      "latenessMs": 451,
+      "expectEligible": false
+    },
+    {
+      "description": "late frame: latenessMs exactly 450 is still eligible",
+      "windowId": "NW1",
+      "frameTimestampTvMs": 12000,
+      "arrivalTimeTvMs": 12450,
+      "latenessMs": 450,
+      "expectEligible": true
+    },
+    {
+      "description": "zero-duration window: no frame is ever eligible",
+      "windowId": "NW2",
+      "frameTimestampTvMs": 13000,
+      "arrivalTimeTvMs": 13000,
+      "latenessMs": 0,
+      "expectEligible": false
+    }
+  ]
+}
