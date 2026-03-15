@@ -1,0 +1,7 @@
+[
+  {"scoreInt":9000, "scoreGoldenInt":0,  "scoreLineInt":0,    "scoreTotalInt":9000},
+  {"scoreInt":9000, "scoreGoldenInt":0,  "scoreLineInt":1000, "scoreTotalInt":10000},
+  {"scoreInt":9510, "scoreGoldenInt":50, "scoreLineInt":0,    "scoreTotalInt":9560},
+  {"scoreInt":9500, "scoreGoldenInt":60, "scoreLineInt":0,    "scoreTotalInt":9560},
+  {"scoreInt":0,    "scoreGoldenInt":0,  "scoreLineInt":9500, "scoreTotalInt":9500}
+]

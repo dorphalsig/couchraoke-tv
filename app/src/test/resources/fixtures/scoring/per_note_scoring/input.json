@@ -1,0 +1,8 @@
+[
+  {"noteType":"NORMAL",  "durationBeats":4, "trackScoreValue":4.0,  "maxSongPoints":10000, "frames":[{"midiNote":36,"toneValid":true},{"midiNote":36,"toneValid":true},{"midiNote":36,"toneValid":true}], "targetTone":0, "difficulty":"MEDIUM"},
+  {"noteType":"GOLDEN",  "durationBeats":2, "trackScoreValue":4.0,  "maxSongPoints":10000, "frames":[{"midiNote":36,"toneValid":true}], "targetTone":0, "difficulty":"MEDIUM"},
+  {"noteType":"NORMAL",  "durationBeats":4, "trackScoreValue":4.0,  "maxSongPoints":10000, "frames":[{"midiNote":36,"toneValid":true},{"midiNote":36,"toneValid":true},{"midiNote":99,"toneValid":true}], "targetTone":0, "difficulty":"MEDIUM"},
+  {"noteType":"NORMAL",  "durationBeats":4, "trackScoreValue":4.0,  "maxSongPoints":10000, "frames":[], "targetTone":0, "difficulty":"MEDIUM"},
+  {"noteType":"NORMAL",  "durationBeats":4, "trackScoreValue":0.0,  "maxSongPoints":10000, "frames":[{"midiNote":36,"toneValid":true}], "targetTone":0, "difficulty":"MEDIUM"},
+  {"noteType":"RAP",     "durationBeats":2, "trackScoreValue":4.0,  "maxSongPoints":10000, "frames":[{"midiNote":36,"toneValid":true},{"midiNote":99,"toneValid":true}], "targetTone":0, "difficulty":"MEDIUM"}
+]

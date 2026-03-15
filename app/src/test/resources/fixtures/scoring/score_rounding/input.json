@@ -1,0 +1,7 @@
+[
+  {"score":9000.0, "scoreGolden":0.0,  "scoreLine":0.0},
+  {"score":9000.0, "scoreGolden":0.0,  "scoreLine":1000.0},
+  {"score":9505.0, "scoreGolden":55.0, "scoreLine":0.0},
+  {"score":9504.9, "scoreGolden":55.0, "scoreLine":0.0},
+  {"score":0.0,    "scoreGolden":0.0,  "scoreLine":9505.0}
+]
