@@ -272,6 +272,9 @@ dependencies {
     // Serialization
     implementation(libs.kotlinx.serialization.json)
 
+    // Coroutines
+    implementation(libs.kotlinx.coroutines.core)
+
     // Media3
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.datasource.okhttp)
@@ -290,6 +293,7 @@ dependencies {
     implementation(libs.jmdns)
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
