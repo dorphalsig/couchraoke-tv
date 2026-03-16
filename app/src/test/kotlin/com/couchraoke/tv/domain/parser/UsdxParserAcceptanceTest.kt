@@ -132,7 +132,7 @@ class UsdxParserAcceptanceTest {
         assertEquals(MedleySource.EXPLICIT, result.parsedSong.derivedSummary.medleySource)
         assertEquals(32, result.parsedSong.derivedSummary.medleyStartBeat)
         assertEquals(64, result.parsedSong.derivedSummary.medleyEndBeat)
-        assertEquals(32.0, requireNotNull(result.parsedSong.derivedSummary.previewStartSec), 0.0)
+        assertNull(result.parsedSong.derivedSummary.previewStartSec)
     }
 
     @Test
