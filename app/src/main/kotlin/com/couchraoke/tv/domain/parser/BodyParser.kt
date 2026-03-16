@@ -96,7 +96,7 @@ class BodyParser {
                             trackAccumulators = trackAccumulators,
                             diagnostics = diagnostics,
                             diagnostic = error(
-                                code = DiagnosticCode.MALFORMED_NUMERIC_FIELD,
+                                code = DiagnosticCode.MALFORMED_BODY_FIELD,
                                 message = "Malformed note numeric field",
                                 songIdentifier = songIdentifier,
                                 lineNumber = lineNumber,
@@ -122,7 +122,7 @@ class BodyParser {
                             trackAccumulators = trackAccumulators,
                             diagnostics = diagnostics,
                             diagnostic = error(
-                                code = DiagnosticCode.MALFORMED_NUMERIC_FIELD,
+                                code = DiagnosticCode.MALFORMED_BODY_FIELD,
                                 message = "Malformed line break numeric field",
                                 songIdentifier = songIdentifier,
                                 lineNumber = lineNumber,

@@ -228,6 +228,34 @@ tasks.register("scoringTest") {
     description = "Runs all scoring-focused tests (unit + acceptance)."
     dependsOn("scoringUnitTest", "scoringAcceptanceTest")
 }
+tasks.register<Test>("libraryUnitTest") {
+    group = "verification"
+    description = "Runs library-focused unit tests excluding acceptance tests."
+    useJUnit()
+    val testTask = tasks.named<Test>("testDebugUnitTest")
+    classpath = testTask.get().classpath
+    testClassesDirs = testTask.get().testClassesDirs
+    include("**/domain/library/**/*Test.class")
+    exclude("**/domain/library/**/*AcceptanceTest.class")
+    dependsOn(testTask.get().taskDependencies.getDependencies(testTask.get()))
+}
+tasks.register<Test>("libraryAcceptanceTest") {
+    group = "verification"
+    description = "Runs library-focused acceptance tests."
+    useJUnit()
+    val testTask = tasks.named<Test>("testDebugUnitTest")
+    classpath = testTask.get().classpath
+    testClassesDirs = testTask.get().testClassesDirs
+    include("**/domain/library/**/*AcceptanceTest.class")
+    dependsOn(testTask.get().taskDependencies.getDependencies(testTask.get()))
+}
+tasks.register("libraryTest") {
+    group = "verification"
+    description = "Runs all library-focused tests (unit + acceptance)."
+    dependsOn("libraryUnitTest", "libraryAcceptanceTest")
+}
+
+
 
 dependencies {
     implementation(libs.androidx.core.ktx)

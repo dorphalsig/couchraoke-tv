@@ -114,7 +114,6 @@ When a song entry is added to the library index, all derived fields (flags, medl
 - **SongLibrary**: In-memory aggregate index. Manages per-phone song collections and exposes sorted query and lookup. Lives for the duration of one session.
 - **SongEntry**: A single song record containing identity fields (`songId`, `phoneClientId`, `relativeTxtPath`, `modifiedTimeMs`), validation state (`isValid`, `invalidReasonCode`, `invalidLineNumber`), display fields (`artist`, `title`, `album`), derived flags, preview metadata (`startSec`, `previewStartSec`), and asset URLs.
 - **ManifestEntry**: A raw song entry as received from `/manifest.json` on the phone — source data before validation and field derivation.
-- **SongValidator**: Stateless component that takes a parsed song and an asset resolver, applies all validation rules, and returns a validation result.
 
 ---
 

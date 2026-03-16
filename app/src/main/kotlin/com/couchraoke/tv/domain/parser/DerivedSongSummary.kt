@@ -3,7 +3,6 @@ package com.couchraoke.tv.domain.parser
 enum class MedleySource {
     NONE,
     EXPLICIT,
-    FALLBACK,
 }
 
 data class DerivedSongSummary(

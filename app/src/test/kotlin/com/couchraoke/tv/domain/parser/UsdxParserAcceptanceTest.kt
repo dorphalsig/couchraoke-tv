@@ -77,8 +77,8 @@ class UsdxParserAcceptanceTest {
         val result = parseFixture("fixtures/parser/invalid/08_malformed_body_numeric")
 
         assertFalse(result.parsedSong.isValid)
-        assertEquals(DiagnosticCode.MALFORMED_NUMERIC_FIELD, result.invalidCode)
-        assertEquals(6, result.parsedSong.diagnostics.first { it.code == DiagnosticCode.MALFORMED_NUMERIC_FIELD }.lineNumber)
+        assertEquals(DiagnosticCode.MALFORMED_BODY_FIELD, result.invalidCode)
+        assertEquals(6, result.parsedSong.diagnostics.first { it.code == DiagnosticCode.MALFORMED_BODY_FIELD }.lineNumber)
     }
 
     @Test

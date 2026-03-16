@@ -25,6 +25,7 @@ enum class DiagnosticCode {
     ZERO_DURATION_NOTE_CONVERTED,
     UNKNOWN_BODY_TOKEN,
     MALFORMED_OPTIONAL_HEADER,
+    MALFORMED_BODY_FIELD,
 }
 
 data class DiagnosticEntry(
