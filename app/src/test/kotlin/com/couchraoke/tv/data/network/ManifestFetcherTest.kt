@@ -79,6 +79,72 @@ class ManifestFetcherTest {
         assertEquals(0, library.addPhoneCalls.size)
     }
 
+    @Test
+    fun `206 Partial Content for range request succeeds when returning manifest`() {
+        val json = """
+            [{
+                "relativeTxtPath": "songs/test.txt",
+                "isValid": true,
+                "modifiedTimeMs": 1000,
+                "title": "Test",
+                "artist": "Artist",
+                "isDuet": false,
+                "hasRap": false,
+                "hasVideo": false,
+                "hasInstrumental": false,
+                "canMedley": false
+            }]
+        """.trimIndent()
+        // Although the TV doesn't request ranges, the phone might return 206.
+        // OkHttp isSuccessful returns true for 206.
+        server.enqueue(MockResponse().setResponseCode(206).setBody(json))
+
+        val result = fetcher.fetch(server.hostName, server.port, "client1")
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, library.addPhoneCalls.size)
+    }
+
+    @Test
+    fun `empty manifest body updates library with empty list`() {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("[]"))
+
+        val result = fetcher.fetch(server.hostName, server.port, "client1")
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, library.addPhoneCalls.size)
+        val (_, entries) = library.addPhoneCalls[0]
+        assertTrue(entries.isEmpty())
+    }
+
+    @Test
+    fun `asset URLs are stored as received`() {
+        val json = """
+            [{
+                "relativeTxtPath": "songs/test.txt",
+                "isValid": true,
+                "modifiedTimeMs": 1000,
+                "title": "Test",
+                "artist": "Artist",
+                "isDuet": false,
+                "hasRap": false,
+                "hasVideo": false,
+                "hasInstrumental": false,
+                "canMedley": false,
+                "audioUrl": "http://phone:8080/songs/test/audio.ogg",
+                "coverUrl": "http://phone:8080/songs/test/cover.jpg"
+            }]
+        """.trimIndent()
+        server.enqueue(MockResponse().setResponseCode(200).setBody(json))
+
+        val result = fetcher.fetch(server.hostName, server.port, "client1")
+
+        assertTrue(result.isSuccess)
+        val entries = library.addPhoneCalls[0].second
+        assertEquals("http://phone:8080/songs/test/audio.ogg", entries[0].audioUrl)
+        assertEquals("http://phone:8080/songs/test/cover.jpg", entries[0].coverUrl)
+    }
+
     private class FakeSongLibrary : SongLibrary {
         val addPhoneCalls = mutableListOf<Pair<String, List<SongEntry>>>()
 
