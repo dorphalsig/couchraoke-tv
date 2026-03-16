@@ -62,6 +62,9 @@ val filteredClassDirectories = files(
     },
     fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
         exclude(jacocoExcludes)
+    },
+    fileTree(layout.buildDirectory.dir("intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes")) {
+        exclude(jacocoExcludes)
     }
 )
 

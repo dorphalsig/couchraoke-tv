@@ -4,7 +4,7 @@ import com.couchraoke.tv.domain.parser.FileResolver
 import com.couchraoke.tv.domain.parser.UsdxParser
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.streams.toList
+import java.util.stream.Collectors
 
 class SongDiscovery {
     fun discoverFromDirectory(rootDir: Path): List<SongEntry> {
@@ -36,6 +36,6 @@ class SongDiscovery {
                     vocalsUrl = null
                 )
             }
-            .toList()
+            .collect(Collectors.toList())
     }
 }
