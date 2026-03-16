@@ -80,4 +80,40 @@ object SongIndexer {
             vocalsUrl = vocalsUrl,
         )
     }
+
+    fun fromManifestEntry(
+        entry: ManifestEntry,
+        phoneClientId: String,
+    ): SongEntry {
+        val invalidPath = entry.relativeTxtPath.contains("..") || entry.relativeTxtPath.startsWith("/")
+        return SongEntry(
+            songId = "$phoneClientId::${entry.relativeTxtPath}",
+            phoneClientId = phoneClientId,
+            relativeTxtPath = entry.relativeTxtPath,
+            modifiedTimeMs = entry.modifiedTimeMs,
+            isValid = !invalidPath && entry.isValid,
+            invalidReasonCode = if (invalidPath) "ERROR_CORRUPT_SONG_INVALID_PATH" else entry.invalidReasonCode,
+            invalidLineNumber = if (invalidPath) null else entry.invalidLineNumber,
+            artist = entry.artist,
+            title = entry.title,
+            album = entry.album,
+            isDuet = entry.isDuet,
+            hasRap = entry.hasRap,
+            hasVideo = entry.hasVideo,
+            hasInstrumental = entry.hasInstrumental,
+            canMedley = entry.canMedley,
+            medleySource = if (entry.medleySource == "tag") MedleySource.EXPLICIT else MedleySource.NONE,
+            medleyStartBeat = entry.medleyStartBeat,
+            medleyEndBeat = entry.medleyEndBeat,
+            calcMedleyEnabled = true,
+            previewStartSec = entry.previewStartSec,
+            txtUrl = entry.txtUrl ?: "",
+            audioUrl = entry.audioUrl,
+            videoUrl = entry.videoUrl,
+            coverUrl = entry.coverUrl,
+            backgroundUrl = entry.backgroundUrl,
+            instrumentalUrl = entry.instrumentalUrl,
+            vocalsUrl = entry.vocalsUrl,
+        )
+    }
 }
