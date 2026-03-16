@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.detekt)
     jacoco
 }
 
@@ -41,6 +42,20 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+}
+
+detekt {
+    config.setFrom(files("$rootDir/detekt.yml"))
+    buildUponDefaultConfig = true
+    allRules = false
+    baseline = file("detekt-baseline.xml")
+}
+
+android {
+    lint {
+        abortOnError = true
+        baseline = file("lint-baseline.xml")
     }
 }
 
@@ -339,6 +354,8 @@ dependencies {
 
     // mDNS
     implementation(libs.jmdns)
+
+    detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.23.8")
 
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)

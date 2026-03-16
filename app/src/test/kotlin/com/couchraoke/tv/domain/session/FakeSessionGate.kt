@@ -12,4 +12,8 @@ class FakeSessionGate(
         P2 = SlotInfo(connected = false, deviceName = "")
     ),
     override var inSong: Boolean = false,
-) : ISessionGate
+) : ISessionGate, ISessionCallbacks {
+    override fun onPhoneConnected(clientId: String, deviceName: String, connectionId: UShort) = Unit
+    override fun onPhoneDisconnected(clientId: String) = Unit
+    override fun onPhoneReconnected(clientId: String, newConnectionId: UShort) = Unit
+}

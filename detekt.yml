@@ -1,0 +1,20 @@
+complexity:
+  LongMethod:
+    threshold: 40
+  CyclomaticComplexMethod:
+    threshold: 10
+
+style:
+  MagicNumber:
+    active: true
+    ignoreNumbers: ['-1', '0', '1', '2']
+    excludes: ['**/test/**', '**/androidTest/**']
+
+naming:
+  FunctionNaming:
+    active: true
+    functionPattern: '^[a-z`][a-zA-Z0-9 ,_`<>()?.]*$'
+
+formatting:
+  active: true
+  android: true
