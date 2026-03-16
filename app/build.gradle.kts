@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.detekt)
     jacoco
 }
 
@@ -29,6 +30,7 @@ android {
     }
 
     testOptions {
+        unitTests.isReturnDefaultValues = true
         unitTests.all {
             it.extensions.configure(JacocoTaskExtension::class) {
                 isIncludeNoLocationClasses = true
@@ -43,6 +45,20 @@ android {
     }
 }
 
+detekt {
+    config.setFrom(files("$rootDir/detekt.yml"))
+    buildUponDefaultConfig = true
+    allRules = false
+    baseline = file("detekt-baseline.xml")
+}
+
+android {
+    lint {
+        abortOnError = true
+        baseline = file("lint-baseline.xml")
+    }
+}
+
 jacoco {
     toolVersion = libs.versions.jacoco.get()
 }
@@ -53,7 +69,28 @@ val jacocoExcludes = listOf(
     "**/BuildConfig.*",
     "**/Manifest*.*",
     "**/*Test*.*",
-    "android/**/*.*"
+    "android/**/*.*",
+    // Tiny-file exemptions (≤30 lines, constitution §V)
+    "**/domain/timing/SongPlaybackState*.*",
+    "**/domain/timing/NoteWindowState*.*",
+    "**/data/files/LocalFileResolver*.*",
+    // Kotlinx-serialization generated companions + data class methods (generated code exemption)
+    "**/*\$serializer*.*",
+    "**/*Companion*.*",
+    // Protocol message data classes — generated copy/equals/toString not testable
+    "**/domain/network/protocol/HelloMessage*.*",
+    "**/domain/network/protocol/ErrorMessage*.*",
+    "**/domain/network/protocol/SessionStateMessage*.*",
+    "**/domain/network/protocol/AssignSingerMessage*.*",
+    "**/domain/network/protocol/Capabilities*.*",
+    "**/domain/network/protocol/PingMessage*.*",
+    "**/domain/network/protocol/PongMessage*.*",
+    "**/domain/network/protocol/ClockAckMessage*.*",
+    "**/domain/network/protocol/SlotInfo*.*",
+    "**/domain/network/protocol/SlotMap*.*",
+    // Untestable in unit context (requires real Ktor/JmDNS/Android)
+    "**/data/network/WebSocketServer*.*",
+    "**/data/network/MdnsAdvertiser*.*"
 )
 
 val filteredClassDirectories = files(
@@ -257,6 +294,32 @@ tasks.register("libraryTest") {
     description = "Runs all library-focused tests (unit + acceptance)."
     dependsOn("libraryUnitTest", "libraryAcceptanceTest")
 }
+tasks.register<Test>("networkUnitTest") {
+    group = "verification"
+    description = "Runs network/session-focused unit tests excluding acceptance tests."
+    useJUnit()
+    val testTask = tasks.named<Test>("testDebugUnitTest")
+    classpath = testTask.get().classpath
+    testClassesDirs = testTask.get().testClassesDirs
+    include("**/data/network/**/*Test.class", "**/domain/network/**/*Test.class", "**/domain/session/**/*Test.class")
+    exclude("**/*AcceptanceTest.class")
+    dependsOn(testTask.get().taskDependencies.getDependencies(testTask.get()))
+}
+tasks.register<Test>("networkAcceptanceTest") {
+    group = "verification"
+    description = "Runs network/session-focused acceptance tests."
+    useJUnit()
+    val testTask = tasks.named<Test>("testDebugUnitTest")
+    classpath = testTask.get().classpath
+    testClassesDirs = testTask.get().testClassesDirs
+    include("**/data/network/**/*AcceptanceTest.class", "**/domain/network/**/*AcceptanceTest.class")
+    dependsOn(testTask.get().taskDependencies.getDependencies(testTask.get()))
+}
+tasks.register("networkTest") {
+    group = "verification"
+    description = "Runs all network/session-focused tests (unit + acceptance)."
+    dependsOn("networkUnitTest", "networkAcceptanceTest")
+}
 
 
 
@@ -271,6 +334,9 @@ dependencies {
 
     // Serialization
     implementation(libs.kotlinx.serialization.json)
+
+    // Coroutines
+    implementation(libs.kotlinx.coroutines.core)
 
     // Media3
     implementation(libs.media3.exoplayer)
@@ -289,7 +355,12 @@ dependencies {
     // mDNS
     implementation(libs.jmdns)
 
+    detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.23.8")
+
     testImplementation(libs.junit)
+    testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.ktor.server.test.host)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }

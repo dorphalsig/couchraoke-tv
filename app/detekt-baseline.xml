@@ -1,0 +1,362 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ArgumentListWrapping:BeatTimingEngineAcceptanceTest.kt$BeatTimingEngineAcceptanceTest$( context, s["lyricsTimeSec"]!!.jsonPrimitive.double )</ID>
+    <ID>ArgumentListWrapping:BeatTimingEngineAcceptanceTest.kt$BeatTimingEngineAcceptanceTest$("$id endsFromHeader", exp["endsFromHeader"]!!.jsonPrimitive.boolean, bounds.endsFromHeader)</ID>
+    <ID>ArgumentListWrapping:BeatTimingEngineAcceptanceTest.kt$BeatTimingEngineAcceptanceTest$("$id initialSongTimeSec", exp["initialSongTimeSec"]!!.jsonPrimitive.double, bounds.initialSongTimeSec, 0.0001)</ID>
+    <ID>ArgumentListWrapping:BeatTimingEngineAcceptanceTest.kt$BeatTimingEngineAcceptanceTest$("sample[$i] currentBeat", s["currentBeat"]!!.jsonPrimitive.int, cursor.currentBeat)</ID>
+    <ID>ArgumentListWrapping:BeatTimingEngineAcceptanceTest.kt$BeatTimingEngineAcceptanceTest$("sample[$i] highlightTimeSec", s["highlightTimeSec"]!!.jsonPrimitive.double, cursor.highlightTimeSec, 0.0001)</ID>
+    <ID>ArgumentListWrapping:BeatTimingEngineAcceptanceTest.kt$BeatTimingEngineAcceptanceTest$("sample[$i] midBeat", s["midBeat"]!!.jsonPrimitive.double, cursor.midBeat, 0.0001)</ID>
+    <ID>ArgumentListWrapping:BeatTimingEngineAcceptanceTest.kt$BeatTimingEngineAcceptanceTest$(NoteType.NORMAL, nw["startBeat"]!!.jsonPrimitive.int, nw["durationBeats"]!!.jsonPrimitive.int, 0, "")</ID>
+    <ID>ArgumentListWrapping:ClockSyncEngineAcceptanceTest.kt$ClockSyncEngineAcceptanceTest$("/home/paavum/Couchraoke/tv/original_spec/fixtures/F14v2_clock_sync_phone_side/clockSync.jsonl")</ID>
+    <ID>ArgumentListWrapping:MdnsAdvertiser.kt$MdnsAdvertiser$( "_karaoke._tcp.local.", instanceName(normalized), wsPort, 0, 0, txtRecords(normalized), )</ID>
+    <ID>ArgumentListWrapping:ScoringEngine.kt$DefaultScoringEngine$(frame.midiNote, frame.toneValid, noteNote.noteType, noteNote.tone, profile.difficulty)</ID>
+    <ID>ArgumentListWrapping:ScoringEngine.kt$DefaultScoringEngine$(score = current.score + result.noteScore, scoreLast = result.noteScore)</ID>
+    <ID>ArgumentListWrapping:ScoringEngine.kt$DefaultScoringEngine$(scoreGolden = current.scoreGolden + result.noteScore, scoreLast = result.noteScore)</ID>
+    <ID>ArgumentListWrapping:ScoringEngine.kt$DefaultScoringEngine$(window, hits = 0, n = frames.size, noteScore = 0.0, maxNoteScore = 0.0, accumulator = ScoreAccumulator.NONE)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$("case $i accumulator", expected["accumulator"]!!.jsonPrimitive.content, result.accumulator.name)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$("case $i lineBonusAwarded", expected["lineBonusAwarded"]!!.jsonPrimitive.double, result.lineBonusAwarded, 0.01)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$("case $i linePerfection", expected["linePerfection"]!!.jsonPrimitive.double, result.linePerfection, 0.001)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$("case $i scoreGoldenInt", expected["scoreGoldenInt"]!!.jsonPrimitive.int, result.scoreGoldenInt)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$("fixtures/scoring/per_note_scoring/expected.json")</ID>
+    <ID>ArgumentListWrapping:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$("fixtures/scoring/pitch_hit_detection/expected.json")</ID>
+    <ID>ArgumentListWrapping:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$("fixtures/scoring/pitch_hit_detection/input.json")</ID>
+    <ID>ArgumentListWrapping:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$("fixtures/scoring/score_rounding/expected.json")</ID>
+    <ID>ArgumentListWrapping:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$(loadFixture("fixtures/scoring/per_note_scoring/expected.json"))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$(loadFixture("fixtures/scoring/pitch_hit_detection/expected.json"))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$(loadFixture("fixtures/scoring/pitch_hit_detection/input.json"))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$(loadFixture("fixtures/scoring/score_rounding/expected.json"))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(36, false, NoteType.NORMAL, 0, Difficulty.MEDIUM)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(36, false, NoteType.RAP, 0, Difficulty.MEDIUM)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(36, true, NoteType.FREESTYLE, 0, Difficulty.MEDIUM)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(36, true, NoteType.GOLDEN, 0, Difficulty.MEDIUM)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(36, true, NoteType.NORMAL, 0, Difficulty.HARD)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(37, true, NoteType.NORMAL, 0, Difficulty.HARD)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(37, true, NoteType.NORMAL, 0, Difficulty.MEDIUM)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(38, true, NoteType.NORMAL, 0, Difficulty.EASY)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(38, true, NoteType.NORMAL, 0, Difficulty.MEDIUM)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(39, true, NoteType.NORMAL, 0, Difficulty.EASY)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(4.0, 10000)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(99, true, NoteType.RAP, 0, Difficulty.MEDIUM)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(99, true, NoteType.RAP_GOLDEN, 0, Difficulty.MEDIUM)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(NoteType.NORMAL, 4)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(NoteType.RAP_GOLDEN, 1)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(engine.isPitchMatch(36, false, NoteType.NORMAL, 0, Difficulty.MEDIUM))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(engine.isPitchMatch(36, false, NoteType.RAP, 0, Difficulty.MEDIUM))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(engine.isPitchMatch(36, true, NoteType.FREESTYLE, 0, Difficulty.MEDIUM))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(engine.isPitchMatch(36, true, NoteType.GOLDEN, 0, Difficulty.MEDIUM))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(engine.isPitchMatch(36, true, NoteType.NORMAL, 0, Difficulty.HARD))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(engine.isPitchMatch(37, true, NoteType.NORMAL, 0, Difficulty.HARD))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(engine.isPitchMatch(37, true, NoteType.NORMAL, 0, Difficulty.MEDIUM))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(engine.isPitchMatch(38, true, NoteType.NORMAL, 0, Difficulty.EASY))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(engine.isPitchMatch(38, true, NoteType.NORMAL, 0, Difficulty.MEDIUM))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(engine.isPitchMatch(39, true, NoteType.NORMAL, 0, Difficulty.EASY))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(engine.isPitchMatch(99, true, NoteType.RAP, 0, Difficulty.MEDIUM))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(engine.isPitchMatch(99, true, NoteType.RAP_GOLDEN, 0, Difficulty.MEDIUM))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(lineBonusEnabled = lineBonusEnabled, maxSongPoints = maxSongPoints, maxLineBonusPool = maxLineBonusPool)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(trackScoreValue = 0.0)</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(window(NoteType.NORMAL, 4), note(NoteType.NORMAL, 4), emptyList(), profile(4.0, 10000))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(window(NoteType.NORMAL, 4), note(NoteType.NORMAL, 4), frames, profile(4.0, 10000))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(window(NoteType.NORMAL, 4), note(NoteType.NORMAL, 4), frames, profile(trackScoreValue = 0.0))</ID>
+    <ID>ArgumentListWrapping:ScoringEngineTest.kt$ScoringEngineTest$(window(NoteType.RAP_GOLDEN, 1), note(NoteType.RAP_GOLDEN, 1), emptyList(), profile())</ID>
+    <ID>ArgumentListWrapping:SongDiscoveryAcceptanceTest.kt$SongDiscoveryAcceptanceTest$("fixtures/library/song_discovery/expected.discovery.json")</ID>
+    <ID>ArgumentListWrapping:SongDiscoveryAcceptanceTest.kt$SongDiscoveryAcceptanceTest$("invalidLineNumber mismatch for ${expected.songTxtRel}", expected.invalidLineNumber, actual.invalidLineNumber)</ID>
+    <ID>ArgumentListWrapping:SongDiscoveryAcceptanceTest.kt$SongDiscoveryAcceptanceTest$("invalidReasonCode mismatch for ${expected.songTxtRel}", expected.invalidReasonCode, actual.invalidReasonCode)</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$("phone-a", "a/s1.txt")</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$("phone-a", "a/s2.txt")</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$("phone-a", "a/s3.txt")</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$("phone-a", listOf(entry("phone-a", "a/s1.txt"), entry("phone-a", "a/s2.txt"), entry("phone-a", "a/s3.txt")))</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$("phone-a", listOf(entry("phone-a","s1.txt"), entry("phone-a","s2.txt"), entry("phone-a","s3.txt"), entry("phone-a","s4.txt")))</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$("phone-a","s1.txt")</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$("phone-a","s2.txt")</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$("phone-a","s3.txt")</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$("phone-a","s4.txt")</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$("phone-b", "b/s1.txt")</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$("phone-b", "b/s2.txt")</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$("phone-b", "b/s3.txt")</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$("phone-b", listOf(entry("phone-b", "b/s1.txt"), entry("phone-b", "b/s2.txt"), entry("phone-b", "b/s3.txt")))</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$("phone-b", listOf(entry("phone-b","s1.txt"), entry("phone-b","s2.txt"), entry("phone-b","s3.txt")))</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$("phone-b","s1.txt")</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$("phone-b","s2.txt")</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$("phone-b","s3.txt")</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$(entry("phone-a", "a/s1.txt"), entry("phone-a", "a/s2.txt"), entry("phone-a", "a/s3.txt"))</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$(entry("phone-a","s1.txt"), entry("phone-a","s2.txt"), entry("phone-a","s3.txt"), entry("phone-a","s4.txt"))</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$(entry("phone-b", "b/s1.txt"), entry("phone-b", "b/s2.txt"), entry("phone-b", "b/s3.txt"))</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$(entry("phone-b","s1.txt"), entry("phone-b","s2.txt"), entry("phone-b","s3.txt"))</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$(songId="p1::a.txt", phoneClientId="p1", relativeTxtPath="a.txt", modifiedTimeMs=0, isValid=true, txtUrl="", artist="Apple", title="A")</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$(songId="p1::c.txt", phoneClientId="p1", relativeTxtPath="c.txt", modifiedTimeMs=0, isValid=true, txtUrl="", artist="Zebra", title="A")</ID>
+    <ID>ArgumentListWrapping:SongLibraryTest.kt$SongLibraryTest$(songId="p2::b.txt", phoneClientId="p2", relativeTxtPath="b.txt", modifiedTimeMs=0, isValid=true, txtUrl="", artist="apple", title="A")</ID>
+    <ID>ArgumentListWrapping:UsdxParserAcceptanceTest.kt$UsdxParserAcceptanceTest$(6, result.parsedSong.diagnostics.first { it.code == DiagnosticCode.INVALID_DUET_MARKER }.lineNumber)</ID>
+    <ID>ArgumentListWrapping:UsdxParserAcceptanceTest.kt$UsdxParserAcceptanceTest$(6, result.parsedSong.diagnostics.first { it.code == DiagnosticCode.MALFORMED_BODY_FIELD }.lineNumber)</ID>
+    <ID>ArgumentListWrapping:UsdxParserAcceptanceTest.kt$UsdxParserAcceptanceTest$(7, result.parsedSong.diagnostics.first { it.code == DiagnosticCode.UNSUPPORTED_VARIABLE_BPM }.lineNumber)</ID>
+    <ID>ConstructorParameterNaming:ProtocolMessages.kt$SlotMap$val P1: SlotInfo</ID>
+    <ID>ConstructorParameterNaming:ProtocolMessages.kt$SlotMap$val P2: SlotInfo</ID>
+    <ID>CyclomaticComplexMethod:BodyParser.kt$BodyParser$fun parse( songIdentifier: String, lines: List&lt;String&gt;, lineNumberOffset: Int = 0, ): BodyParseResult</ID>
+    <ID>CyclomaticComplexMethod:BodyParser.kt$BodyParser$private fun parseNote(line: String): NoteEvent.Note?</ID>
+    <ID>CyclomaticComplexMethod:ControlMessageCodec.kt$ControlMessageCodec$fun decode(jsonString: String): Any?</ID>
+    <ID>CyclomaticComplexMethod:HeaderParser.kt$HeaderParser$fun parse( songIdentifier: String, lines: List&lt;String&gt;, fileResolver: FileResolver, ): HeaderParseResult</ID>
+    <ID>CyclomaticComplexMethod:ScoringEngine.kt$DefaultScoringEngine$override fun buildProfile(song: ParsedSong, trackIndex: Int, config: ScoringConfig): TrackScoringProfile</ID>
+    <ID>CyclomaticComplexMethod:SongIndexer.kt$SongIndexer$fun fromParseResult( parseResult: ParseResult, phoneClientId: String, relativeTxtPath: String, modifiedTimeMs: Long, txtUrl: String, audioUrl: String?, videoUrl: String?, coverUrl: String?, backgroundUrl: String?, instrumentalUrl: String?, vocalsUrl: String?, ): SongEntry</ID>
+    <ID>CyclomaticComplexMethod:WebSocketServer.kt$WebSocketServer$private suspend fun handleConnection(session: DefaultWebSocketServerSession)</ID>
+    <ID>EmptyFunctionBlock:ManifestFetcherTest.kt$ManifestFetcherTest.FakeSongLibrary${}</ID>
+    <ID>Filename:ManifestModels.kt$com.couchraoke.tv.domain.library.ManifestModels.kt</ID>
+    <ID>FinalNewline:ScoringEngineTest.kt$com.couchraoke.tv.domain.scoring.ScoringEngineTest.kt</ID>
+    <ID>FinalNewline:SongEntry.kt$com.couchraoke.tv.domain.library.SongEntry.kt</ID>
+    <ID>FinalNewline:SongLibrary.kt$com.couchraoke.tv.domain.library.SongLibrary.kt</ID>
+    <ID>FinalNewline:SongLibraryTest.kt$com.couchraoke.tv.domain.library.SongLibraryTest.kt</ID>
+    <ID>ImportOrdering:BeatTimingEngineTest.kt$import com.couchraoke.tv.domain.parser.NoteEvent import com.couchraoke.tv.domain.parser.NoteType import com.couchraoke.tv.domain.parser.TrackId import org.junit.Test import org.junit.Assert.* import kotlin.math.floor</ID>
+    <ID>ImportOrdering:ControlMessageCodecTest.kt$import org.junit.Assert.assertEquals import org.junit.Assert.assertNull import org.junit.Assert.assertTrue import org.junit.Test import kotlinx.serialization.encodeToString import kotlinx.serialization.json.Json</ID>
+    <ID>ImportOrdering:PitchFrameCodecAcceptanceTest.kt$import kotlinx.serialization.Serializable import kotlinx.serialization.json.Json import kotlinx.serialization.decodeFromString import org.junit.Assert.* import org.junit.Test import java.io.File</ID>
+    <ID>ImportOrdering:SessionToken.kt$import java.security.SecureRandom import java.nio.ByteBuffer</ID>
+    <ID>ImportOrdering:SongValidationTest.kt$import com.couchraoke.tv.domain.parser.FileResolver import com.couchraoke.tv.domain.parser.UsdxParser import org.junit.Assert.assertEquals import org.junit.Assert.assertNull import org.junit.Assert.assertTrue import org.junit.Assert.assertFalse import org.junit.Test</ID>
+    <ID>ImportOrdering:WebSocketServer.kt$import io.ktor.server.application.* import io.ktor.server.cio.* import io.ktor.server.engine.* import io.ktor.server.plugins.* import io.ktor.server.routing.* import io.ktor.server.websocket.* import io.ktor.websocket.* import java.util.* import java.util.concurrent.ConcurrentHashMap import kotlin.collections.set import kotlinx.coroutines.Dispatchers import kotlinx.coroutines.launch import kotlinx.serialization.encodeToString import kotlinx.serialization.json.* import android.util.Log import com.couchraoke.tv.domain.library.SongLibrary import com.couchraoke.tv.domain.network.clock.ClockSyncEngine import com.couchraoke.tv.domain.network.protocol.* import com.couchraoke.tv.domain.session.ConnectionRegistry import com.couchraoke.tv.domain.session.IConnectionCloser import com.couchraoke.tv.domain.session.ISessionCallbacks import com.couchraoke.tv.domain.session.ISessionGate import com.couchraoke.tv.domain.session.SessionToken</ID>
+    <ID>ImportOrdering:WebSocketServerAcceptanceTest.kt$import com.couchraoke.tv.domain.library.DefaultSongLibrary import com.couchraoke.tv.domain.network.clock.ClockSyncEngine import com.couchraoke.tv.domain.network.protocol.* import com.couchraoke.tv.domain.session.ConnectionRegistry import com.couchraoke.tv.domain.session.FakeSessionGate import io.ktor.client.plugins.websocket.* import io.ktor.server.testing.* import io.ktor.websocket.* import io.ktor.server.routing.* import kotlinx.coroutines.ExperimentalCoroutinesApi import kotlinx.coroutines.test.StandardTestDispatcher import kotlinx.coroutines.test.TestScope import kotlinx.serialization.encodeToString import kotlinx.serialization.json.* import okhttp3.OkHttpClient import org.junit.Assert.assertEquals import org.junit.Before import org.junit.Test import java.util.*</ID>
+    <ID>ImportOrdering:WebSocketServerTest.kt$import com.couchraoke.tv.domain.library.DefaultSongLibrary import com.couchraoke.tv.domain.network.clock.ClockSyncEngine import com.couchraoke.tv.domain.network.protocol.* import com.couchraoke.tv.domain.session.ConnectionRegistry import com.couchraoke.tv.domain.session.FakeSessionGate import io.ktor.client.plugins.websocket.* import io.ktor.server.testing.* import io.ktor.websocket.* import io.ktor.server.routing.* import kotlinx.coroutines.ExperimentalCoroutinesApi import kotlinx.coroutines.test.StandardTestDispatcher import kotlinx.coroutines.test.TestScope import kotlinx.serialization.encodeToString import kotlinx.serialization.json.* import okhttp3.OkHttpClient import org.junit.Assert.assertEquals import org.junit.Before import org.junit.Test import java.util.*</ID>
+    <ID>Indentation:ScoringEngine.kt$DefaultScoringEngine$ </ID>
+    <ID>LongMethod:BodyParser.kt$BodyParser$fun parse( songIdentifier: String, lines: List&lt;String&gt;, lineNumberOffset: Int = 0, ): BodyParseResult</ID>
+    <ID>LongMethod:HeaderParser.kt$HeaderParser$fun parse( songIdentifier: String, lines: List&lt;String&gt;, fileResolver: FileResolver, ): HeaderParseResult</ID>
+    <ID>LongMethod:HeaderParserTest.kt$HeaderParserTest$@Test fun `parses required and optional header tags for a modern song`()</ID>
+    <ID>LongMethod:ParsedSongModelTest.kt$ParsedSongModelTest$@Test fun `parsed song aggregates normalized header tracks derived summary and diagnostics`()</ID>
+    <ID>LongMethod:PostParseValidator.kt$PostParseValidator$fun finalize( songIdentifier: String, header: SongHeader, bodyResult: BodyParseResult, fileResolver: FileResolver, ): PostParseValidationResult</ID>
+    <ID>LongMethod:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$@Test fun `T019 fixture per_note_scoring evaluateNote matches expected for all cases`()</ID>
+    <ID>LongMethod:SongIndexer.kt$SongIndexer$fun fromParseResult( parseResult: ParseResult, phoneClientId: String, relativeTxtPath: String, modifiedTimeMs: Long, txtUrl: String, audioUrl: String?, videoUrl: String?, coverUrl: String?, backgroundUrl: String?, instrumentalUrl: String?, vocalsUrl: String?, ): SongEntry</ID>
+    <ID>LongMethod:UsdxParser.kt$UsdxParser$fun parse( songIdentifier: String, rawText: String, fileResolver: FileResolver, ): ParseResult</ID>
+    <ID>LongMethod:WebSocketServer.kt$WebSocketServer$private suspend fun handleConnection(session: DefaultWebSocketServerSession)</ID>
+    <ID>LongParameterList:SongIndexer.kt$SongIndexer$( parseResult: ParseResult, phoneClientId: String, relativeTxtPath: String, modifiedTimeMs: Long, txtUrl: String, audioUrl: String?, videoUrl: String?, coverUrl: String?, backgroundUrl: String?, instrumentalUrl: String?, vocalsUrl: String?, )</ID>
+    <ID>LongParameterList:WebSocketServer.kt$WebSocketServer$( private val token: String, private val gate: ISessionGate, private val registry: ConnectionRegistry, private val library: SongLibrary, private val manifestFetcher: ManifestFetcher, private val clockEngine: ClockSyncEngine, private val port: Int = 8080, private val callbacks: ISessionCallbacks? = null, )</ID>
+    <ID>LoopWithTooManyJumpStatements:BodyParser.kt$BodyParser$for</ID>
+    <ID>MagicNumber:BeatTimingEngine.kt$BeatTimingEngine$1000.0</ID>
+    <ID>MagicNumber:BeatTimingEngine.kt$BeatTimingEngine$450</ID>
+    <ID>MagicNumber:BeatTimingEngine.kt$BeatTimingEngine$60.0</ID>
+    <ID>MagicNumber:BeatTimingEngine.kt$BeatTimingEngine$60_000.0</ID>
+    <ID>MagicNumber:BeatTimingModels.kt$NoteTimingWindow$450</ID>
+    <ID>MagicNumber:BeatTimingModels.kt$PlaybackBounds.Companion$1000.0</ID>
+    <ID>MagicNumber:BeatTimingModels.kt$TimingContext$4.0</ID>
+    <ID>MagicNumber:BeatTimingModels.kt$TimingContext$400</ID>
+    <ID>MagicNumber:BodyParser.kt$BodyParser$3</ID>
+    <ID>MagicNumber:BodyParser.kt$BodyParser$4</ID>
+    <ID>MagicNumber:ClockSyncEngine.kt$ClockSyncEngine$100L</ID>
+    <ID>MagicNumber:ClockSyncEngine.kt$ClockSyncEngine$5</ID>
+    <ID>MagicNumber:HeaderParser.kt$HeaderParser$3</ID>
+    <ID>MagicNumber:MdnsAdvertiser.kt$MdnsAdvertiser.Companion$4</ID>
+    <ID>MagicNumber:PitchFrame.kt$PitchFrame$255</ID>
+    <ID>MagicNumber:PitchFrame.kt$PitchFrame$36</ID>
+    <ID>MagicNumber:ScoringEngine.kt$DefaultScoringEngine$10</ID>
+    <ID>MagicNumber:ScoringEngine.kt$DefaultScoringEngine$10.0</ID>
+    <ID>MagicNumber:ScoringEngine.kt$DefaultScoringEngine$12</ID>
+    <ID>MagicNumber:ScoringEngine.kt$DefaultScoringEngine$36</ID>
+    <ID>MagicNumber:ScoringEngine.kt$DefaultScoringEngine$6</ID>
+    <ID>MagicNumber:ScoringModels.kt$ScoringConfig$1000</ID>
+    <ID>MagicNumber:ScoringModels.kt$ScoringConfig$10000</ID>
+    <ID>MagicNumber:ScoringModels.kt$ScoringConfig$9000</ID>
+    <ID>MagicNumber:SessionToken.kt$SessionToken$26</ID>
+    <ID>MagicNumber:SessionToken.kt$SessionToken$5</ID>
+    <ID>MagicNumber:SessionToken.kt$SessionToken$8</ID>
+    <ID>MagicNumber:UdpPitchReceiver.kt$UdpPitchReceiver$16</ID>
+    <ID>MagicNumber:UdpPitchReceiver.kt$UdpPitchReceiver$200</ID>
+    <ID>MagicNumber:WebSocketServer.kt$WebSocketServer$1000</ID>
+    <ID>MagicNumber:WebSocketServer.kt$WebSocketServer$2000</ID>
+    <ID>MatchingDeclarationName:ManifestModels.kt$ManifestEntry</ID>
+    <ID>MaxLineLength:BodyParser.kt$BodyParser$trimmed.startsWith(":") || trimmed.startsWith("*") || trimmed.startsWith("F") || trimmed.startsWith("R") || trimmed.startsWith("G")</ID>
+    <ID>MaxLineLength:ClockSyncEngineAcceptanceTest.kt$ClockSyncEngineAcceptanceTest$val fixtureFile = File("/home/paavum/Couchraoke/tv/original_spec/fixtures/F14v2_clock_sync_phone_side/clockSync.jsonl")</ID>
+    <ID>MaxLineLength:HeaderParser.kt$HeaderParser$"CALCMEDLEY" -&gt; calcMedleyEnabled = value.equals("on", ignoreCase = true) || value.equals("yes", ignoreCase = true) || value.equals("true", ignoreCase = true)</ID>
+    <ID>MaxLineLength:HeaderParser.kt$HeaderParser$if</ID>
+    <ID>MaxLineLength:PitchFrameCodecAcceptanceTest.kt$PitchFrameCodecAcceptanceTest$private val fixtureDir = "/home/paavum/Couchraoke/tv/original_spec/fixtures/F12v2_pitch_stream_validation_semantics/"</ID>
+    <ID>MaxLineLength:PostParseValidator.kt$PostParseValidator$medleySource = if (header.medleyStartBeat != null &amp;&amp; header.medleyEndBeat != null) MedleySource.EXPLICIT else MedleySource.NONE</ID>
+    <ID>MaxLineLength:ScoringEngine.kt$DefaultScoringEngine$NoteType.NORMAL, NoteType.GOLDEN -&gt; toneValid &amp;&amp; kotlin.math.abs(tone - targetTone) &lt;= DIFFICULTY_TOLERANCE[difficulty]!!</ID>
+    <ID>MaxLineLength:ScoringEngine.kt$DefaultScoringEngine$ScoreAccumulator.SCORE -&gt; current.copy(score = current.score + result.noteScore, scoreLast = result.noteScore)</ID>
+    <ID>MaxLineLength:ScoringEngine.kt$DefaultScoringEngine$ScoreAccumulator.SCORE_GOLDEN -&gt; current.copy(scoreGolden = current.scoreGolden + result.noteScore, scoreLast = result.noteScore)</ID>
+    <ID>MaxLineLength:ScoringEngine.kt$DefaultScoringEngine$override</ID>
+    <ID>MaxLineLength:ScoringEngine.kt$DefaultScoringEngine$return NoteResult(window, hits = 0, n = frames.size, noteScore = 0.0, maxNoteScore = 0.0, accumulator = ScoreAccumulator.NONE)</ID>
+    <ID>MaxLineLength:ScoringEngine.kt$DefaultScoringEngine$val hits = frames.count { frame -&gt; isPitchMatch(frame.midiNote, frame.toneValid, noteNote.noteType, noteNote.tone, profile.difficulty) }</ID>
+    <ID>MaxLineLength:ScoringEngine.kt$ScoringEngine$fun evaluateNote(window: NoteTimingWindow, note: NoteEvent, frames: List&lt;PitchFrame&gt;, profile: TrackScoringProfile): NoteResult</ID>
+    <ID>MaxLineLength:ScoringEngine.kt$ScoringEngine$fun isPitchMatch(midiNote: Int, toneValid: Boolean, noteType: NoteType, targetTone: Int, difficulty: Difficulty): Boolean</ID>
+    <ID>MaxLineLength:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$assertEquals("case $i accumulator", expected["accumulator"]!!.jsonPrimitive.content, result.accumulator.name)</ID>
+    <ID>MaxLineLength:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$assertEquals("case $i lineBonusAwarded", expected["lineBonusAwarded"]!!.jsonPrimitive.double, result.lineBonusAwarded, 0.01)</ID>
+    <ID>MaxLineLength:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$assertEquals("case $i linePerfection", expected["linePerfection"]!!.jsonPrimitive.double, result.linePerfection, 0.001)</ID>
+    <ID>MaxLineLength:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$assertEquals("case $i scoreGoldenInt", expected["scoreGoldenInt"]!!.jsonPrimitive.int, result.scoreGoldenInt)</ID>
+    <ID>MaxLineLength:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$val expectedRoot = Json.parseToJsonElement(loadFixture("fixtures/scoring/per_note_scoring/expected.json")).jsonArray</ID>
+    <ID>MaxLineLength:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$val expectedRoot = Json.parseToJsonElement(loadFixture("fixtures/scoring/pitch_hit_detection/expected.json")).jsonArray</ID>
+    <ID>MaxLineLength:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$val expectedRoot = Json.parseToJsonElement(loadFixture("fixtures/scoring/score_rounding/expected.json")).jsonArray</ID>
+    <ID>MaxLineLength:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$val inputRoot = Json.parseToJsonElement(loadFixture("fixtures/scoring/pitch_hit_detection/input.json")).jsonArray</ID>
+    <ID>MaxLineLength:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 FREESTYLE is always false`()</ID>
+    <ID>MaxLineLength:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 GOLDEN behaves like NORMAL for MEDIUM`()</ID>
+    <ID>MaxLineLength:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 NORMAL EASY 3 semitones is miss`()</ID>
+    <ID>MaxLineLength:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 NORMAL EASY within 2 semitones is hit`()</ID>
+    <ID>MaxLineLength:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 NORMAL HARD 1 semitone off is miss`()</ID>
+    <ID>MaxLineLength:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 NORMAL HARD exact match is hit`()</ID>
+    <ID>MaxLineLength:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 NORMAL MEDIUM 2 semitones is miss`()</ID>
+    <ID>MaxLineLength:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 NORMAL MEDIUM within 1 semitone is hit`()</ID>
+    <ID>MaxLineLength:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 NORMAL toneValid false is always miss`()</ID>
+    <ID>MaxLineLength:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 RAP toneValid false is always miss`()</ID>
+    <ID>MaxLineLength:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 RAP toneValid true is always hit`()</ID>
+    <ID>MaxLineLength:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 RAP_GOLDEN toneValid true is always hit`()</ID>
+    <ID>MaxLineLength:ScoringEngineTest.kt$ScoringEngineTest$ScoringConfig(lineBonusEnabled = lineBonusEnabled, maxSongPoints = maxSongPoints, maxLineBonusPool = maxLineBonusPool)</ID>
+    <ID>MaxLineLength:ScoringEngineTest.kt$ScoringEngineTest$private</ID>
+    <ID>MaxLineLength:ScoringEngineTest.kt$ScoringEngineTest$val result = engine.evaluateNote(window(NoteType.NORMAL, 4), note(NoteType.NORMAL, 4), emptyList(), profile(4.0, 10000))</ID>
+    <ID>MaxLineLength:ScoringEngineTest.kt$ScoringEngineTest$val result = engine.evaluateNote(window(NoteType.NORMAL, 4), note(NoteType.NORMAL, 4), frames, profile(4.0, 10000))</ID>
+    <ID>MaxLineLength:ScoringEngineTest.kt$ScoringEngineTest$val result = engine.evaluateNote(window(NoteType.NORMAL, 4), note(NoteType.NORMAL, 4), frames, profile(trackScoreValue = 0.0))</ID>
+    <ID>MaxLineLength:ScoringEngineTest.kt$ScoringEngineTest$val result = engine.evaluateNote(window(NoteType.RAP_GOLDEN, 1), note(NoteType.RAP_GOLDEN, 1), emptyList(), profile())</ID>
+    <ID>MaxLineLength:SessionEventTest.kt$SessionEventTest$// onPhoneReconnected checks if clientId is in displayNames; if not, wasSinger=false and PhoneReconnected emitted</ID>
+    <ID>MaxLineLength:SessionEventTest.kt$SessionEventTest$fun</ID>
+    <ID>MaxLineLength:SessionRosterTest.kt$SessionRosterTest$fun</ID>
+    <ID>MaxLineLength:SessionStateTransitionTest.kt$SessionStateTransitionTest$fun</ID>
+    <ID>MaxLineLength:SongDiscoveryAcceptanceTest.kt$SongDiscoveryAcceptanceTest$assertEquals("invalidLineNumber mismatch for ${expected.songTxtRel}", expected.invalidLineNumber, actual.invalidLineNumber)</ID>
+    <ID>MaxLineLength:SongDiscoveryAcceptanceTest.kt$SongDiscoveryAcceptanceTest$assertEquals("invalidReasonCode mismatch for ${expected.songTxtRel}", expected.invalidReasonCode, actual.invalidReasonCode)</ID>
+    <ID>MaxLineLength:SongDiscoveryAcceptanceTest.kt$SongDiscoveryAcceptanceTest$val expectedJsonText = javaClass.classLoader!!.getResource("fixtures/library/song_discovery/expected.discovery.json")!!.readText()</ID>
+    <ID>MaxLineLength:SongIndexerTest.kt$SongIndexerTest$fun</ID>
+    <ID>MaxLineLength:SongLibraryTest.kt$SongLibraryTest$SongEntry(songId="p1::a.txt", phoneClientId="p1", relativeTxtPath="a.txt", modifiedTimeMs=0, isValid=true, txtUrl="", artist="Apple", title="A")</ID>
+    <ID>MaxLineLength:SongLibraryTest.kt$SongLibraryTest$SongEntry(songId="p1::c.txt", phoneClientId="p1", relativeTxtPath="c.txt", modifiedTimeMs=0, isValid=true, txtUrl="", artist="Zebra", title="A")</ID>
+    <ID>MaxLineLength:SongLibraryTest.kt$SongLibraryTest$SongEntry(songId="p2::b.txt", phoneClientId="p2", relativeTxtPath="b.txt", modifiedTimeMs=0, isValid=true, txtUrl="", artist="apple", title="A")</ID>
+    <ID>MaxLineLength:SongLibraryTest.kt$SongLibraryTest$fun</ID>
+    <ID>MaxLineLength:SongLibraryTest.kt$SongLibraryTest$library.addPhone("phone-a", listOf(entry("phone-a", "a/s1.txt"), entry("phone-a", "a/s2.txt"), entry("phone-a", "a/s3.txt")))</ID>
+    <ID>MaxLineLength:SongLibraryTest.kt$SongLibraryTest$library.addPhone("phone-a", listOf(entry("phone-a","s1.txt"), entry("phone-a","s2.txt"), entry("phone-a","s3.txt"), entry("phone-a","s4.txt")))</ID>
+    <ID>MaxLineLength:SongLibraryTest.kt$SongLibraryTest$library.addPhone("phone-b", listOf(entry("phone-b", "b/s1.txt"), entry("phone-b", "b/s2.txt"), entry("phone-b", "b/s3.txt")))</ID>
+    <ID>MaxLineLength:SongLibraryTest.kt$SongLibraryTest$library.addPhone("phone-b", listOf(entry("phone-b","s1.txt"), entry("phone-b","s2.txt"), entry("phone-b","s3.txt")))</ID>
+    <ID>MaxLineLength:UsdxParserAcceptanceTest.kt$UsdxParserAcceptanceTest$assertEquals(6, result.parsedSong.diagnostics.first { it.code == DiagnosticCode.INVALID_DUET_MARKER }.lineNumber)</ID>
+    <ID>MaxLineLength:UsdxParserAcceptanceTest.kt$UsdxParserAcceptanceTest$assertEquals(6, result.parsedSong.diagnostics.first { it.code == DiagnosticCode.MALFORMED_BODY_FIELD }.lineNumber)</ID>
+    <ID>MaxLineLength:UsdxParserAcceptanceTest.kt$UsdxParserAcceptanceTest$assertEquals(7, result.parsedSong.diagnostics.first { it.code == DiagnosticCode.UNSUPPORTED_VARIABLE_BPM }.lineNumber)</ID>
+    <ID>MaximumLineLength:BodyParser.kt$BodyParser$ </ID>
+    <ID>MaximumLineLength:ClockSyncEngineAcceptanceTest.kt$ClockSyncEngineAcceptanceTest$ </ID>
+    <ID>MaximumLineLength:HeaderParser.kt$HeaderParser$ </ID>
+    <ID>MaximumLineLength:PitchFrameCodecAcceptanceTest.kt$PitchFrameCodecAcceptanceTest$ </ID>
+    <ID>MaximumLineLength:PostParseValidator.kt$PostParseValidator$ </ID>
+    <ID>MaximumLineLength:ScoringEngine.kt$DefaultScoringEngine$ </ID>
+    <ID>MaximumLineLength:ScoringEngine.kt$ScoringEngine$ </ID>
+    <ID>MaximumLineLength:ScoringEngineAcceptanceTest.kt$ScoringEngineAcceptanceTest$ </ID>
+    <ID>MaximumLineLength:ScoringEngineTest.kt$ScoringEngineTest$ </ID>
+    <ID>MaximumLineLength:SessionEventTest.kt$SessionEventTest$ </ID>
+    <ID>MaximumLineLength:SessionRosterTest.kt$SessionRosterTest$ </ID>
+    <ID>MaximumLineLength:SessionStateTransitionTest.kt$SessionStateTransitionTest$ </ID>
+    <ID>MaximumLineLength:SongDiscoveryAcceptanceTest.kt$SongDiscoveryAcceptanceTest$ </ID>
+    <ID>MaximumLineLength:SongIndexerTest.kt$SongIndexerTest$ </ID>
+    <ID>MaximumLineLength:SongLibraryTest.kt$SongLibraryTest$ </ID>
+    <ID>MaximumLineLength:UsdxParserAcceptanceTest.kt$UsdxParserAcceptanceTest$ </ID>
+    <ID>MultiLineIfElse:ScoringEngine.kt$DefaultScoringEngine$(kotlin.math.ceil(playerScore.scoreGolden / 10.0) * 10).toInt()</ID>
+    <ID>MultiLineIfElse:ScoringEngine.kt$DefaultScoringEngine$(kotlin.math.floor(playerScore.scoreGolden / 10.0) * 10).toInt()</ID>
+    <ID>MultiLineIfElse:ScoringEngine.kt$DefaultScoringEngine$(lineScore / (maxLineScore - 2.0)).coerceIn(0.0, 1.0)</ID>
+    <ID>MultiLineIfElse:ScoringEngine.kt$DefaultScoringEngine$(profile.maxSongPoints.toDouble() / profile.trackScoreValue) * scoreFactor * noteNote.durationBeats</ID>
+    <ID>MultiLineIfElse:ScoringEngine.kt$DefaultScoringEngine$0.0</ID>
+    <ID>MultiLineIfElse:ScoringEngine.kt$DefaultScoringEngine$1.0</ID>
+    <ID>MultiLineIfElse:ScoringEngine.kt$DefaultScoringEngine$config.maxLineBonusPool.toDouble() / nonEmptyLineCount</ID>
+    <ID>MultiLineIfElse:ScoringEngine.kt$DefaultScoringEngine$tone += 12</ID>
+    <ID>MultiLineIfElse:ScoringEngine.kt$DefaultScoringEngine$tone -= 12</ID>
+    <ID>NestedBlockDepth:WebSocketServer.kt$WebSocketServer$private suspend fun handleConnection(session: DefaultWebSocketServerSession)</ID>
+    <ID>NewLineAtEndOfFile:ScoringEngineTest.kt$com.couchraoke.tv.domain.scoring.ScoringEngineTest.kt</ID>
+    <ID>NewLineAtEndOfFile:SongEntry.kt$com.couchraoke.tv.domain.library.SongEntry.kt</ID>
+    <ID>NewLineAtEndOfFile:SongLibrary.kt$com.couchraoke.tv.domain.library.SongLibrary.kt</ID>
+    <ID>NewLineAtEndOfFile:SongLibraryTest.kt$com.couchraoke.tv.domain.library.SongLibraryTest.kt</ID>
+    <ID>NoMultipleSpaces:ControlMessageCodec.kt$ControlMessageCodec$ </ID>
+    <ID>NoMultipleSpaces:ManifestModels.kt$ManifestEntry$ </ID>
+    <ID>NoMultipleSpaces:PitchFrame.kt$PitchFrame$ </ID>
+    <ID>NoMultipleSpaces:PitchFrameCodec.kt$PitchFrameCodec$ </ID>
+    <ID>NoMultipleSpaces:PitchFrameCodecTest.kt$PitchFrameCodecTest$ </ID>
+    <ID>NoMultipleSpaces:SongValidationTest.kt$SongValidationTest$ </ID>
+    <ID>NoTrailingSpaces:SongValidationTest.kt$SongValidationTest$ </ID>
+    <ID>NoTrailingSpaces:UdpPitchReceiver.kt$UdpPitchReceiver$ </ID>
+    <ID>NoTrailingSpaces:WebSocketServerAcceptanceTest.kt$WebSocketServerAcceptanceTest$ </ID>
+    <ID>NoTrailingSpaces:WebSocketServerTest.kt$WebSocketServerTest$ </ID>
+    <ID>NoUnusedImports:BeatTimingEngineTest.kt$com.couchraoke.tv.domain.timing.BeatTimingEngineTest.kt</ID>
+    <ID>NoUnusedImports:ISessionGate.kt$com.couchraoke.tv.domain.session.ISessionGate.kt</ID>
+    <ID>NoUnusedImports:ManifestFetcherTest.kt$com.couchraoke.tv.data.network.ManifestFetcherTest.kt</ID>
+    <ID>NoWildcardImports:BeatTimingEngineAcceptanceTest.kt$import org.junit.Assert.*</ID>
+    <ID>NoWildcardImports:BeatTimingEngineTest.kt$import org.junit.Assert.*</ID>
+    <ID>NoWildcardImports:ClockSyncEngineTest.kt$import org.junit.Assert.*</ID>
+    <ID>NoWildcardImports:MdnsAdvertiserTest.kt$import org.junit.Assert.*</ID>
+    <ID>NoWildcardImports:PitchFrameCodecAcceptanceTest.kt$import org.junit.Assert.*</ID>
+    <ID>NoWildcardImports:PitchFrameCodecTest.kt$import org.junit.Assert.*</ID>
+    <ID>NoWildcardImports:ScoringEngineTest.kt$import org.junit.Assert.*</ID>
+    <ID>NoWildcardImports:SongLibraryTest.kt$import org.junit.Assert.*</ID>
+    <ID>NoWildcardImports:WebSocketServer.kt$import com.couchraoke.tv.domain.network.protocol.*</ID>
+    <ID>NoWildcardImports:WebSocketServer.kt$import io.ktor.server.application.*</ID>
+    <ID>NoWildcardImports:WebSocketServer.kt$import io.ktor.server.cio.*</ID>
+    <ID>NoWildcardImports:WebSocketServer.kt$import io.ktor.server.engine.*</ID>
+    <ID>NoWildcardImports:WebSocketServer.kt$import io.ktor.server.plugins.*</ID>
+    <ID>NoWildcardImports:WebSocketServer.kt$import io.ktor.server.routing.*</ID>
+    <ID>NoWildcardImports:WebSocketServer.kt$import io.ktor.server.websocket.*</ID>
+    <ID>NoWildcardImports:WebSocketServer.kt$import io.ktor.websocket.*</ID>
+    <ID>NoWildcardImports:WebSocketServer.kt$import kotlinx.serialization.json.*</ID>
+    <ID>NoWildcardImports:WebSocketServerAcceptanceTest.kt$import com.couchraoke.tv.domain.network.protocol.*</ID>
+    <ID>NoWildcardImports:WebSocketServerAcceptanceTest.kt$import io.ktor.client.plugins.websocket.*</ID>
+    <ID>NoWildcardImports:WebSocketServerAcceptanceTest.kt$import io.ktor.server.routing.*</ID>
+    <ID>NoWildcardImports:WebSocketServerAcceptanceTest.kt$import io.ktor.server.testing.*</ID>
+    <ID>NoWildcardImports:WebSocketServerAcceptanceTest.kt$import io.ktor.websocket.*</ID>
+    <ID>NoWildcardImports:WebSocketServerAcceptanceTest.kt$import kotlinx.serialization.json.*</ID>
+    <ID>NoWildcardImports:WebSocketServerTest.kt$import com.couchraoke.tv.domain.network.protocol.*</ID>
+    <ID>NoWildcardImports:WebSocketServerTest.kt$import io.ktor.client.plugins.websocket.*</ID>
+    <ID>NoWildcardImports:WebSocketServerTest.kt$import io.ktor.server.routing.*</ID>
+    <ID>NoWildcardImports:WebSocketServerTest.kt$import io.ktor.server.testing.*</ID>
+    <ID>NoWildcardImports:WebSocketServerTest.kt$import io.ktor.websocket.*</ID>
+    <ID>NoWildcardImports:WebSocketServerTest.kt$import kotlinx.serialization.json.*</ID>
+    <ID>ParameterListWrapping:ScoringEngine.kt$ScoringEngine$(midiNote: Int, toneValid: Boolean, noteType: NoteType, targetTone: Int, difficulty: Difficulty)</ID>
+    <ID>ParameterListWrapping:ScoringEngine.kt$ScoringEngine$(window: NoteTimingWindow, note: NoteEvent, frames: List&lt;PitchFrame&gt;, profile: TrackScoringProfile)</ID>
+    <ID>PropertyWrapping:ClockSyncEngineAcceptanceTest.kt$ClockSyncEngineAcceptanceTest$val fixtureFile = File("/home/paavum/Couchraoke/tv/original_spec/fixtures/F14v2_clock_sync_phone_side/clockSync.jsonl")</ID>
+    <ID>ReturnCount:BodyParser.kt$BodyParser$fun parse( songIdentifier: String, lines: List&lt;String&gt;, lineNumberOffset: Int = 0, ): BodyParseResult</ID>
+    <ID>ReturnCount:BodyParser.kt$BodyParser$private fun parseNote(line: String): NoteEvent.Note?</ID>
+    <ID>ReturnCount:HeaderParser.kt$HeaderParser$private fun parseVersion(value: String): SongVersion?</ID>
+    <ID>ReturnCount:ManifestFetcher.kt$ManifestFetcher$fun fetch(phoneIp: String, httpPort: Int, clientId: String): Result&lt;Unit&gt;</ID>
+    <ID>ReturnCount:UdpPitchReceiver.kt$UdpPitchReceiver$internal fun processPacket(data: ByteArray)</ID>
+    <ID>ReturnCount:WebSocketServer.kt$WebSocketServer$private suspend fun handleConnection(session: DefaultWebSocketServerSession)</ID>
+    <ID>SpacingAroundComma:SongLibraryTest.kt$SongLibraryTest$,</ID>
+    <ID>SpacingAroundOperators:SongLibraryTest.kt$SongLibraryTest$=</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 FREESTYLE is always false`()</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 GOLDEN behaves like NORMAL for MEDIUM`()</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 NORMAL EASY 3 semitones is miss`()</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 NORMAL EASY within 2 semitones is hit`()</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 NORMAL HARD 1 semitone off is miss`()</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 NORMAL HARD exact match is hit`()</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 NORMAL MEDIUM 2 semitones is miss`()</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 NORMAL toneValid false is always miss`()</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 RAP toneValid false is always miss`()</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 RAP toneValid true is always hit`()</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:ScoringEngineTest.kt$ScoringEngineTest$@Test fun `T009 RAP_GOLDEN toneValid true is always hit`()</ID>
+    <ID>SwallowedException:BeatTimingEngineTest.kt$BeatTimingEngineTest$e: IllegalArgumentException</ID>
+    <ID>SwallowedException:UdpPitchReceiverTest.kt$UdpPitchReceiverTest$e: Exception</ID>
+    <ID>SwallowedException:WebSocketServer.kt$WebSocketServer$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ControlMessageCodec.kt$ControlMessageCodec$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ManifestFetcher.kt$ManifestFetcher$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:UdpPitchReceiver.kt$UdpPitchReceiver$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:WebSocketServer.kt$WebSocketServer$e: Exception</ID>
+    <ID>TooManyFunctions:Session.kt$Session : ISessionGateISessionCallbacks</ID>
+    <ID>UseCheckOrError:BeatTimingEngine.kt$BeatTimingEngine$throw IllegalStateException("songStartTvMs must be set before computing note windows")</ID>
+    <ID>WildcardImport:BeatTimingEngineAcceptanceTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:BeatTimingEngineTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:ClockSyncEngineTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:MdnsAdvertiserTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:PitchFrameCodecAcceptanceTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:PitchFrameCodecTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:ScoringEngineTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:SongLibraryTest.kt$import org.junit.Assert.*</ID>
+    <ID>WildcardImport:WebSocketServer.kt$import com.couchraoke.tv.domain.network.protocol.*</ID>
+    <ID>WildcardImport:WebSocketServer.kt$import io.ktor.server.application.*</ID>
+    <ID>WildcardImport:WebSocketServer.kt$import io.ktor.server.cio.*</ID>
+    <ID>WildcardImport:WebSocketServer.kt$import io.ktor.server.engine.*</ID>
+    <ID>WildcardImport:WebSocketServer.kt$import io.ktor.server.plugins.*</ID>
+    <ID>WildcardImport:WebSocketServer.kt$import io.ktor.server.routing.*</ID>
+    <ID>WildcardImport:WebSocketServer.kt$import io.ktor.server.websocket.*</ID>
+    <ID>WildcardImport:WebSocketServer.kt$import io.ktor.websocket.*</ID>
+    <ID>WildcardImport:WebSocketServer.kt$import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:WebSocketServerAcceptanceTest.kt$import com.couchraoke.tv.domain.network.protocol.*</ID>
+    <ID>WildcardImport:WebSocketServerAcceptanceTest.kt$import io.ktor.client.plugins.websocket.*</ID>
+    <ID>WildcardImport:WebSocketServerAcceptanceTest.kt$import io.ktor.server.routing.*</ID>
+    <ID>WildcardImport:WebSocketServerAcceptanceTest.kt$import io.ktor.server.testing.*</ID>
+    <ID>WildcardImport:WebSocketServerAcceptanceTest.kt$import io.ktor.websocket.*</ID>
+    <ID>WildcardImport:WebSocketServerAcceptanceTest.kt$import kotlinx.serialization.json.*</ID>
+    <ID>WildcardImport:WebSocketServerTest.kt$import com.couchraoke.tv.domain.network.protocol.*</ID>
+    <ID>WildcardImport:WebSocketServerTest.kt$import io.ktor.client.plugins.websocket.*</ID>
+    <ID>WildcardImport:WebSocketServerTest.kt$import io.ktor.server.routing.*</ID>
+    <ID>WildcardImport:WebSocketServerTest.kt$import io.ktor.server.testing.*</ID>
+    <ID>WildcardImport:WebSocketServerTest.kt$import io.ktor.websocket.*</ID>
+    <ID>WildcardImport:WebSocketServerTest.kt$import kotlinx.serialization.json.*</ID>
+    <ID>Wrapping:BeatTimingEngineAcceptanceTest.kt$BeatTimingEngineAcceptanceTest$(</ID>
+    <ID>Wrapping:ScoringEngineTest.kt$ScoringEngineTest$(</ID>
+    <ID>Wrapping:ScoringEngineTest.kt$ScoringEngineTest$(listOf( note(NoteType.NORMAL, 1, 0), note(NoteType.NORMAL, 1, 5), note(NoteType.NORMAL, 1, 10), ), header)</ID>
+    <ID>Wrapping:SongLibraryTest.kt$SongLibraryTest$(</ID>
+    <ID>Wrapping:SongLibraryTest.kt$SongLibraryTest$("p1", listOf( SongEntry(songId="p1::c.txt", phoneClientId="p1", relativeTxtPath="c.txt", modifiedTimeMs=0, isValid=true, txtUrl="", artist="Zebra", title="A"), SongEntry(songId="p1::a.txt", phoneClientId="p1", relativeTxtPath="a.txt", modifiedTimeMs=0, isValid=true, txtUrl="", artist="Apple", title="A"), ))</ID>
+    <ID>Wrapping:SongLibraryTest.kt$SongLibraryTest$("p2", listOf( SongEntry(songId="p2::b.txt", phoneClientId="p2", relativeTxtPath="b.txt", modifiedTimeMs=0, isValid=true, txtUrl="", artist="apple", title="A"), ))</ID>
+    <ID>Wrapping:WebSocketServer.kt$WebSocketServer$(</ID>
+    <ID>Wrapping:WebSocketServerAcceptanceTest.kt$WebSocketServerAcceptanceTest$(</ID>
+    <ID>Wrapping:WebSocketServerTest.kt$WebSocketServerTest$(</ID>
+  </CurrentIssues>
+</SmellBaseline>

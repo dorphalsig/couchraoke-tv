@@ -113,7 +113,7 @@ When a song entry is added to the library index, all derived fields (flags, medl
 
 - **SongLibrary**: In-memory aggregate index. Manages per-phone song collections and exposes sorted query and lookup. Lives for the duration of one session.
 - **SongEntry**: A single song record containing identity fields (`songId`, `phoneClientId`, `relativeTxtPath`, `modifiedTimeMs`), validation state (`isValid`, `invalidReasonCode`, `invalidLineNumber`), display fields (`artist`, `title`, `album`), derived flags, preview metadata (`startSec`, `previewStartSec`), and asset URLs.
-- **ManifestEntry**: A raw song entry as received from `/manifest.json` on the phone — source data before validation and field derivation.
+- **ManifestEntry**: A raw song entry as received from `/manifest.json` on the phone — includes all pre-computed metadata (title, artist, validity state, derived flags, preview metadata, and asset URLs). The TV trusts these values and does not re-parse or re-validate song text files during manifest ingest.
 
 ---
 
@@ -135,7 +135,7 @@ When a song entry is added to the library index, all derived fields (flags, medl
 
 - The phone's manifest JSON provides all asset URLs pre-computed; the TV stores them as-received without re-resolving paths against a filesystem.
 - File existence checks for audio/video assets are performed via a testable `AssetResolver` abstraction (not direct filesystem access), enabling unit test injection.
-- `ParsedSong` from feature 001 (usdx-parser) is the intermediate representation used by `SongValidator`; the manifest provides song text which is parsed before validation.
+- The phone pre-computes all metadata and validation state for each song. The TV trusts `isValid`, `invalidReasonCode`, and `invalidLineNumber` as-received from the manifest. Individual `.txt` files are NOT downloaded or parsed during library ingest. `SongDiscovery` (local file scan) retains the `ParseResult`-based path for acceptance testing only.
 - `timeFromBeat(beat)` is available from the beat-timing engine (feature 002) and is called for `previewStartSec` computation.
 - This feature owns the `com.couchraoke.tv.domain.library` package.
 - Sorting is case-insensitive using standard Unicode collation; locale-specific sort orders are deferred.

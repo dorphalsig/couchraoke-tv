@@ -218,6 +218,89 @@ class SongIndexerTest {
     }
 
     @Test
+    fun `given valid manifest entry, when fromManifestEntry, then SongEntry fields match`() {
+        val entry = ManifestEntry(
+            relativeTxtPath = "songs/artist/song.txt",
+            isValid = true,
+            invalidReasonCode = null,
+            invalidLineNumber = null,
+            modifiedTimeMs = 9876543210L,
+            title = "My Song",
+            artist = "My Artist",
+            album = "My Album",
+            isDuet = false,
+            hasRap = false,
+            hasVideo = true,
+            hasInstrumental = false,
+            canMedley = true,
+            medleySource = "tag",
+            medleyStartBeat = 50,
+            medleyEndBeat = 150,
+            previewStartSec = 30.5,
+            txtUrl = "http://phone/songs/artist/song.txt",
+            audioUrl = "http://phone/songs/artist/song.mp3",
+        )
+
+        val result = SongIndexer.fromManifestEntry(entry, "phone-1")
+
+        assertEquals("phone-1::songs/artist/song.txt", result.songId)
+        assertTrue(result.isValid)
+        assertEquals("My Song", result.title)
+        assertEquals("My Artist", result.artist)
+        assertFalse(result.isDuet)
+        assertTrue(result.canMedley)
+        assertEquals(30.5, result.previewStartSec, 0.001)
+        assertEquals("http://phone/songs/artist/song.mp3", result.audioUrl)
+    }
+
+    @Test
+    fun `given manifest entry with path traversal, when fromManifestEntry, then isValid false and reason is INVALID_PATH`() {
+        val entry = ManifestEntry(
+            relativeTxtPath = "../evil/song.txt",
+            isValid = true,
+            modifiedTimeMs = 1000L,
+            title = "Evil",
+            artist = "Hacker",
+            isDuet = false,
+            hasRap = false,
+            hasVideo = false,
+            hasInstrumental = false,
+            canMedley = false,
+            txtUrl = "http://phone/evil/song.txt",
+        )
+
+        val result = SongIndexer.fromManifestEntry(entry, "phone-1")
+
+        assertFalse(result.isValid)
+        assertEquals("ERROR_CORRUPT_SONG_INVALID_PATH", result.invalidReasonCode)
+    }
+
+    @Test
+    fun `given manifest entry with isValid=false from phone, when fromManifestEntry, then isValid false and invalidReasonCode preserved`() {
+        val entry = ManifestEntry(
+            relativeTxtPath = "songs/broken/song.txt",
+            isValid = false,
+            invalidReasonCode = "ERROR_CORRUPT_SONG_MISSING_REQUIRED_HEADER",
+            invalidLineNumber = 3,
+            modifiedTimeMs = 5000L,
+            title = "Broken",
+            artist = "Nobody",
+            isDuet = false,
+            hasRap = false,
+            hasVideo = false,
+            hasInstrumental = false,
+            canMedley = false,
+            txtUrl = "http://phone/songs/broken/song.txt",
+        )
+
+        val result = SongIndexer.fromManifestEntry(entry, "phone-1")
+
+        assertFalse(result.isValid)
+        assertEquals("ERROR_CORRUPT_SONG_MISSING_REQUIRED_HEADER", result.invalidReasonCode)
+        assertEquals(Integer.valueOf(3), result.invalidLineNumber)
+    }
+
+    @Test
     fun `given PREVIEWSTART 0 or negative when indexed then treated as absent and falls back`() {
         // Fallback to medley if present
         val song0 = """
