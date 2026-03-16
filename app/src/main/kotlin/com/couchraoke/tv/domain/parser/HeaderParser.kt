@@ -37,6 +37,7 @@ class HeaderParser {
         var p1Name: String? = null
         var p2Name: String? = null
 
+        var audioLineNumber: Int? = null
         lines.forEachIndexed { index, rawLine ->
             val lineNumber = index + 1
             val trimmed = rawLine.trim()
@@ -80,6 +81,7 @@ class HeaderParser {
                 "AUDIO", "MP3" -> {
                     audioReference = value
                     audioTag = tag
+                    audioLineNumber = lineNumber
                 }
                 "BPM" -> {
                     val parsed = value.toDoubleOrNull()
@@ -177,6 +179,7 @@ class HeaderParser {
                 code = DiagnosticCode.REQUIRED_AUDIO_NOT_FOUND,
                 message = "Required audio asset was not found",
                 songIdentifier = songIdentifier,
+                lineNumber = audioLineNumber,
             )
         }
 

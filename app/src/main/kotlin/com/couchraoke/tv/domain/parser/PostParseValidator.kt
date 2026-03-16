@@ -39,7 +39,7 @@ class PostParseValidator {
             )
         }
 
-        val previewStartSec = header.previewStartSec ?: header.medleyStartBeat?.toDouble()
+        val previewStartSec = header.previewStartSec
         val hasLocalVideo = header.videoReference?.let { reference ->
             !reference.contains("://") && fileResolver.exists(reference)
         } == true

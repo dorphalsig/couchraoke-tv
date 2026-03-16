@@ -2,6 +2,7 @@ package com.couchraoke.tv.domain.library
 
 import com.couchraoke.tv.domain.parser.DiagnosticCode
 import com.couchraoke.tv.domain.parser.DiagnosticSeverity
+import com.couchraoke.tv.domain.parser.MedleySource
 import com.couchraoke.tv.domain.parser.ParseResult
 
 object SongIndexer {
@@ -39,6 +40,7 @@ object SongIndexer {
             }
         }
         val header = parseResult.parsedSong.header
+        val ds = parseResult.parsedSong.derivedSummary
         return SongEntry(
             songId = "$phoneClientId::$relativeTxtPath",
             phoneClientId = phoneClientId,
@@ -50,6 +52,25 @@ object SongIndexer {
             artist = header.artist,
             title = header.title,
             album = null,
+            isDuet = ds.isDuet,
+            hasRap = ds.hasRap,
+            hasVideo = ds.hasVideo,
+            hasInstrumental = ds.hasInstrumental,
+            medleySource = ds.medleySource,
+            medleyStartBeat = ds.medleyStartBeat,
+            medleyEndBeat = ds.medleyEndBeat,
+            calcMedleyEnabled = ds.calcMedleyEnabled,
+            canMedley = !ds.isDuet && ds.medleySource == MedleySource.EXPLICIT,
+            previewStartSec = when {
+                (ds.previewStartSec ?: 0.0) > 0.0 -> ds.previewStartSec!!
+                !ds.isDuet && ds.medleySource == MedleySource.EXPLICIT -> {
+                    val bpm = parseResult.parsedSong.header.bpm ?: 1.0
+                    val gapMs = parseResult.parsedSong.header.gapMs ?: 0
+                    val startBeat = ds.medleyStartBeat ?: 0
+                    startBeat * 60.0 / (bpm * 4.0) + gapMs / 1000.0
+                }
+                else -> 0.0
+            },
             txtUrl = txtUrl,
             audioUrl = audioUrl,
             videoUrl = videoUrl,
