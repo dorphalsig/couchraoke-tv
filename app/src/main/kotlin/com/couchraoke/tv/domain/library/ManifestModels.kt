@@ -1,5 +1,8 @@
 package com.couchraoke.tv.domain.library
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class ManifestEntry(
     val relativeTxtPath: String,
     val isValid: Boolean,
