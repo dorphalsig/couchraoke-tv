@@ -2,6 +2,10 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.detekt)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
+    id("kotlin-parcelize")
     jacoco
 }
 
@@ -43,6 +47,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
+    buildFeatures {
+        compose = true
+    }
 }
 
 detekt {
@@ -50,6 +58,10 @@ detekt {
     buildUponDefaultConfig = true
     allRules = false
     baseline = file("detekt-baseline.xml")
+}
+
+tasks.named("check") {
+    dependsOn("detekt")
 }
 
 android {
@@ -90,7 +102,33 @@ val jacocoExcludes = listOf(
     "**/domain/network/protocol/SlotMap*.*",
     // Untestable in unit context (requires real Ktor/JmDNS/Android)
     "**/data/network/WebSocketServer*.*",
-    "**/data/network/MdnsAdvertiser*.*"
+    "**/data/network/MdnsAdvertiser*.*",
+    // Category A — Compose composable file classes and all their nested lambdas
+    "**/presentation/**/*Kt.*",
+    "**/presentation/**/*Kt$*.*",
+    // Category B — Hilt/Dagger generated classes
+    "**/di/**/*.*",
+    "hilt_aggregated_deps/**/*.*",
+    "dagger/**/*.*",
+    "**/*_HiltModules*.*",
+    "**/*ProvideFactory*.*",
+    // Category C — Android Application/Activity classes
+    "**/MainActivity*.*",
+    "**/CouchraokeApp*.*",
+    // Category D — Tiny-file exemptions (≤30 lines, constitution §V)
+    "**/presentation/songlist/PlayerAssignment*.*",
+    "**/presentation/songlist/DuetPart*.*",
+    "**/presentation/songlist/SelectPlayersMode*.*",
+    "**/presentation/songlist/preview/SongPreviewController*.*",
+    "**/presentation/songlist/preview/ISongPreviewController*.*",
+    "**/presentation/songlist/preview/NoOpPreviewController*.*",
+    // Category E — Kotlin inline lambda classes
+    "**/*\$inlined\$*.*",
+    // Compose-generated classes — not testable, must not lower coverage thresholds
+    "**/*ComposableSingletons*.*",
+    "**/*_Factory*.*",
+    "**/*_MembersInjector*.*",
+    "**/Hilt_*.*"
 )
 
 val filteredClassDirectories = files(
@@ -325,6 +363,22 @@ tasks.register("networkTest") {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.compose)
+
+    // Compose BOM
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.runtime)
+    implementation(libs.tv.material)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    debugImplementation(libs.androidx.compose.ui.tooling.preview)
+
+    // Hilt
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.hilt.navigation.compose)
+
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
 
