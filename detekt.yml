@@ -18,3 +18,5 @@ naming:
 formatting:
   active: true
   android: true
+  MaximumLineLength:
+    excludes: ['**/test/**', '**/androidTest/**']
