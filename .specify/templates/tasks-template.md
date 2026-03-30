@@ -10,6 +10,8 @@ description: "Task list template for feature implementation"
 
 **Tests**: Per the TDD mandate in the constitution, test tasks MUST be included and MUST appear before their corresponding implementation tasks. Tests MUST be written to fail before implementation begins.
 
+**Visual Regression (Roborazzi)**: Per the Visual Regression Testing principle, every screen MUST have Roborazzi snapshot tasks covering all screen states, all navigation entry paths (from the preceding screen), and all modal open/dismiss interactions. Roborazzi tasks that depend on a future feature's contract MUST NOT be started until that contract is published — if the contract is absent, insert a blocking task to define it first.
+
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
 ## Format: `[ID] [P?] [Story] Description`

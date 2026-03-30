@@ -41,6 +41,11 @@
   pitch transport, and relevant performance constraints.
 - Confirm the plan includes the tests and quality gates needed for changed code and uses
   JUnit4-only Android test tooling where Android tests are involved.
+- Confirm Roborazzi snapshot tests are planned for every screen state, every navigation path
+  to the screen (from the preceding screen), and every modal open/dismiss interaction.
+- Confirm all inter-task contracts required by this feature are published in
+  `specs/<feature>/contracts/` before any dependent tasks are generated. If a contract is
+  missing, planning MUST stop until the contract is defined.
 - Confirm how the implementation branch/worktree will be marked closed after merge by renaming
   it to `[✓] <original branch name>` so only active branches remain unmarked.
 
