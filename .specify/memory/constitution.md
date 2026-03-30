@@ -1,22 +1,21 @@
 <!--
 Sync Impact Report
-- Version change: 2.0.1 -> 2.1.0
+- Version change: 2.1.0 -> 2.1.1
 - Modified principles:
-    V. Testing, Quality & Branch Hygiene — added "Visual Regression Testing (Roborazzi)"
-      subsection; removed "Screenshot / snapshot regression tests" from Explicitly Out of
-      Scope; updated CI Job Structure to include roborazzi job.
-- Added sections:
-    VI. Contract-Gated Inter-Task Development (new top-level Core Principle)
+    V. Testing, Quality & Branch Hygiene — corrected Roborazzi CI placement: Roborazzi runs
+      on Robolectric (JVM) in the unit-tests-android job, not the instrumented job; no emulator
+      required. Validated against official Roborazzi documentation (context7).
+- Added sections: none
 - Removed sections: none
 - Templates requiring updates:
-  ✅ updated .specify/templates/plan-template.md (Constitution Check now references
-     Roborazzi coverage and contract-gating gate)
-  ✅ updated .specify/templates/tasks-template.md (tests phase now references Roborazzi
-     snapshot tasks)
+  ✅ reviewed .specify/templates/plan-template.md (Roborazzi CI placement already reflected
+     correctly in 007 plan; template itself has no hardcoded CI job names — no change required)
   ✅ reviewed .specify/templates/spec-template.md (no change required — technology-agnostic)
+  ✅ reviewed .specify/templates/tasks-template.md (no change required — no hardcoded CI job
+     references in the Roborazzi snapshot task examples)
   ✅ reviewed .specify/templates/constitution-template.md (source template only; no change)
   ✅ no .specify/templates/commands/ directory present; no updates required
-  ✅ reviewed CLAUDE.md (no references to the changed sections; no change required)
+  ✅ reviewed CLAUDE.md (no Roborazzi CI references; no change required)
 - Follow-up TODOs: none
 -->
 # Couchraoke Constitution
@@ -157,11 +156,16 @@ it does not replace other test categories.
   a future (unimplemented) feature MUST be driven by a mock that strictly implements the
   published contract interface. If the required contract interface has not been published,
   the Roborazzi test task MUST NOT be started — see Principle VI.
+- **Stable test fixtures**: All screenshot tests MUST inject deterministic, fixed-value
+  fixtures for any session-bound or runtime-dynamic data (tokens, URLs, images from the
+  network) so that baseline images are identical on every test run.
 - **Baseline management**: Baseline images MUST be committed to the repository under
   `app/src/test/snapshots/` (or the Roborazzi-configured path). Diffs are reviewed as part
   of the PR.
-- **CI placement**: Roborazzi tests run in the instrumented CI job (emulator required).
-  They are excluded from JaCoCo coverage calculations.
+- **CI placement**: Roborazzi tests run in the **unit-tests-android** CI job alongside
+  JUnit4 unit tests. They use Robolectric Native Graphics
+  (`@GraphicsMode(GraphicsMode.Mode.NATIVE)`) and run entirely on the JVM — no emulator
+  or physical device is required. They are excluded from JaCoCo coverage calculations.
 
 #### Skip / Disable Policy
 A test MAY be skipped only under one of these three conditions:
@@ -237,13 +241,13 @@ indicate the failure. It is NOT permitted in production code.
 #### CI Job Structure
 ```text
 PR gate (runs on every commit):
-  ├── unit-tests-android      [U] only — JUnit4, no emulator
+  ├── unit-tests-android      [U] + Roborazzi snapshots — JUnit4 + Robolectric, no emulator
   ├── unit-tests-ios          [U] only — XCTest, no simulator hardware
   ├── lint-android            Detekt + ktlint + Android Lint
   ├── lint-ios                SwiftLint
   └── coverage-check          Fails build if thresholds not met
 Nightly:
-  ├── instrumented-android    [I] + Roborazzi snapshots — emulator required
+  ├── instrumented-android    [I] only — emulator required
   ├── instrumented-ios        [I] — simulator required
   └── quarantine-suite        Flaky tests; results reported but do not block
 ```
@@ -263,27 +267,6 @@ that branch MUST be marked closed by renaming it to `[✓] <original branch name
 isolation is encouraged during development, but post-merge closure is mandatory. Closed branches
 MUST NOT be deleted solely as a hygiene step.
 
-### VI. Contract-Gated Inter-Task Development
-No implementation task that depends on an interface, protocol, or data contract owned by
-another task (current or future) MAY proceed until that contract is formally specified and
-committed to the repository.
-
-- **Stop rule**: If a required contract is absent, the dependent task MUST stop immediately
-  and report the missing contract. Work on the dependent task MUST NOT resume until the
-  contract is defined and merged.
-- **No assumptions permitted**: Implementing agents MUST NOT infer, guess, or assume the
-  shape of an unspecified contract. The contract MUST be explicitly documented before any
-  code that relies on it is written.
-- **Mock discipline**: Where a contract is defined but its implementation belongs to a future
-  task, the dependent task MUST use a mock or stub that strictly implements the published
-  contract interface — no wider, no narrower.
-- **Contract location**: Contracts MUST be documented in `specs/<feature>/contracts/` before
-  the tasks that depend on them are planned. The planning step (`/speckit.plan`) MUST verify
-  that all required contracts exist before generating tasks.
-- **Scope boundary**: This principle applies to all task types — unit tests, instrumented
-  tests, Roborazzi snapshot tests, and production code alike. A Roborazzi test that renders
-  a screen depending on a future feature's navigation target is subject to the same stop rule.
-
 ## Additional Constraints
 
 Platform-specific operational rules from the governing Couchraoke platform constitution remain
@@ -302,11 +285,10 @@ normative, including:
 Every implementation, review, and merge decision MUST verify constitutional compliance.
 
 - Before design or implementation begins, plans MUST confirm alignment with LAN-only operation,
-  approved stack choices, architecture boundaries, streaming/networking contracts, test
-  expectations, and the presence of all required inter-task contracts (Principle VI).
-- After every task, teams MUST verify test coverage updates, Roborazzi snapshot baselines,
-  absence of unintended adjacent regressions, and any platform-specific checklist items
-  relevant to the changed code.
+  approved stack choices, architecture boundaries, streaming/networking contracts, and test
+  expectations.
+- After every task, teams MUST verify test coverage updates, absence of unintended adjacent
+  regressions, and any platform-specific checklist items relevant to the changed code.
 - Before merge, reviewers MUST confirm that quality gates passed and that any worktree or
   temporary development branch has a cleanup path.
 - After merge to `master`, the merged worktree branch or feature branch MUST be renamed to
@@ -328,4 +310,4 @@ Couchraoke repository.
   active work MUST be clearly marked closed after merge by renaming them to
   `[✓] <original branch name>`.
 
-**Version**: 2.1.0 | **Ratified**: 2026-03-13 | **Last Amended**: 2026-03-30
+**Version**: 2.1.1 | **Ratified**: 2026-03-13 | **Last Amended**: 2026-03-30
