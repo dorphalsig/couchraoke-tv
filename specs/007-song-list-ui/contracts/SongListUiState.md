@@ -25,6 +25,11 @@ data class SongListUiState(
     val previewingSongId: String? = null,
     val joinToken: String = "",
     val sessionState: SessionState = SessionState.Open,
+    // --- Revision 2 additions (§3.4 wireframe update) ---
+    val focusedSong: SongEntry? = null,               // preview pane sticky state
+    val isPairingOverlayOpen: Boolean = false,         // Join button overlay
+    val currentHint: HintMode? = null,                 // contextual hints bar
+    val duplicateMedleyFeedback: Boolean = false,      // "Already in medley" feedback
 )
 ```
 
@@ -38,7 +43,7 @@ data class SongListUiState(
 | `isRandomSongEnabled` (UI-computed) | `filteredSongs.any { it.isValid }` |
 | `isRandomDuetEnabled` (UI-computed) | `filteredSongs.any { it.isDuet }` |
 | `isPlayMedleyEnabled` (UI-computed) | `medleyPlaylist.isNotEmpty()` |
-| `isAutoMedleyEnabled` (UI-computed) | `filteredSongs.any { it.canMedley }` |
+| `isRandomMedleyEnabled` (UI-computed) | `filteredSongs.count { it.canMedley } >= 2` |
 
 ---
 
@@ -53,7 +58,7 @@ fun onPlaylistRowLongPressed(index: Int)      // delete row
 fun onReorderConfirm(fromIndex: Int, toIndex: Int)
 fun onReorderCancel()
 fun onPlayMedley()
-fun onAutoMedley()
+fun onRandomMedley()
 fun onRandomSong()
 fun onRandomDuet()
 fun onPlayer1Selected(phone: PhoneOption)
@@ -65,6 +70,11 @@ fun onSwapParts()
 fun onSelectPlayersStart()                    // validates and emits PlayerAssignment
 fun onSelectPlayersCancel()
 fun onErrorModalDismissed()
-fun onSongFocused(songId: String?)            // drives 500 ms preview debounce
-fun onScreenVisible(visible: Boolean)         // stops preview when screen hides
+fun onSongFocused(songId: String?)            // drives 500 ms preview debounce + preview pane update
+fun onScreenVisible(visible: Boolean)         // stops preview when screen hides; resets focusedSong on re-entry
+// --- Revision 2 additions ---
+fun onJoinPressed()                           // opens pairing overlay
+fun onPairingOverlayDismissed()               // closes pairing overlay
+fun onBackPressed(): BackResult               // 4-level cascade: modal → search → filter → exit
+fun onFocusZoneChanged(zone: FocusZone)       // updates currentHint based on focused element
 ```

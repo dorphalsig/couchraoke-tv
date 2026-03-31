@@ -189,3 +189,88 @@ Start pressed, audioUrl=null
 ## SongLibrary refresh trigger
 
 `SongListViewModel` observes `Session.events: SharedFlow<SessionEvent>`. On `PhoneConnected`, `PhoneDisconnected`, or `PhoneReconnected`, it calls `SongLibrary.getSortedSongs()` and updates `allSongs` in the UI state (which re-derives `filteredSongs`).
+
+---
+
+## Revision 2 additions (2026-03-31 — §3.4 wireframe update)
+
+### New fields in `SongListUiState`
+
+| Field | Type | Purpose |
+|---|---|---|
+| `focusedSong` | `SongEntry?` | Song whose info is displayed in the preview pane. Sticky: set on grid focus, never cleared on focus-leave. Reset to null on screen re-entry. |
+| `isPairingOverlayOpen` | `Boolean` | Whether the Join pairing overlay (QR + join code) is shown. Default `false`. |
+| `currentHint` | `HintMode?` | Drives the contextual hints bar at screen bottom. `null` = hidden. |
+| `duplicateMedleyFeedback` | `Boolean` | `true` briefly when the user long-presses a tile already in the medley for the second consecutive time on the same focused tile. Resets on focus change. |
+
+### New enum: `HintMode`
+
+```
+enum HintMode {
+    SongGridFocused,          // "OK = Sing   Long-Press OK = Add to Medley"
+    MedleyPlaylistFocused,    // "OK = Reorder   Long-Press OK = Delete"
+    ReorderActive,            // "Up/Down = Move   OK = Accept   Back = Cancel"
+}
+```
+
+### New enum: `BackResult`
+
+```
+enum BackResult {
+    ClosedModal,     // a modal/overlay was open and has been closed
+    MovedToSearch,   // focus was in grid/left panel, moved to search field
+    ClearedFilter,   // search filter was active, now cleared
+    ExitApp,         // no filter active and focus already in header → exit
+}
+```
+
+### Updated derivation rules in `SongListUiState`
+
+| Derived field | Rule |
+|---|---|
+| `isRandomMedleyEnabled` (UI-computed) | `filteredSongs.count { it.canMedley } >= 2` |
+
+### State transitions: Pairing overlay
+
+```
+Join button pressed (OK)
+  → isPairingOverlayOpen = true
+
+Back / Cancel in overlay
+  → isPairingOverlayOpen = false (focus returns to Song List)
+```
+
+### State transitions: Preview pane
+
+```
+Grid tile gains focus
+  → focusedSong = the focused SongEntry (preview pane updates)
+  → after 500 ms debounce: audio preview starts (existing behavior)
+
+Focus leaves grid (to Search, buttons, playlist, etc.)
+  → focusedSong UNCHANGED (sticky — pane retains last song info)
+  → audio preview stops (existing FR-027 behavior)
+
+Screen re-entry (from Settings, Singing, Results)
+  → focusedSong = null (pane shows placeholder: app logo on dimmed bg)
+```
+
+### Updated state transitions: Medley playlist (duplicate handling)
+
+```
+Long-press canMedley=true tile, song NOT in playlist
+  → MedleyPlaylist += song (appended)
+
+Long-press canMedley=true tile, song IS in playlist (1st attempt on this tile)
+  → silently ignored; lastDuplicateAttemptTileId = song.songId
+
+Long-press canMedley=true tile, song IS in playlist (2nd+ attempt on same tile)
+  → duplicateMedleyFeedback = true (shown briefly, e.g., "Already in medley")
+
+Focus moves to a different tile
+  → lastDuplicateAttemptTileId = null; duplicateMedleyFeedback = false
+
+Random Medley pressed
+  → MedleyPlaylist = sample(filteredSongs where canMedley=true, min(5, size))
+  → Open Select Players with mode=Medley(n)
+```

@@ -17,6 +17,24 @@ sealed class SelectPlayersMode {
     data class Medley(val count: Int) : SelectPlayersMode()
 }
 
+// Back cascade result - returned by onBackPressed()
+sealed class BackResult {
+    object ClosedModal : BackResult()
+    object MovedToSearch : BackResult()
+    object ClearedFilter : BackResult()
+    object ExitApp : BackResult()
+}
+
+// Focus zones for Back cascade
+enum class FocusZone { Grid, LeftPanel, Header }
+
+// Contextual hints for the hints bar (FR-044)
+sealed class HintMode {
+    object SongTile : HintMode()
+    object MedleyRow : HintMode()
+    object ReorderMode : HintMode()
+}
+
 data class SelectPlayersDialogState(
     val mode: SelectPlayersMode,
     val song: SongEntry?, // null for Medley mode
@@ -44,6 +62,10 @@ data class SongListUiState(
     val selectPlayersDialog: SelectPlayersDialogState? = null,
     val errorModal: ErrorModalState? = null,
     val previewingSongId: String? = null,
+    val focusedSong: SongEntry? = null, // sticky preview pane state
+    val isPairingOverlayOpen: Boolean = false, // Join button overlay
+    val currentHint: HintMode? = null, // contextual hints bar
+    val duplicateMedleyFeedback: Boolean = false, // "Already in medley" toast
     val joinToken: String = "",
     val sessionState: SessionState = SessionState.Open,
 )

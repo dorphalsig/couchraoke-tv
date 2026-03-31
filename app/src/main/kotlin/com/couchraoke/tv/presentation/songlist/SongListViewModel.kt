@@ -50,6 +50,8 @@ class SongListViewModel @Inject constructor(
     private val searchQueryFlow = MutableStateFlow("")
     private val focusedSongIdFlow = MutableStateFlow<String?>(null)
     private val vmScope = CoroutineScope(dispatcher + SupervisorJob())
+    private var currentFocusZone: FocusZone = FocusZone.Header
+    private var duplicateAttemptedTileId: String? = null
 
     init {
         // UNDISPATCHED: establishes SharedFlow subscription synchronously before first suspension,
@@ -110,15 +112,27 @@ class SongListViewModel @Inject constructor(
         searchQueryFlow.value = query
     }
 
-    /** Returns true if the back press was consumed (cleared search query). */
-    fun onBackPressed(): Boolean {
-        return if (_uiState.value.searchQuery.isNotEmpty()) {
+    fun onBackPressed(): BackResult {
+        val state = _uiState.value
+        if (state.selectPlayersDialog != null || state.errorModal != null || state.isPairingOverlayOpen) {
+            _uiState.update {
+                it.copy(
+                    selectPlayersDialog = null,
+                    errorModal = null,
+                    isPairingOverlayOpen = false,
+                )
+            }
+            return BackResult.ClosedModal
+        }
+        if (currentFocusZone == FocusZone.Grid || currentFocusZone == FocusZone.LeftPanel) {
+            return BackResult.MovedToSearch
+        }
+        if (state.searchQuery.isNotEmpty()) {
             searchQueryFlow.value = ""
             _uiState.update { it.copy(searchQuery = "", filteredSongs = filterSongs(it.allSongs, "")) }
-            true
-        } else {
-            false
+            return BackResult.ClearedFilter
         }
+        return BackResult.ExitApp
     }
 
     // ---- Song selection (US1) ----
@@ -141,7 +155,15 @@ class SongListViewModel @Inject constructor(
     }
 
     fun onSongFocused(songId: String?) {
-        _uiState.update { it.copy(previewingSongId = songId) }
+        val previousSongId = _uiState.value.previewingSongId
+        val focusedSong = songId?.let { library.getSongById(it) }
+        _uiState.update {
+            it.copy(
+                previewingSongId = songId,
+                focusedSong = focusedSong,
+                duplicateMedleyFeedback = if (songId != previousSongId) false else it.duplicateMedleyFeedback,
+            )
+        }
         focusedSongIdFlow.value = songId
     }
 
@@ -196,6 +218,26 @@ class SongListViewModel @Inject constructor(
     fun onSelectPlayersCancel() { _uiState.update { it.copy(selectPlayersDialog = null) } }
     fun onErrorModalDismissed() { _uiState.update { it.copy(errorModal = null) } }
 
+    // ---- Join overlay (US3) ----
+    fun onJoinPressed() {
+        _uiState.update { it.copy(isPairingOverlayOpen = true) }
+    }
+
+    fun onPairingOverlayDismissed() {
+        _uiState.update { it.copy(isPairingOverlayOpen = false) }
+    }
+
+    // ---- Hints bar (FR-044) ----
+    fun onFocusZoneChanged(zone: FocusZone) {
+        currentFocusZone = zone
+        val hint = when (zone) {
+            FocusZone.Grid -> HintMode.SongTile
+            FocusZone.LeftPanel -> if (_uiState.value.isReorderingMedleyIndex != null) HintMode.ReorderMode else HintMode.MedleyRow
+            FocusZone.Header -> null
+        }
+        _uiState.update { it.copy(currentHint = hint) }
+    }
+
     // ---- Medley (US5) ----
     fun onSongLongPressed(song: SongEntry) {
         if (!song.canMedley) {
@@ -210,7 +252,24 @@ class SongListViewModel @Inject constructor(
             }
             return
         }
-        _uiState.update { it.copy(medleyPlaylist = it.medleyPlaylist + song) }
+
+        val alreadyInPlaylist = _uiState.value.medleyPlaylist.any { it.songId == song.songId }
+        if (alreadyInPlaylist) {
+            if (duplicateAttemptedTileId == song.songId) {
+                _uiState.update { it.copy(duplicateMedleyFeedback = true) }
+            } else {
+                duplicateAttemptedTileId = song.songId
+            }
+            return
+        }
+
+        duplicateAttemptedTileId = null
+        _uiState.update {
+            it.copy(
+                medleyPlaylist = it.medleyPlaylist + song,
+                duplicateMedleyFeedback = false,
+            )
+        }
     }
 
     fun onPlaylistRowLongPressed(index: Int) {
@@ -281,11 +340,40 @@ class SongListViewModel @Inject constructor(
         onSongSelected(song)
     }
 
+    fun onRandomMedley() {
+        val eligible = _uiState.value.filteredSongs.filter { it.canMedley }
+        if (eligible.size < 2) return
+        val selected = eligible.shuffled().take(5)
+        val phones = session.connectedClientIds.mapNotNull { clientId ->
+            session.displayNames[clientId]?.let { PhoneOption(clientId, it) }
+        }.sortedBy { it.displayName }
+        _uiState.update { state ->
+            state.copy(
+                medleyPlaylist = selected,
+                selectPlayersDialog = SelectPlayersDialogState(
+                    mode = SelectPlayersMode.Medley(selected.size),
+                    song = null,
+                    availablePhones = phones,
+                )
+            )
+        }
+    }
+
     // ---- Preview (US4) ----
     fun onScreenVisible(visible: Boolean) {
-        if (!visible) {
-            previewController.stopPreview()
+        if (visible) {
+            duplicateAttemptedTileId = null
+            focusedSongIdFlow.value = null
+            _uiState.update {
+                it.copy(
+                    focusedSong = null,
+                    previewingSongId = null,
+                    duplicateMedleyFeedback = false,
+                )
+            }
+            return
         }
+        previewController.stopPreview()
     }
 
     override fun onCleared() {

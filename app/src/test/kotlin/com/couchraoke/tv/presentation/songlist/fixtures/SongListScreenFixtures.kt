@@ -1,8 +1,6 @@
 package com.couchraoke.tv.presentation.songlist.fixtures
 
 import com.couchraoke.tv.domain.library.SongEntry
-import com.couchraoke.tv.domain.parser.MedleySource
-import com.couchraoke.tv.domain.session.SessionState
 import com.couchraoke.tv.presentation.songlist.Difficulty
 import com.couchraoke.tv.presentation.songlist.DuetPart
 import com.couchraoke.tv.presentation.songlist.ErrorModalState
@@ -30,9 +28,9 @@ object SongListScreenFixtures {
 
     fun filteredHitState() = populatedState().copy(
         searchQuery = "rock",
-        filteredSongs = sampleSongs().filter { 
-            it.title?.contains("rock", ignoreCase = true) == true || 
-            it.artist?.contains("rock", ignoreCase = true) == true 
+        filteredSongs = sampleSongs().filter {
+            it.title?.contains("rock", ignoreCase = true) == true ||
+                it.artist?.contains("rock", ignoreCase = true) == true
         }
     )
 
@@ -118,6 +116,19 @@ object SongListScreenFixtures {
         isReorderingMedleyIndex = 1
     )
 
+    fun pairingOverlayState() = populatedState().copy(
+        isPairingOverlayOpen = true
+    )
+
+    fun previewPaneFocusedSongState(): SongListUiState {
+        val song = sampleSongs().first()
+        return populatedState().copy(
+            focusedSong = song,
+            previewingSongId = song.songId,
+        )
+    }
+
+    @Suppress("LongMethod") // fixture data: many songs needed for representative test states
     private fun sampleSongs(): List<SongEntry> = listOf(
         SongEntry(
             songId = "1",

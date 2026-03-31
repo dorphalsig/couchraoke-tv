@@ -33,6 +33,7 @@ fun MedleyPlaylist(
     onReorderCancel: () -> Unit,
     onPlayMedley: () -> Unit,
     modifier: Modifier = Modifier,
+    showDuplicateFeedback: Boolean = false,
 ) {
     Column(modifier = modifier) {
         Text(
@@ -90,6 +91,15 @@ fun MedleyPlaylist(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        if (showDuplicateFeedback) {
+            Text(
+                text = "Already in medley",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
 
         Button(
             onClick = onPlayMedley,

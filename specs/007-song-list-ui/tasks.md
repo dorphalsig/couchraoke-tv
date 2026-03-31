@@ -7,6 +7,8 @@
 
 **Organization**: Phases 1–2 are blocking setup. Phases 3–8 map to User Stories US1–US6 in priority order. Phase 9 is polish.
 
+**Update note (2026-03-31)**: Existing tasks were preserved. Only tasks affected by the revision-2 spec/plan deltas were reset or rewritten: T014, T016, T018, T020–T025, T026–T027, T029–T037, and T040–T046.
+
 ## Format: `[ID] [P?] [Story?] Description`
 
 - **[P]**: Can run in parallel (different files, no shared state)
@@ -18,8 +20,8 @@
 
 **Purpose**: Add Compose for TV, Hilt, KSP, and ViewModel to the project. These are one-time additions required for all future UI features. No user story work can begin until the project builds with Compose enabled.
 
-- [x] T001 Add Compose BOM (`2025.05.01`), `tv-material` 1.0.0, `tv-foundation` 1.0.0, Hilt 2.56.1, `hilt-navigation-compose` 1.2.0, KSP `2.3.10-1.0.31` versions and library aliases to `gradle/libs.versions.toml` (see research.md §R6/R7 for full entries)
-- [x] T002 Add `kotlin.compose`, `hilt`, and `ksp` plugin aliases to `gradle/libs.versions.toml` [plugins] section; apply them in root `build.gradle.kts` (`apply false`) and in `app/build.gradle.kts` (applied); add all Compose/TV/Hilt/ViewModel `implementation` and `ksp` dependencies to `app/build.gradle.kts`; run `./gradlew assembleDebug` and confirm BUILD SUCCESSFUL
+- [x] T001 Add Compose BOM (`2025.05.01`), `tv-material` 1.0.0, `tv-foundation` 1.0.0, Hilt 2.56.1, `hilt-navigation-compose` 1.2.0, KSP `2.3.10-1.0.31`, Roborazzi 1.7.0, and Robolectric 4.13 versions plus library/plugin aliases to `gradle/libs.versions.toml` (see research.md §R6/R7 and plan.md Roborazzi section for full entries)
+- [x] T002 Add `kotlin.compose`, `hilt`, `ksp`, and `roborazzi` plugin aliases to `gradle/libs.versions.toml` [plugins] section; apply them in root `build.gradle.kts` (`apply false`) and in `app/build.gradle.kts`; add Compose/TV/Hilt/ViewModel `implementation`, Hilt `ksp`, and Roborazzi/Robolectric `testImplementation` dependencies to `app/build.gradle.kts`; configure Roborazzi output dir and create `app/src/test/resources/robolectric.properties`; run `./gradlew app:testDebugUnitTest` and confirm BUILD SUCCESSFUL
 - [x] T003 [P] Create `app/src/main/kotlin/com/couchraoke/tv/CouchraokeApp.kt` — annotate with `@HiltAndroidApp`, extend `Application`; update `app/src/main/AndroidManifest.xml` to reference `CouchraokeApp` as `android:name`
 - [x] T004 Create `app/src/main/kotlin/com/couchraoke/tv/MainActivity.kt` — annotate with `@AndroidEntryPoint`; call `setContent { }` with a stub `Text("Song List coming soon")`; verify `./gradlew assembleDebug` still passes
 
@@ -52,9 +54,9 @@
 
 ## Phase 3: User Story 1 — Browse Song Grid and Select a Song (Priority: P1) 🎯 MVP
 
-**Goal**: Display the full song library in a TV-navigable grid. Host can navigate to a song, press OK, and see the Select Players modal.
+**Goal**: Display the revised Song List layout: header, preview pane, and sorted song grid. Host can navigate to a song tile, press OK, and open the Select Players modal.
 
-**Independent Test**: Populate `SongLibrary` with 6 songs from 2 phones → Song List screen shows all 6 in Artist→Album→Title order with correct tile content → press OK on any tile → Select Players modal opens with correct subtitle.
+**Independent Test**: Populate `SongLibrary` with 6 songs from 2 phones → Song List shows the header (`Code`, Search, Join, Settings), a preview placeholder, and all 6 songs in Artist→Album→Title order → press OK on any tile → Select Players opens with the correct subtitle.
 
 ### Tests for US1 *(write first — must FAIL before T016)*
 
@@ -63,112 +65,112 @@
 ### Implementation for US1
 
 - [x] T013 [P] [US1] Create `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/SongTile.kt` — TV `Card` composable; `AsyncImage` for cover (Coil, placeholder from resources); `Text` for title + artist; tag chip row in lower-right (`D`/`R`/`V`/`I`/`M` — only show chips where flag=true); `combinedClickable(onClick=…, onLongClick=…)`
-- [x] T014 [P] [US1] Create `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/JoinWidget.kt` — `Box` with `focusable = false`; generate QR `Bitmap` via `BarcodeEncoder` (ZXing) from WebSocket URL in a `LaunchedEffect`; `Image` composable; join code `Text` below; size constraints: `fillMaxHeight(0.16f)` minimum, `widthIn(min = 280.dp)` at 1080p
+- [x] T014 [P] [US1] Create `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/PreviewPane.kt` — display-only 16:9 preview pane; placeholder state (app logo on dimmed background) before any tile has been focused; focused state shows centered cover with blurred/dimmed fill, title, artist, and tag chips; keep it non-focusable per FR-046
 - [x] T015 [P] [US1] Create `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/SelectPlayersModal.kt` — `AlertDialog`-style TV overlay; subtitle from `SelectPlayersMode`; Player 1 phone dropdown (required) + difficulty dropdown; Player 2 section: hidden entirely for Medley mode, disabled selector for non-duet, full for duet; "Swap Parts" button when both players assigned; solo duet-part radio for single player; blocking state matching §9.3 exactly: ⚠ "No phones connected." / "Connect phones in Settings to sing." / `[Open Settings > Connect Phones]` (Not Implemented stub) / `[Cancel]`; Start / Cancel buttons; wires all events to ViewModel
-- [x] T016 [US1] Create `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/SongListScreen.kt` — top-level Composable; two-column `Row` layout; left panel contains `JoinWidget` + medley placeholder (`Spacer` for now); right panel contains search placeholder + `SongGrid`; collect `SongListUiState` from `SongListViewModel`; render `SelectPlayersModal` when `selectPlayersDialog != null`; render error `AlertDialog` when `errorModal != null`; empty-state messages per FR-010/FR-011
+- [x] T016 [US1] Create `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/HeaderBar.kt` and restructure `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/SongListScreen.kt` — full-width header with `Code: XXXX-XXXX`, Search slot, `[ JOIN ]`, and `[ ⚙ SETTINGS ]`; a secondary action-row placeholder; and a two-column body with `PreviewPane` above a medley placeholder on the left and `SongGrid` on the right; keep `SelectPlayersModal`, error modal, and empty-state messages per FR-010/FR-011
 - [x] T017 [US1] Create `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/SongGrid.kt` — `TvLazyVerticalGrid(columns = TvGridCells.Fixed(if 4K then 4 else 3))`; items keyed by `songId`; each item is `SongTile`; expose `onSongClick` and `onSongLongClick` and `onSongFocused` callbacks; assign `FocusRequester` to first item (top-left) for initial focus; assign `Modifier.focusProperties { left = medleyFocusRequester }` on leftmost-column tiles
-- [x] T018 [US1] Implement DPAD focus routing in `SongListScreen.kt` — create `FocusRequester` instances for: firstTile, searchField, medleyPlaylist top-row, playMedleyButton; wire `focusProperties` on left-panel edge and right-panel edge composables per spec navigation map (Auto Medley button is out of scope; Play Medley button is the bottom-most focusable in the left panel — DPAD Down from Play Medley = no action); `LaunchedEffect(Unit)` requests focus on firstTile (or searchField if `filteredSongs.isEmpty()`)
+- [x] T018 [US1] Update DPAD focus routing in `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/SongListScreen.kt` — add `FocusRequester`s for Search, Join, Settings, the random-action row, first tile, first medley row, and Play Medley; implement the FR-009 map including left-panel entry priority and initial focus on the first tile or Search when the grid is empty
 - [x] T019 [US1] Implement song selection state in `SongListViewModel` — `onSongSelected(song)`: builds `SelectPlayersDialogState` with connected phones from `Session`; `onSelectPlayersStart()`: validates audioUrl, emits `PlayerAssignment` or sets `errorModal`; `onSelectPlayersCancel()`: clears dialog; `onErrorModalDismissed()`: clears error; run `./gradlew test` to confirm T012 passes
 
-**Checkpoint**: Song List screen renders, grid shows all songs, OK on tile opens Select Players. `./gradlew test` green.
+**Checkpoint**: Song List screen renders in the revised layout, the grid shows all songs, and OK on a tile opens Select Players. `./gradlew test` green.
 
 ---
 
 ## Phase 4: User Story 2 — Search and Filter Songs (Priority: P1)
 
-**Goal**: Host can type in the Search field to filter the grid instantly; Back clears filter.
+**Goal**: Host can type in the header Search field to filter the grid instantly, and Back follows the 4-step Song List cascade.
 
-**Independent Test**: Load 20 songs, type artist name → only matching songs visible; press Back → all songs restored; no filter + Back → app exits.
+**Independent Test**: Load 20 songs, type an artist name in header Search → only matching songs are visible; press Back from the grid → focus returns to Search; press Back again with an active filter → all songs are restored; press Back again with no active filter → app exits.
 
 ### Tests for US2 *(write first — must FAIL before T022)*
 
-- [x] T020 [P] [US2] Extend `SongFilterTest.kt` with edge-case tests: `given query matches title only, when filtered, then song included`; `given query matches album only, when filtered, then song included`; `given searchQuery non-empty, when Back pressed (onBackPressed), then searchQuery cleared and filteredSongs = allSongs`; `given searchQuery empty, when Back pressed, then appExitEvent emitted`
+- [x] T020 [P] [US2] Extend `app/src/test/kotlin/com/couchraoke/tv/presentation/songlist/SongFilterTest.kt` and `app/src/test/kotlin/com/couchraoke/tv/presentation/songlist/SongListViewModelTest.kt` — cover title/album substring matches plus the `BackResult` cascade: overlay open → `ClosedModal`, grid/left-panel focus → `MovedToSearch`, header focus with active filter → `ClearedFilter`, header focus with empty filter → `ExitApp`
 
 ### Implementation for US2
 
-- [x] T021 [P] [US2] Create `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/SearchField.kt` — TV-styled `BasicTextField` (or `OutlinedTextField`); on OK/confirm key: trigger system `TextInputService` dialog (or `SoftwareKeyboardController.show()`); on text change: call `onSearchQueryChanged`; show clear indicator when query non-empty
-- [x] T022 [US2] Implement Back-key handling in `SongListScreen.kt` — intercept `BackHandler`: if `searchQuery.isNotEmpty()` call `onSearchQueryChanged("")`; else allow default back (app exit); pass `filteredSongs` (not `allSongs`) to `SongGrid`; run `./gradlew test` to confirm T020 passes
+- [x] T021 [P] [US2] Create or update `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/SearchField.kt` — TV-styled Search field for the header; OK opens the system text input dialog; confirming text returns focus to the field and applies the filter immediately; expose a clear affordance when the query is non-empty
+- [x] T022 [US2] Implement header-search wiring and the Back cascade in `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/SongListUiState.kt`, `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/SongListViewModel.kt`, `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/HeaderBar.kt`, and `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/SongListScreen.kt` — move focus to Search from the grid/left panel, clear an active filter from the header/top controls, and exit only when no filter is active and focus is already in the top controls
 
-**Checkpoint**: Search filters the grid live; Back clears filter. `./gradlew test` green.
+**Checkpoint**: Search filters the grid live from the header, and Back follows the full overlay → search → clear-filter → exit cascade. `./gradlew test` green.
 
 ---
 
-## Phase 5: User Story 3 — Join Widget Always Visible (Priority: P1)
+## Phase 5: User Story 3 — Join Button and Pairing Overlay (Priority: P1)
 
-**Goal**: QR code and join code are displayed at all times in the left panel; non-focusable; correctly sized; QR encodes full WebSocket URL with session token.
+**Goal**: The header always shows the text join code, and a focusable `[ JOIN ]` button opens a pairing overlay with the QR code and join code.
 
-**Independent Test**: Render `SongListScreen` with a live session → left panel shows QR image and join code text → neither element receives TV focus → QR bitmap encodes `ws://<ip>:<port>/?token=<token>`.
+**Independent Test**: Render `SongListScreen` with a live session → header shows `Code: XXXX-XXXX` → press Join → pairing overlay opens with QR image and join code text → press Back → overlay closes and focus returns to Song List.
 
 ### Tests for US3 *(write first — must FAIL before T025)*
 
-- [x] T023 [P] [US3] Add test to `SongListViewModelTest.kt`: `given Session with token "ABCD1234", when UiState observed, then joinToken = SessionToken.display("ABCD1234")`; `given Session emits RosterChanged, when observed, then joinToken unchanged`
+- [x] T023 [P] [US3] Extend `app/src/test/kotlin/com/couchraoke/tv/presentation/songlist/SongListViewModelTest.kt` — verify `joinToken = SessionToken.display(session.token)`, `onJoinPressed()` / `onPairingOverlayDismissed()` toggle `isPairingOverlayOpen`, and `onBackPressed()` closes the pairing overlay before the rest of the cascade runs
 
 ### Implementation for US3
 
-- [x] T024 [US3] Implement `joinToken` population in `SongListViewModel` — on init, set `joinToken = SessionToken.display(session.token)`; ensure it updates if session re-creates (observe `RosterChanged` or `SessionState` change); run `./gradlew test` to confirm T023 passes
-- [x] T025 [US3] Implement `JoinWidget.kt` fully — wire `joinToken` from `SongListUiState`; QR payload = `ws://<tvIp>:<port>/?token=<rawToken>` (TV IP sourced from `WebSocketServer` or a DI-provided `TvNetworkInfo`); enforce size constraints (at least `(screenHeight * 0.16f).dp` square, minimum `280.dp`); add join code `Text` with font size `(screenHeight * 0.035f).dp` minimum; integrate into left panel of `SongListScreen.kt`
+- [x] T024 [US3] Implement join-code and overlay state in `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/SongListUiState.kt` and `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/SongListViewModel.kt` — populate the header join code from `SessionToken`, keep it stable across roster updates, and consume `IJoinEndpointProvider` as the read-only source of the canonical join URL for QR payload generation
+- [x] T025 [US3] Create `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/PairingOverlay.kt` and wire it from `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/HeaderBar.kt` / `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/SongListScreen.kt` — `[ JOIN ]` opens a modal pairing overlay with a centered high-contrast QR, minimum `320.dp` square sizing, quiet zone, and join code text ≥ `24.sp`; Back or Cancel dismisses and restores focus to Song List
 
-**Checkpoint**: QR and join code always visible; QR is non-focusable; correct payload. `./gradlew test` green.
+**Checkpoint**: The header join code is always visible, the Join button opens the pairing overlay, and the QR payload is correct. `./gradlew test` green.
 
 ---
 
 ## Phase 6: User Story 4 — Song Preview Audio While Browsing (Priority: P2)
 
-**Goal**: When a tile holds focus for 500 ms and Preview Volume > 0, audio starts at `previewStartSec`. Stops on any focus change or modal open.
+**Goal**: A focused song updates the visual preview pane immediately and starts audio after 500 ms; leaving the grid stops audio but keeps the visual preview sticky.
 
-**Independent Test**: Focus a tile for 600 ms → ExoPlayer starts at `previewStartSec`; move focus → ExoPlayer stops; focus tile with `audioUrl=null` → no audio, no error; `previewStartSec=0` → seek to position 0.
+**Independent Test**: Focus a tile for 600 ms → the preview pane shows that song and ExoPlayer starts at `previewStartSec`; move focus out of the grid → ExoPlayer stops but the preview pane still shows the last focused song; re-enter the screen → preview pane resets to the placeholder.
 
 ### Tests for US4 *(write first — must FAIL before T028)*
 
-- [x] T026 [P] [US4] Write `app/src/test/kotlin/com/couchraoke/tv/presentation/songlist/SongPreviewControllerTest.kt` — unit tests: `given song with audioUrl=null, when startPreview, then ExoPlayer.setMediaItem never called`; `given song with previewStartSec=0.0, when startPreview, then ExoPlayer seeks to 0`; `given song with previewStartSec=45.5, when startPreview, then ExoPlayer seeks to 45500ms`; `given preview playing, when stopPreview called, then ExoPlayer.stop called`
-- [x] T027 [P] [US4] Add preview debounce tests to `SongListViewModelTest.kt`: `given song focused, when 500ms advance with TestCoroutineScheduler, then previewController.startPreview called`; `given song focused then different song focused before 500ms, when scheduler advanced, then only second song preview starts`; `given onScreenVisible(false), when called, then stopPreview called`
+- [x] T026 [P] [US4] Update `app/src/test/kotlin/com/couchraoke/tv/presentation/songlist/SongPreviewControllerTest.kt` — cover silent suppression for `audioUrl=null`, seek-to-0 for `previewStartSec=0.0`, seek to `previewStartSec`, and `stopPreview()` stopping the player without surfacing UI errors
+- [x] T027 [P] [US4] Extend `app/src/test/kotlin/com/couchraoke/tv/presentation/songlist/SongListViewModelTest.kt` — `onSongFocused(songId)` updates `focusedSong` immediately, preview starts only after the 500 ms debounce, leaving the grid stops audio without clearing `focusedSong`, and `onScreenVisible(true)` resets `focusedSong` on screen re-entry
 
 ### Implementation for US4
 
 - [x] T028 [US4] Implement `SongPreviewController.kt` fully (from T011 stub) — `startPreview`: guards `audioUrl == null` (return silently); calls `player.setMediaItem(MediaItem.fromUri(audioUrl))`; `player.seekTo((previewStartSec * 1000).toLong())`; `player.prepare()`; `player.play()`; `stopPreview`: `player.stop()`; `release`: `player.release()`; run `./gradlew test` to confirm T026 passes
-- [x] T029 [US4] Implement preview wiring in `SongListViewModel` — `focusedSongIdFlow.debounce(500).collect { id -> id?.let { startPreviewForSong(it) } ?: previewController.stopPreview() }`; `onScreenVisible(false)` → `previewController.stopPreview()`; `onSongSelected` / `onPlayMedley` → `previewController.stopPreview()`; run `./gradlew test` to confirm T027 passes
-- [x] T030 [US4] Wire `onSongFocused` in `SongGrid.kt` — track focused tile via `onFocusChanged` modifier; call `onSongFocused(song.songId)` when focused, `onSongFocused(null)` when unfocused; propagate from `SongListScreen.kt` to ViewModel
+- [x] T029 [US4] Update preview wiring in `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/SongListUiState.kt` and `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/SongListViewModel.kt` — maintain sticky `focusedSong`, debounce `previewingSongId`, stop preview on grid exit/modal open/pairing overlay open/screen hide, and reset `focusedSong` only on screen re-entry
+- [x] T030 [US4] Update `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/SongGrid.kt`, `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/PreviewPane.kt`, and `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/SongListScreen.kt` — tile focus drives both preview-pane content and audio-preview events; leaving the grid preserves the last `focusedSong` visually while notifying the ViewModel that non-grid focus is active
 
-**Checkpoint**: Preview plays after 500 ms focus hold; stops on focus leave/modal. `./gradlew test` green.
+**Checkpoint**: The preview pane updates immediately, audio starts after the 500 ms hold, and audio stops on focus leave/modal while the visual preview stays sticky. `./gradlew test` green.
 
 ---
 
 ## Phase 7: User Story 5 — Build and Play a Medley (Priority: P2)
 
-**Goal**: Long-press adds songs to a transient playlist; Play Medley opens Select Players; Auto Medley fills with 5 random eligible songs; Reorder and delete in playlist.
+**Goal**: Long-press builds a duplicate-free transient playlist; host can reorder or delete entries; Play Medley opens Select Players.
 
-**Independent Test**: Long-press 3 `canMedley=true` songs → playlist shows all 3 → press Play Medley → Select Players opens with "Medley — 3 songs" subtitle and no Player 2 section.
+**Independent Test**: Long-press 3 `canMedley=true` songs → playlist shows all 3 → long-press the same focused tile again → first repeat is ignored, repeated presses on that same focused tile show feedback → press Play Medley → Select Players opens with `Medley — 3 songs` and no Player 2 section.
 
 ### Tests for US5 *(write first — must FAIL before T033)*
 
-- [x] T031 [P] [US5] Write `app/src/test/kotlin/com/couchraoke/tv/presentation/songlist/MedleyPlaylistTest.kt` — unit tests on ViewModel: `given canMedley=true song, when onSongLongPressed, then medleyPlaylist contains song`; `given canMedley=false song, when onSongLongPressed, then errorModal set with exact blocking text`; `given playlist has 3 songs, when onPlaylistRowLongPressed(1), then playlist has 2 songs`; `given reorder started at index 2, when onReorderConfirm(2,0), then song moved to top`; `given reorder started, when onReorderCancel, then playlist unchanged`; `given playlist non-empty, when clearMedleyPlaylist called, then playlist empty`
+- [x] T031 [P] [US5] Extend `app/src/test/kotlin/com/couchraoke/tv/presentation/songlist/MedleyPlaylistTest.kt` — cover unique append, duplicate suppression on the first repeated long-press, `duplicateMedleyFeedback=true` on repeated long-presses of the same focused tile, feedback reset on focus change, reorder cancel restoring the original order, and playlist clearing on non-modal navigation away
 
 ### Implementation for US5
 
-- [x] T032 [P] [US5] Implement medley logic in `SongListViewModel` — `onSongLongPressed`: check `canMedley` → append or set error modal; `onPlaylistRowLongPressed(index)`: remove at index; `onPlaylistRowSelected(index)`: set `isReorderingMedleyIndex`; `onReorderConfirm/Cancel`; `onPlayMedley`: build `SelectPlayersDialogState(mode=Medley(n))`; `clearMedleyPlaylist()`; run `./gradlew test` to confirm T031 passes
-- [x] T033 [P] [US5] Create `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/MedleyPlaylist.kt` — `LazyColumn` with fixed-height constraint (`min(7 * rowHeight, screenHeight * 0.25f)`, minimum 3 rows always visible); each row shows `"<Artist>  <Title>"`; OK = `onRowSelected`, long-press = `onRowLongPress`; Reorder mode visual (highlight + Up/Down DPAD only, Left/Right do nothing); `Play Medley` button below list (Auto Medley is out of scope for this feature)
-- [x] T034 [US5] Integrate `MedleyPlaylist.kt` into `SongListScreen.kt` left panel below `JoinWidget`; wire all medley events to ViewModel; connect Play Medley → Select Players (already handled by T019); wire DPAD routing from medley playlist top-row ↔ Play Medley button ↔ last playlist row per navigation map; wire `onNavigateAway` → `clearMedleyPlaylist()`
+- [x] T032 [P] [US5] Implement revised medley logic in `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/SongListUiState.kt` and `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/SongListViewModel.kt` — unique append only, per-focused-tile duplicate tracking + escalating feedback, reorder/delete, Play Medley dialog state, and clear-on-navigation/start-song/start-medley behavior per FR-041
+- [x] T033 [P] [US5] Update `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/MedleyPlaylist.kt` — fixed-height scrollable playlist, OK enters reorder mode, long-press deletes immediately, reorder visuals, and `Play Medley` disabled + non-focusable when the playlist is empty
+- [x] T034 [US5] Create `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/ContextualHintsBar.kt` and integrate `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/MedleyPlaylist.kt` into `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/SongListScreen.kt` — render grid / playlist / reorder hints per FR-044, place the medley list below `PreviewPane`, and wire `onFocusZoneChanged` / `Play Medley` events
 
-**Checkpoint**: Medley playlist builds correctly; Play Medley opens Select Players with correct mode. `./gradlew test` green.
+**Checkpoint**: The medley playlist stays duplicate-free, reorder/delete work, and Play Medley opens Select Players with the correct mode. `./gradlew test` green.
 
 ---
 
-## Phase 8: User Story 6 — Random Song Selection (Priority: P3)
+## Phase 8: User Story 6 — Pick a Random Song, Duet, or Medley (Priority: P3)
 
-**Goal**: "Sing Random Song" and "Sing Random Duet" buttons select from the currently visible filtered set and open Select Players. Buttons disabled when set is empty.
+**Goal**: Random actions choose from the currently visible filtered set; Random Medley selects up to 5 eligible medley songs and opens Select Players.
 
-**Independent Test**: Load 10 songs (3 duets), type a filter leaving 4 songs (1 duet) → Sing Random Song selects from the 4; Sing Random Duet selects the 1 duet; clear filter, empty result set → both buttons disabled.
+**Independent Test**: Load 10 songs (3 duets, 6 medley-eligible), type a filter leaving 4 songs (1 duet, 3 medley-eligible) → Sing Random Song selects from the 4; Sing Random Duet selects the 1 duet; Sing Random Medley selects up to 3 eligible songs; clear to an empty filtered result → all three random buttons are disabled, greyed out, and non-focusable.
 
 ### Tests for US6 *(write first — must FAIL before T036)*
 
-- [x] T035 [P] [US6] Add random-action tests to `SongListViewModelTest.kt`: `given filteredSongs has 5 songs, when onRandomSong, then selectPlayersDialog.song is one of the 5`; `given filteredSongs has 3 duets and 2 non-duets, when onRandomDuet, then dialog.song.isDuet=true`; `given filteredSongs has no duets, when onRandomDuet, then errorModal set`; `given filteredSongs empty, when onRandomSong or onRandomDuet, then neither dialog nor errorModal set (buttons should be disabled, event should not reach ViewModel)`
+- [x] T035 [P] [US6] Extend `app/src/test/kotlin/com/couchraoke/tv/presentation/songlist/SongListViewModelTest.kt` — `onRandomSong` selects from visible valid songs, `onRandomDuet` selects from visible duet songs, `onRandomMedley` selects `min(5, eligible)` medley songs and replaces the playlist, and impossible presses surface the blocking single-OK modal instead of changing selection
 
 ### Implementation for US6
 
-- [x] T036 [US6] Implement `onRandomSong` / `onRandomDuet` in `SongListViewModel` — `onRandomSong`: `filteredSongs.filter { it.isValid }.randomOrNull() ?: → errorModal`; `onRandomDuet`: `filteredSongs.filter { it.isDuet }.randomOrNull() ?: → errorModal`; both open `selectPlayersDialog` with `SelectPlayersMode.SingleSong` on success; run `./gradlew test` to confirm T035 passes
-- [x] T037 [US6] Create / complete `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/ActionButtons.kt` — "Sing Random Song" and "Sing Random Duet" buttons; `enabled = filteredSongs.isNotEmpty()` (random song) and `filteredSongs.any { it.isDuet }` (random duet); wire `onClick` events to ViewModel; integrate into right panel of `SongListScreen.kt` below search field above grid
+- [x] T036 [US6] Implement `onRandomSong()`, `onRandomDuet()`, and `onRandomMedley()` in `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/SongListViewModel.kt` — use an injectable `Random` for deterministic tests; Random Medley requires at least 2 eligible songs, replaces the current medley playlist, and opens `SelectPlayersDialogState(mode = Medley(n))`
+- [x] T037 [US6] Update `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/components/ActionButtons.kt` and `app/src/main/kotlin/com/couchraoke/tv/presentation/songlist/SongListScreen.kt` — render "Sing Random Song", "Sing Random Duet", and "Sing Random Medley"; keep ineligible actions greyed out, disabled, and non-focusable; place the row beneath the header and wire all three actions to the ViewModel
 
-**Checkpoint**: Random actions work; buttons correctly disabled. `./gradlew test` green.
+**Checkpoint**: Random song, duet, and medley actions work from the filtered set, and disabled actions are visibly unavailable. `./gradlew test` green.
 
 ---
 
@@ -176,10 +178,15 @@
 
 - [x] T038 [P] Add JaCoCo exclusion patterns in `app/build.gradle.kts` for Compose-generated classes (`**/*ComposableSingletons*`, `**/*_Factory*`, `**/*_MembersInjector*`, `**/Hilt_*`) to prevent generated code from lowering coverage below thresholds
 - [x] T039 [P] Add `@Suppress("LongMethod")` with rationale comment on Composable functions that genuinely exceed Detekt's 40-line threshold (e.g., `SongListScreen`, `SelectPlayersModal`); do NOT suppress logic functions — keep them short
-- [x] T040 [P] Write mandated spec acceptance tests per §3.4: add `T3.4.1`–`T3.4.6` as `@Test` methods in `SongListViewModelTest.kt` matching IDs and descriptions from the original spec (empty states, canMedley=false modal text, Play Medley disabled when empty, Back with/without filter)
-- [x] T041 Run `./gradlew ciUnitTests` — confirm BUILD SUCCESSFUL; report test count and coverage; fix any failing tests or coverage gaps before marking done
-- [x] T042 Run `./gradlew detekt :app:lintDebug` — confirm both pass clean; fix any new rule violations introduced by this feature
-- [ ] T043 After feature is merged to `master`, rename branch: `git branch -m 007-song-list-ui "[✓] 007-song-list-ui"`
+- [x] T040 [P] Update `app/src/test/kotlin/com/couchraoke/tv/presentation/songlist/fixtures/SongListScreenFixtures.kt` — deterministic VR-001 fixtures with fixed `SessionToken = "TEST-1234"`, fixed `IJoinEndpointProvider` join URL, local cover-art placeholders, pairing-overlay state, preview-pane focused-song state, and Random Medley enabled/disabled scenarios
+- [x] T041 [P] Update `app/src/test/kotlin/com/couchraoke/tv/presentation/songlist/SongListScreenStateTest.kt` — 14 Roborazzi screen-state tests for VR-001: empty, no-songs, populated, filtered-hit, filtered-empty, select-players non-duet, select-players duet-both, select-players duet-solo, no-phones blocking modal, error modal, medley visible, medley reorder, pairing overlay open, and preview-pane focused-song state
+- [x] T042 [P] Create `app/src/test/kotlin/com/couchraoke/tv/presentation/songlist/SongListNavigationTest.kt` — Compose/Robolectric tests for initial focus, the FR-009 DPAD routing across Search / Join / Settings / action row / grid / left panel, and the FR-015 Back cascade
+- [x] T043 [P] Create `app/src/test/kotlin/com/couchraoke/tv/presentation/songlist/SongListInteractionTest.kt` — Compose/Robolectric tests for Join overlay open/dismiss, Random Medley enablement semantics, duplicate-medley feedback visibility, and contextual hints-bar transitions
+- [x] T044 Record updated Roborazzi baselines in `app/src/test/snapshots/images/com.couchraoke.tv.presentation.songlist/` by running `./gradlew recordRoborazziDebug`; verify 14 baseline PNGs are written for the 14 VR-001 states
+- [x] T045 Run the focused Song List suite with `./gradlew testDebugUnitTest --tests "com.couchraoke.tv.presentation.songlist.*"`; fix any failing unit, Compose, or Roborazzi tests before the full verification pass
+- [x] T046 Run `./gradlew verifyRoborazziDebug testDebugUnitTest` — confirm updated unit tests, Compose/Robolectric tests, and Roborazzi verification all pass before marking the revision complete
+- [x] T047 Run `./gradlew detekt :app:lintDebug` — confirm both pass clean; fix any new rule violations introduced by this feature
+- [ ] T048 After feature is merged to `master`, rename branch: `git branch -m 007-song-list-ui "[✓] 007-song-list-ui"`
 
 ---
 
@@ -203,7 +210,7 @@
 |---|---|---|
 | US1 (grid + select) | US4 (needs SongGrid for focus events), US5/US6 (need screen skeleton) | Phase 2 only |
 | US2 (search) | None | Phase 2 only |
-| US3 (join widget) | None | Phase 2 only |
+| US3 (join button + pairing overlay) | None | Phase 2 only |
 | US4 (preview) | None | Phase 2 only (SongPreviewController stub in T011) |
 | US5 (medley) | None | Phase 2 only (SongListScreen skeleton for integration) |
 | US6 (random) | None | Phase 2 only |
@@ -228,7 +235,7 @@ T005 (ViewModel tests) and T006 (SongFilterTest)   ← parallel test authoring
 T007 (UiState types), T008 (PlayerAssignment)       ← parallel type creation
 
 # Phase 3 — after Phase 2:
-T012 (SelectPlayersGatingTest), T013 (SongTile), T014 (JoinWidget) ← parallel
+T012 (SelectPlayersGatingTest), T013 (SongTile), T014 (PreviewPane) ← parallel
 
 # Phase 6 — after Phase 2:
 T026 (SongPreviewControllerTest), T027 (preview debounce tests) ← parallel
@@ -247,15 +254,15 @@ T031 (MedleyPlaylistTest), T032 (medley ViewModel logic), T033 (MedleyPlaylist c
 2. Complete Phase 2: Foundational ← critical gate
 3. Complete Phase 3: US1 (song grid + select players) → **first runnable screen**
 4. Complete Phase 4: US2 (search)
-5. Complete Phase 5: US3 (join widget fully wired)
-6. **STOP AND VALIDATE**: T041 + T042 pass; screen usable end-to-end
+5. Complete Phase 5: US3 (join button + pairing overlay fully wired)
+6. **STOP AND VALIDATE**: T046 + T047 pass; screen usable end-to-end with Roborazzi baselines recorded and verified
 
 ### Full Delivery
 
 7. Phase 6: US4 (preview)
 8. Phase 7: US5 (medley)
 9. Phase 8: US6 (random)
-10. Phase 9: Polish → T041/T042 final pass → T043 branch closure
+10. Phase 9: Polish → T045/T046/T047 final pass → T048 branch closure
 
 ---
 

@@ -5,6 +5,8 @@ complexity:
     threshold: 10
 
 style:
+  MaxLineLength:
+    excludes: ['**/test/**', '**/androidTest/**']
   MagicNumber:
     active: true
     ignoreNumbers: ['-1', '0', '1', '2']

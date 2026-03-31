@@ -1,11 +1,18 @@
 package com.couchraoke.tv.presentation.songlist
 
 import com.couchraoke.tv.domain.library.SongEntry
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SongFilterTest {
+
+    private val testDispatcher = StandardTestDispatcher()
 
     private fun testSong(songId: String, title: String = "T", artist: String = "A", album: String? = null) = SongEntry(
         songId = songId, phoneClientId = "p1", relativeTxtPath = "t.txt", modifiedTimeMs = 0L,
@@ -151,5 +158,50 @@ class SongFilterTest {
         assertTrue(ids.contains("2"))
         assertTrue(ids.contains("3"))
         assertTrue(ids.contains("4"))
+    }
+
+    @Test
+    fun `given overlay open, when onBackPressed, then ClosedModal`() = runTest(testDispatcher) {
+        val vm = SongListViewModel(FakeSongLibrary(), FakeSession(), testDispatcher)
+        vm.onSongSelected(createSong(songId = "s1", artist = "A", title = "T"))
+
+        val result = vm.onBackPressed()
+
+        assertEquals(BackResult.ClosedModal, result)
+    }
+
+    @Test
+    fun `given focusZone Grid, when onBackPressed, then MovedToSearch`() = runTest(testDispatcher) {
+        val vm = SongListViewModel(FakeSongLibrary(), FakeSession(), testDispatcher)
+        vm.onFocusZoneChanged(FocusZone.Grid)
+        advanceUntilIdle()
+
+        val result = vm.onBackPressed()
+
+        assertEquals(BackResult.MovedToSearch, result)
+    }
+
+    @Test
+    fun `given focusZone Header and active filter, when onBackPressed, then ClearedFilter`() = runTest(testDispatcher) {
+        val vm = SongListViewModel(FakeSongLibrary(), FakeSession(), testDispatcher)
+        vm.onFocusZoneChanged(FocusZone.Header)
+        vm.onSearchQueryChanged("abc")
+        advanceUntilIdle()
+
+        val result = vm.onBackPressed()
+
+        assertEquals(BackResult.ClearedFilter, result)
+        assertEquals("", vm.uiState.value.searchQuery)
+    }
+
+    @Test
+    fun `given focusZone Header and no filter, when onBackPressed, then ExitApp`() = runTest(testDispatcher) {
+        val vm = SongListViewModel(FakeSongLibrary(), FakeSession(), testDispatcher)
+        vm.onFocusZoneChanged(FocusZone.Header)
+        advanceUntilIdle()
+
+        val result = vm.onBackPressed()
+
+        assertEquals(BackResult.ExitApp, result)
     }
 }

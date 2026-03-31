@@ -21,6 +21,8 @@ composeBom = "2025.05.01"
 tvCompose = "1.0.0"
 hilt = "2.59.1"
 hiltNavigationCompose = "1.2.0"
+roborazzi = "1.59.0"
+robolectric = "4.14"
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version = "1.10.1" }
@@ -67,6 +69,8 @@ androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
 androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime" }
+androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 # Compose for TV
 tv-material = { group = "androidx.tv", name = "tv-material", version.ref = "tvCompose" }
 # tv-foundation 1.0.0 was never published; lazy containers moved to compose-foundation in tv-material stable
@@ -77,6 +81,12 @@ hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref
 hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 
+# Roborazzi + Robolectric (screenshot tests — VR-001/VR-002)
+roborazzi-core    = { module = "io.github.takahirom.roborazzi:roborazzi",              version.ref = "roborazzi" }
+roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose",      version.ref = "roborazzi" }
+roborazzi-rule    = { module = "io.github.takahirom.roborazzi:roborazzi-junit-rule",   version.ref = "roborazzi" }
+robolectric       = { module = "org.robolectric:robolectric",                          version.ref = "robolectric" }
+
 [plugins]
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -86,3 +96,4 @@ jacoco = { id = "org.jacoco", version.ref = "jacoco" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 ksp = { id = "com.google.devtools.ksp", version = "2.3.6" }
+roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }

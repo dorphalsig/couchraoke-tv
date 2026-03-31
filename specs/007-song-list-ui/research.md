@@ -147,3 +147,125 @@ alias(libs.plugins.kotlin.compose) apply false
 alias(libs.plugins.hilt) apply false
 alias(libs.plugins.ksp) apply false
 ```
+
+---
+
+## Revision 2 Research (2026-03-31 — §3.4 wireframe update)
+
+The following research items address the new/changed requirements from the spec revision.
+
+---
+
+## R8 — Preview Pane: Blurred Background Cover Image
+
+**Decision**: Use `Modifier.blur()` (RenderEffect-based, API 31+) with a Coil `AsyncImage` for the blurred background fill. On API 28–30, degrade gracefully to a dimmed solid-color background (no blur).
+
+**Rationale**: `Modifier.blur()` is the native Compose API for Gaussian blur and works on all Android TV devices running API 31+ (which is the vast majority). The minSdk 28 fallback is a simple alpha-dimmed background. No third-party blur library is needed.
+
+**Alternatives considered**:
+- RenderScript blur: Deprecated since API 31; adds complexity.
+- Third-party blur library: Not in the approved stack.
+- Custom shader: Over-engineered for a static background fill.
+
+**Implementation pattern**:
+```kotlin
+Box(modifier = Modifier.aspectRatio(16f / 9f).clip(RoundedCornerShape(8.dp))) {
+    // Blurred background (full-bleed cover)
+    AsyncImage(
+        model = song.coverUrl,
+        contentScale = ContentScale.Crop,
+        modifier = Modifier.fillMaxSize()
+            .then(if (Build.VERSION.SDK_INT >= 31) Modifier.blur(24.dp) else Modifier)
+            .alpha(0.6f)
+    )
+    // Centered sharp cover (square, fitted)
+    AsyncImage(
+        model = song.coverUrl,
+        contentScale = ContentScale.Fit,
+        modifier = Modifier.align(Alignment.Center).fillMaxHeight(0.8f).aspectRatio(1f)
+    )
+    // Song info overlay below the pane (title, artist, tag chips)
+}
+```
+
+---
+
+## R9 — Join Button + Pairing Overlay (Replacing Always-Visible QR)
+
+**Decision**: The `[ JOIN ]` button is a standard TV-material `Button` composable in the header row. Pressing OK opens a Compose `Dialog` containing the QR code (ZXing) and join code text. The dialog dismisses on Back.
+
+**Rationale**: A `Dialog` is the correct overlay primitive — it blocks input to the underlying screen and dismisses on Back natively. The spec says the overlay does not affect the navigation stack (modal behavior), which `Dialog` satisfies.
+
+**Alternatives considered**:
+- Full-screen route push: Wrong — modals must not push onto the nav stack per spec FR-033.
+- `AlertDialog`: Too restrictive for custom QR layout; can't easily center a large bitmap with text below.
+
+**Implementation**:
+- Reuse existing ZXing QR generation logic from old `JoinWidget.kt`.
+- QR bitmap generated in ViewModel (deterministic for Roborazzi tests).
+- State: `SongListUiState.isPairingOverlayOpen: Boolean`.
+- ViewModel: `onJoinPressed()` sets `isPairingOverlayOpen = true`. `onPairingOverlayDismissed()` sets it to `false`.
+
+---
+
+## R10 — Random Medley Selection Algorithm
+
+**Decision**: Filter `filteredSongs` to `canMedley=true`, shuffle (with injectable `Random` for test determinism), take `min(5, size)`. Requires `size >= 2` to be enabled. The selected songs replace any existing medley playlist and Select Players opens immediately.
+
+**Rationale**: Simple and spec-compliant. Seeded `Random` makes the selection deterministic in tests.
+
+**Alternatives considered**:
+- Weighted random (less-recently-played): No playback history exists. Unnecessary complexity.
+- User confirmation before overwriting playlist: Spec doesn't require it.
+
+**Implementation**:
+- `SongListViewModel.onRandomMedley()` validates ≥ 2 eligible, selects, replaces medley playlist, opens Select Players.
+- Button enabled: `filteredSongs.count { it.canMedley } >= 2`.
+
+---
+
+## R11 — Preview Pane Sticky State
+
+**Decision**: `SongListUiState` gains `focusedSong: SongEntry?` updated on grid tile focus. When focus leaves the grid, `focusedSong` is NOT cleared (sticky). It resets to null only on screen re-entry.
+
+**Rationale**: Sticky behavior means the visual pane always shows something after first focus. Audio preview still stops on focus-leave (FR-027/FR-049). The ViewModel distinguishes visual state (sticky) from audio state (stop on leave).
+
+---
+
+## R12 — Duplicate Medley Prevention (Per-Tile Tracking)
+
+**Decision**: ViewModel tracks `lastDuplicateAttemptTileId: String?`. On long-press of a song already in the playlist: if `lastDuplicateAttemptTileId != song.songId` → silently ignore and set the ID; if already set → show brief feedback ("Already in medley"). Clear on focus change.
+
+**Rationale**: Matches the user's clarification: first attempt silent, repeated on same tile shows feedback. Per-tile tracking (not per-song-name) means re-focusing the same tile resets the counter.
+
+---
+
+## R13 — Back Key Cascade
+
+**Decision**: Implement as `SongListViewModel.onBackPressed(): BackResult` returning an enum. The composable intercepts Back via `onPreviewKeyEvent` and acts on the result.
+
+**Rationale**: Centralizing in ViewModel makes the 4-level cascade fully unit-testable without UI rendering.
+
+**Levels**: (1) Close modal → (2) Move focus to Search → (3) Clear filter → (4) Exit app.
+
+---
+
+## R14 — Contextual Hints Bar
+
+**Decision**: A `ContextualHintsBar` composable at screen bottom. Driven by `SongListUiState.currentHint: HintMode?` enum set by the ViewModel based on which element has focus.
+
+**Enum values**:
+- `SongGridFocused` → `OK = Sing   Long-Press OK = Add to Medley`
+- `MedleyPlaylistFocused` → `OK = Reorder   Long-Press OK = Delete`
+- `ReorderActive` → `Up/Down = Move   OK = Accept   Back = Cancel`
+- `null` → hints bar hidden
+
+---
+
+## R15 — Header Layout with Search Field
+
+**Decision**: The header row is a single `Row` composable spanning full width, containing (left-to-right): join code `Text`, `SearchField` (expanding weight), `Button("JOIN")`, `IconButton(gear)`. Below it, a secondary `Row` holds the three Random action buttons.
+
+**Rationale**: Matches the updated wireframe. The search field takes remaining horizontal space between the join code text and the action buttons.
+
+**DPAD focus**: Search left → Join button, Search right → Settings button. Wired via `focusProperties`.

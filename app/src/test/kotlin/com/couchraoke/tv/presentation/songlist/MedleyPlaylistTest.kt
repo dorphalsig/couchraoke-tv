@@ -1,10 +1,13 @@
 package com.couchraoke.tv.presentation.songlist
 
 import com.couchraoke.tv.domain.library.SongEntry
+import com.couchraoke.tv.domain.session.SessionEvent
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -112,6 +115,93 @@ class MedleyPlaylistTest {
             vm.clearMedleyPlaylist()
 
             assertTrue(vm.uiState.value.medleyPlaylist.isEmpty())
+        }
+
+    @Test
+    fun `given duplicate song long-pressed first time, when already in medley, then silently ignored`() =
+        runTest(testDispatcher) {
+            val song = testSong("s1", canMedley = true)
+            val vm = SongListViewModel(FakeSongLibrary(listOf(song)), FakeSession(), testDispatcher)
+
+            vm.onSongLongPressed(song)
+            vm.onSongLongPressed(song)
+
+            assertEquals(1, vm.uiState.value.medleyPlaylist.size)
+            assertFalse(vm.uiState.value.duplicateMedleyFeedback)
+        }
+
+    @Test
+    fun `given duplicate song long-pressed second time, when same tile repeated, then duplicate feedback shown`() =
+        runTest(testDispatcher) {
+            val song = testSong("s1", canMedley = true)
+            val vm = SongListViewModel(FakeSongLibrary(listOf(song)), FakeSession(), testDispatcher)
+
+            vm.onSongLongPressed(song)
+            vm.onSongLongPressed(song)
+            vm.onSongLongPressed(song)
+
+            assertTrue(vm.uiState.value.duplicateMedleyFeedback)
+            assertEquals(1, vm.uiState.value.medleyPlaylist.size)
+        }
+
+    @Test
+    fun `given duplicate feedback shown, when focus changes, then duplicate feedback resets`() =
+        runTest(testDispatcher) {
+            val s1 = testSong("s1", canMedley = true)
+            val s2 = testSong("s2", canMedley = true)
+            val vm = SongListViewModel(FakeSongLibrary(listOf(s1, s2)), FakeSession(), testDispatcher)
+
+            vm.onSongLongPressed(s1)
+            vm.onSongLongPressed(s1)
+            vm.onSongLongPressed(s1)
+            assertTrue(vm.uiState.value.duplicateMedleyFeedback)
+
+            vm.onSongFocused("s2")
+
+            assertFalse(vm.uiState.value.duplicateMedleyFeedback)
+        }
+
+    @Test
+    fun `given less than two eligible medley songs, when onRandomMedley, then playlist and dialog unchanged`() =
+        runTest(testDispatcher) {
+            val songs = listOf(
+                testSong("s1", canMedley = true),
+                testSong("s2", canMedley = false),
+            )
+            val session = FakeSession()
+            val vm = SongListViewModel(FakeSongLibrary(songs), session, testDispatcher)
+            session.emit(SessionEvent.PhoneConnected("p1", "Phone 1"))
+            advanceUntilIdle()
+
+            vm.onRandomMedley()
+
+            assertTrue(vm.uiState.value.medleyPlaylist.isEmpty())
+            assertNull(vm.uiState.value.selectPlayersDialog)
+        }
+
+    @Test
+    fun `given six eligible medley songs, when onRandomMedley, then selects five and opens dialog`() =
+        runTest(testDispatcher) {
+            val songs = listOf(
+                testSong("s1", canMedley = true),
+                testSong("s2", canMedley = true),
+                testSong("s3", canMedley = true),
+                testSong("s4", canMedley = true),
+                testSong("s5", canMedley = true),
+                testSong("s6", canMedley = true),
+            )
+            val session = FakeSession()
+            val vm = SongListViewModel(FakeSongLibrary(songs), session, testDispatcher)
+            session.emit(SessionEvent.PhoneConnected("p1", "Phone 1"))
+            advanceUntilIdle()
+
+            vm.onRandomMedley()
+
+            assertEquals(5, vm.uiState.value.medleyPlaylist.size)
+            assertNotNull(vm.uiState.value.selectPlayersDialog)
+            val dialog = vm.uiState.value.selectPlayersDialog
+            assertEquals(SelectPlayersMode.Medley(5), dialog?.mode)
+            assertNull(dialog?.song)
         }
 
     private fun testSong(songId: String, canMedley: Boolean = true, isDuet: Boolean = false) = SongEntry(

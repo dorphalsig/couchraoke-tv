@@ -70,18 +70,18 @@ class SongListViewModelTest {
         advanceUntilIdle()
         assertEquals("test", vm.uiState.value.searchQuery)
 
-        val consumed = vm.onBackPressed()
-        assertTrue(consumed)
+        val result = vm.onBackPressed()
+        assertEquals(BackResult.ClearedFilter, result)
         assertEquals("", vm.uiState.value.searchQuery)
     }
 
     @Test
-    fun `given searchQuery empty, when onBackPressed called, then returns false`() = runTest(testDispatcher) {
+    fun `given searchQuery empty, when onBackPressed called, then returns ExitApp`() = runTest(testDispatcher) {
         val library = FakeSongLibrary()
         val session = FakeSession()
         val vm = SongListViewModel(library, session, testDispatcher)
-        val consumed = vm.onBackPressed()
-        assertFalse(consumed)
+        val result = vm.onBackPressed()
+        assertEquals(BackResult.ExitApp, result)
     }
 
     @Test
@@ -141,6 +141,59 @@ class SongListViewModelTest {
 
         vm.onScreenVisible(false)
         assertEquals(1, controller.stopPreviewCalledCount)
+    }
+
+    @Test
+    fun `given join pressed, when onJoinPressed, then overlay opens`() = runTest(testDispatcher) {
+        val vm = SongListViewModel(FakeSongLibrary(), FakeSession(), testDispatcher)
+
+        vm.onJoinPressed()
+
+        assertTrue(vm.uiState.value.isPairingOverlayOpen)
+    }
+
+    @Test
+    fun `given overlay open, when onPairingOverlayDismissed, then overlay closes`() = runTest(testDispatcher) {
+        val vm = SongListViewModel(FakeSongLibrary(), FakeSession(), testDispatcher)
+        vm.onJoinPressed()
+
+        vm.onPairingOverlayDismissed()
+
+        assertFalse(vm.uiState.value.isPairingOverlayOpen)
+    }
+
+    @Test
+    fun `given pairing overlay open, when onBackPressed, then ClosedModal`() = runTest(testDispatcher) {
+        val vm = SongListViewModel(FakeSongLibrary(), FakeSession(), testDispatcher)
+        vm.onJoinPressed()
+
+        val result = vm.onBackPressed()
+
+        assertEquals(BackResult.ClosedModal, result)
+        assertFalse(vm.uiState.value.isPairingOverlayOpen)
+    }
+
+    @Test
+    fun `given song exists, when onSongFocused, then focusedSong set immediately`() = runTest(testDispatcher) {
+        val song = testSongEntry("s1", "p1")
+        val vm = SongListViewModel(FakeSongLibrary(listOf(song)), FakeSession(), testDispatcher)
+
+        vm.onSongFocused("s1")
+
+        assertEquals("s1", vm.uiState.value.focusedSong?.songId)
+    }
+
+    @Test
+    fun `given focused song, when onScreenVisible true, then focusedSong reset`() = runTest(testDispatcher) {
+        val song = testSongEntry("s1", "p1")
+        val vm = SongListViewModel(FakeSongLibrary(listOf(song)), FakeSession(), testDispatcher)
+        vm.onSongFocused("s1")
+        assertEquals("s1", vm.uiState.value.focusedSong?.songId)
+
+        vm.onScreenVisible(true)
+
+        assertNull(vm.uiState.value.focusedSong)
+        assertNull(vm.uiState.value.previewingSongId)
     }
 
     @Test
@@ -255,8 +308,8 @@ class SongListViewModelTest {
             val vm = SongListViewModel(library, session, testDispatcher)
             vm.onSearchQueryChanged("test")
             advanceUntilIdle()
-            val consumed = vm.onBackPressed()
-            assertTrue(consumed)
+            val result = vm.onBackPressed()
+            assertEquals(BackResult.ClearedFilter, result)
             assertEquals("", vm.uiState.value.searchQuery)
         }
 
@@ -266,8 +319,8 @@ class SongListViewModelTest {
             val library = FakeSongLibrary()
             val session = FakeSession()
             val vm = SongListViewModel(library, session, testDispatcher)
-            val consumed = vm.onBackPressed()
-            assertFalse(consumed)
+            val result = vm.onBackPressed()
+            assertEquals(BackResult.ExitApp, result)
         }
 
     private fun testSongEntry(songId: String, phoneClientId: String, isDuet: Boolean = false) =
