@@ -43,6 +43,9 @@
   JUnit4-only Android test tooling where Android tests are involved.
 - Confirm Roborazzi snapshot tests are planned for every screen state, every navigation path
   to the screen (from the preceding screen), and every modal open/dismiss interaction.
+- Confirm the plan treats wireframe match as an acceptance criterion alongside passing unit
+  tests, coverage, and linting. All four gates MUST be green before implementation is complete;
+  no separate task is needed — this is a completion requirement, not a step.
 - Confirm all inter-task contracts required by this feature are published in
   `specs/<feature>/contracts/` before any dependent tasks are generated. If a contract is
   missing, planning MUST stop until the contract is defined.

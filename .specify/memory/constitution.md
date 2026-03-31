@@ -1,21 +1,21 @@
 <!--
 Sync Impact Report
-- Version change: 2.1.0 -> 2.1.1
+- Version change: 2.1.2 -> 2.1.3
 - Modified principles:
-    V. Testing, Quality & Branch Hygiene — corrected Roborazzi CI placement: Roborazzi runs
-      on Robolectric (JVM) in the unit-tests-android job, not the instrumented job; no emulator
-      required. Validated against official Roborazzi documentation (context7).
+    V. Testing, Quality & Branch Hygiene — Visual Regression Testing (Roborazzi): corrected
+      wireframe-validation framing. Wireframe match is an acceptance criterion (alongside unit
+      tests passing, coverage, and linting), not a dedicated task. All four gates MUST be green
+      before an agent or implementer may declare work complete.
 - Added sections: none
 - Removed sections: none
 - Templates requiring updates:
-  ✅ reviewed .specify/templates/plan-template.md (Roborazzi CI placement already reflected
-     correctly in 007 plan; template itself has no hardcoded CI job names — no change required)
+  ✅ .specify/templates/plan-template.md — updated Roborazzi note to reflect acceptance-criteria
+     framing; removed "dedicated task" language
+  ✅ .specify/templates/tasks-template.md — same update
   ✅ reviewed .specify/templates/spec-template.md (no change required — technology-agnostic)
-  ✅ reviewed .specify/templates/tasks-template.md (no change required — no hardcoded CI job
-     references in the Roborazzi snapshot task examples)
   ✅ reviewed .specify/templates/constitution-template.md (source template only; no change)
   ✅ no .specify/templates/commands/ directory present; no updates required
-  ✅ reviewed CLAUDE.md (no Roborazzi CI references; no change required)
+  ✅ reviewed CLAUDE.md (no Roborazzi references; no change required)
 - Follow-up TODOs: none
 -->
 # Couchraoke Constitution
@@ -162,6 +162,16 @@ it does not replace other test categories.
 - **Baseline management**: Baseline images MUST be committed to the repository under
   `app/src/test/snapshots/` (or the Roborazzi-configured path). Diffs are reviewed as part
   of the PR.
+- **Wireframe validation (acceptance criterion)**: Implemented screens matching their
+  corresponding wireframe or design mock is an acceptance criterion, on equal footing with
+  unit tests passing, coverage thresholds met, and linting clean. An agent or implementer
+  MUST verify all four gates before declaring any screen implementation complete:
+  1. Unit tests (including Roborazzi snapshot verification) pass.
+  2. Coverage thresholds met (≥ 80% overall / ≥ 60% per file).
+  3. Detekt + ktlint + Android Lint clean.
+  4. Recorded baseline PNGs visually match the corresponding wireframe.
+  All four MUST be green. A mismatch between a baseline PNG and its wireframe is a blocking
+  implementation defect — the implementation MUST be corrected; the wireframe is authoritative.
 - **CI placement**: Roborazzi tests run in the **unit-tests-android** CI job alongside
   JUnit4 unit tests. They use Robolectric Native Graphics
   (`@GraphicsMode(GraphicsMode.Mode.NATIVE)`) and run entirely on the JVM — no emulator
@@ -310,4 +320,4 @@ Couchraoke repository.
   active work MUST be clearly marked closed after merge by renaming them to
   `[✓] <original branch name>`.
 
-**Version**: 2.1.1 | **Ratified**: 2026-03-13 | **Last Amended**: 2026-03-30
+**Version**: 2.1.3 | **Ratified**: 2026-03-13 | **Last Amended**: 2026-03-31
