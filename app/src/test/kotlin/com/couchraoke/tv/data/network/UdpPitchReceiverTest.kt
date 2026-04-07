@@ -162,6 +162,28 @@ class UdpPitchReceiverTest {
     }
 
     @Test
+    fun `frames for stopped song are dropped`() {
+        var called = false
+        val receiver = UdpPitchReceiver { called = true }
+        receiver.setActiveSong(100L)
+        receiver.setPlayerConnection(0, 1234)
+        receiver.markSongStopped(100L)
+
+        val frame = PitchFrame(
+            seq = 1L,
+            tvTimeMs = 1000,
+            songInstanceSeq = 100L,
+            playerId = 0,
+            midiNote = 60,
+            connectionId = 1234
+        )
+
+        receiver.processPacket(PitchFrameCodec.encode(frame))
+
+        assertEquals(false, called)
+    }
+
+    @Test
     fun `Garbage data dropped`() {
         var called = false
         val receiver = UdpPitchReceiver { called = true }

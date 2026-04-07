@@ -2,47 +2,56 @@
 
 ## What this feature adds
 
-TV-side network layer: WebSocket control channel, UDP pitch receiver, manifest HTTP fetch, mDNS advertisement, and NTP-lite clock sync. Phones join via a join code; the TV advertises via JmDNS, handles the handshake, fetches song catalogs, and routes pitch frames to the scoring engine.
+This feature now exposes two distinct TV→phone contracts during singing:
+- `assignSinger` for static assignment/configuration
+- `playbackState` for authoritative live playback state and paused-aware timing
 
-## Key entry points
+The rest of feature 005 continues to provide TV-side networking: WebSocket control, UDP pitch reception, manifest fetch, mDNS advertising, and clock sync.
 
-| Class | Package | Role |
-|---|---|---|
-| `WebSocketServer` | `data.network` | Start/stop the Ktor CIO WebSocket server; validates token and dispatches control messages |
-| `UdpPitchReceiver` | `data.network` | Binds UDP port; receive loop; validates and routes `PitchFrame` objects |
-| `ManifestFetcher` | `data.network` | `fetch(phoneIp, httpPort, clientId): Result<List<ManifestEntry>>` |
-| `MdnsAdvertiser` | `data.network` | `start(joinCode, wsPort)` / `stop()` — JmDNS + multicast lock |
-| `ClockSyncEngine` | `domain.network.clock` | `startSync(clientId)` — triggers 5-exchange rapid sync then manages schedule |
-| `ConnectionRegistry` | `domain.session` | Assigns and tracks `connectionId` per phone; validates pitch frame routing |
-| `SessionToken` | `domain.session` | `generate(): SessionToken`, `normalize(input): String`, `matches(input, token): Boolean` |
+## Key implementation goals
 
-## Running tests
+1. Preserve the LAN-only TV-host-authoritative model.
+2. Keep `assignSinger` static and remove phone sensitivity/countdown ownership from it.
+3. Emit `playbackState` whenever playback meaningfully changes or must be replayed on reconnect.
+4. Re-send the latest `playbackState` on reconnect without incrementing `revision`.
+5. Continue dropping invalid UDP pitch frames silently.
+
+## Main code areas
+
+| Path | Responsibility |
+|---|---|
+| `app/src/main/kotlin/com/couchraoke/tv/domain/network/protocol/ProtocolMessages.kt` | Control-message schemas including `assignSinger` and `playbackState` |
+| `app/src/main/kotlin/com/couchraoke/tv/domain/network/protocol/ControlMessageCodec.kt` | JSON encoding/decoding |
+| `app/src/main/kotlin/com/couchraoke/tv/data/network/WebSocketServer.kt` | Handshake, control-message dispatch, reconnect replay |
+| `app/src/main/kotlin/com/couchraoke/tv/domain/session/ConnectionRegistry.kt` | Sender-ID allocation and reconnect identity handling |
+| `app/src/main/kotlin/com/couchraoke/tv/data/network/UdpPitchReceiver.kt` | UDP pitch validation and routing |
+| `app/src/main/kotlin/com/couchraoke/tv/domain/network/clock/ClockSyncEngine.kt` | Clock sync exchanges |
+
+## Suggested implementation sequence
+
+1. Update protocol message models and codecs.
+2. Update WebSocket control flow to send `playbackState` snapshots and replay them on reconnect.
+3. Remove obsolete `assignSinger` fields and replace phone-facing time semantics with `stopAtLyricsTimeMs`.
+4. Update tests for codec, WebSocket behavior, and reconnect semantics.
+5. Run focused network/session tests, then the full JVM test suite.
+
+## Test commands
 
 ```bash
-# All network-protocol tests
-./gradlew test --tests "*.network.*" --tests "*.session.*"
-
-# Full suite
-./gradlew test
+./gradlew networkTest
+./gradlew testDebugUnitTest
+./gradlew ciUnitTests
 ```
 
-## Fixtures used (do not recreate)
+## Expected reconnect behavior
 
-| Fixture | Used by |
-|---|---|
-| `original_spec/fixtures/F12v2_pitch_stream_validation_semantics/` | `PitchFrameCodec` acceptance tests |
-| `original_spec/fixtures/F13_jitter_buffer_selection_staleness/` | `UdpPitchReceiver` staleness tests |
-| `original_spec/fixtures/F14v2_clock_sync_phone_side/` | `ClockSyncEngine` acceptance tests |
-| `original_spec/fixtures/F15_session_lifecycle_disconnect_reconnect/` | `WebSocketServer` acceptance tests |
-| `original_spec/fixtures/F18_http_server_range_coordination/` | `ManifestFetcher` tests |
+- reconnect gets a new sender ID
+- current assignment is replayed via `assignSinger`
+- latest playback snapshot is replayed via `playbackState`
+- replay uses the existing `revision`
 
-## New resource files
+## Notes
 
-- `app/src/main/res/xml/network_security_config.xml` — cleartext HTTP allowed for RFC-1918 LAN addresses (required for manifest fetch and asset streaming on API 28+)
-- `AndroidManifest.xml` — add `CHANGE_WIFI_MULTICAST_STATE` permission and reference `network_security_config`
-
-## Architecture boundaries
-
-- `domain/` — pure Kotlin, no Android imports, fully unit-testable
-- `data/` — Android/Ktor/JmDNS/OkHttp wiring; Android framework types stay here
-- `ISessionGate` — interface defined here, **implemented by feature 006**; stub/fake implementation needed for 005 tests
+- `playbackState.reason` is informational and open-ended.
+- `thresholdIndex` no longer belongs to the TV→phone assignment contract.
+- countdown ownership now lives entirely in `playbackState`.

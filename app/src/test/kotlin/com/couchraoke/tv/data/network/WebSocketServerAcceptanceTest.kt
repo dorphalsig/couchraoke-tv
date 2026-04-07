@@ -16,6 +16,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.util.*
@@ -130,6 +131,58 @@ class WebSocketServerAcceptanceTest {
             val response = incoming.receive() as Frame.Text
             val error = ControlMessageCodec.json.decodeFromString<ErrorMessage>(response.readText())
             assertEquals("session_locked", error.code)
+        }
+    }
+
+    @Test
+    fun `playback replay sends assignSinger followed by playbackState with unchanged revision`() = testApplication {
+        gate.playbackReplaySnapshots["c1"] = com.couchraoke.tv.domain.session.PlaybackReplaySnapshot(
+            assignSinger = AssignSingerMessage(
+                sessionId = gate.sessionId,
+                songInstanceSeq = 42L,
+                playerId = "P1",
+                difficulty = "Medium",
+                effectiveMicDelayMs = 120,
+                expectedPitchFps = 50,
+                stopAtLyricsTimeMs = 187000L,
+                udpPort = 49152,
+                songTitle = "Title",
+                songArtist = "Artist",
+            ),
+            playbackState = PlaybackStateMessage(
+                sessionId = gate.sessionId,
+                songInstanceSeq = 42L,
+                revision = 7L,
+                state = "countdown",
+                lyricsTimeMs = 0L,
+                stopAtLyricsTimeMs = 187000L,
+                countdownRemainingMs = 3000L,
+                reason = "totally_new_reason",
+                songTitle = "Title",
+                songArtist = "Artist",
+                tsTvMs = 1234567890L,
+            ),
+        )
+
+        val server = WebSocketServer(token, gate, registry, library, manifestFetcher, clockEngine)
+        application(server.testModule())
+
+        val client = createClient {
+            install(io.ktor.client.plugins.websocket.WebSockets)
+        }
+
+        client.webSocket("/?token=$token") {
+            send(Frame.Text(createHello("c1")))
+            incoming.receive() as Frame.Text // sessionState
+            val assignSinger = ControlMessageCodec.json.decodeFromString<AssignSingerMessage>((incoming.receive() as Frame.Text).readText())
+            val playbackState = ControlMessageCodec.json.decodeFromString<PlaybackStateMessage>((incoming.receive() as Frame.Text).readText())
+
+            assertEquals(42L, assignSinger.songInstanceSeq)
+            assertEquals(187000L, assignSinger.stopAtLyricsTimeMs)
+            assertEquals(7L, playbackState.revision)
+            assertEquals("countdown", playbackState.state)
+            assertEquals(3000L, playbackState.countdownRemainingMs)
+            assertEquals("totally_new_reason", playbackState.reason)
         }
     }
 

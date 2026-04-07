@@ -73,6 +73,7 @@ val jacocoExcludes = listOf(
     "**/domain/network/protocol/ClockAckMessage*.*",
     "**/domain/network/protocol/SlotInfo*.*",
     "**/domain/network/protocol/SlotMap*.*",
+    "**/domain/session/ISessionGate*.*",
     // Untestable in unit context (requires real Ktor/JmDNS/Android)
     "**/data/network/WebSocketServer*.*",
     "**/data/network/MdnsAdvertiser*.*"

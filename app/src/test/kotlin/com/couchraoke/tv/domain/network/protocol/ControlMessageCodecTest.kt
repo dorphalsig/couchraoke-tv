@@ -68,16 +68,35 @@ class ControlMessageCodecTest {
             songInstanceSeq = 123L,
             playerId = "P1",
             difficulty = "Easy",
-            thresholdIndex = 1,
             effectiveMicDelayMs = 50,
             expectedPitchFps = 60,
-            startMode = "Normal",
-            endTimeTvMs = 10000L,
+            stopAtLyricsTimeMs = 10000L,
             udpPort = 5000
         )
         val json = testJson.encodeToString(msg)
         val decoded = ControlMessageCodec.decode(json)
         assertTrue(decoded is AssignSingerMessage)
+        assertEquals(msg, decoded)
+    }
+
+    @Test
+    fun `decode playbackState message with open ended reason`() {
+        val msg = PlaybackStateMessage(
+            sessionId = "sess1",
+            songInstanceSeq = 123L,
+            revision = 7L,
+            state = "paused",
+            lyricsTimeMs = 15320L,
+            stopAtLyricsTimeMs = 187000L,
+            countdownRemainingMs = null,
+            reason = "custom_reason",
+            songTitle = "Title",
+            songArtist = "Artist",
+            tsTvMs = 1234567890L,
+        )
+        val json = testJson.encodeToString(msg)
+        val decoded = ControlMessageCodec.decode(json)
+        assertTrue(decoded is PlaybackStateMessage)
         assertEquals(msg, decoded)
     }
 

@@ -12,4 +12,9 @@ class FakeSessionGate(
         P2 = SlotInfo(connected = false, deviceName = "")
     ),
     override var inSong: Boolean = false,
-) : ISessionGate
+) : ISessionGate {
+    val playbackReplaySnapshots = mutableMapOf<String, PlaybackReplaySnapshot>()
+
+    override fun getPlaybackReplaySnapshot(clientId: String): PlaybackReplaySnapshot? =
+        playbackReplaySnapshots[clientId]
+}

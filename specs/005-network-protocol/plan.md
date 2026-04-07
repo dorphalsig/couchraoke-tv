@@ -1,32 +1,34 @@
 # Implementation Plan: Network Protocol
 
-**Branch**: `005-network-protocol` | **Date**: 2026-03-16 | **Spec**: [spec.md](spec.md)
-**Input**: Feature specification from `specs/005-network-protocol/spec.md`
+**Branch**: `005-network-protocol` | **Date**: 2026-04-07 | **Spec**: [spec.md](./spec.md)
+**Input**: Feature specification from `/specs/005-network-protocol/spec.md`
 
 ## Summary
 
-Implement the TV-side network layer for the Couchraoke karaoke system. A Ktor CIO WebSocket server accepts phone connections authenticated by a session join code. On successful handshake, the TV assigns a `connectionId`, fetches the phone's song catalog via HTTP, and starts NTP-lite clock sync. A UDP `DatagramSocket` receives 16-byte pitch frames routed by `connectionId`. JmDNS advertises the session on the LAN. All business logic lives in pure Kotlin domain classes; Android/Ktor/JmDNS wiring stays in the data layer.
+Update the existing TV-side network protocol implementation so `assignSinger` becomes a static assignment/configuration contract and a new authoritative `playbackState` message carries countdown, play/pause/stop state, paused-aware playback time, reconnect replay, and early-stop semantics. Preserve the current LAN-only TV-host-authoritative architecture, sender-ID reassignment on reconnect, direct phone asset streaming, fixed UDP pitch transport, and existing network/session test coverage while extending protocol models, control-message routing, and reconnect behavior.
 
 ## Technical Context
 
-**Language/Version**: Kotlin 2.x / Java 11 (Android minSdk 28, compileSdk 36)
-**Primary Dependencies**: Ktor server CIO 3.4.1, ktor-server-websockets 3.4.1, JmDNS 3.6.3 (override: original spec §8.2.1 lists 3.5.9; 3.6.3 chosen per research.md for better stability on Android TV), kotlinx-serialization-json, OkHttp (transitive via media3/coil), `java.net.DatagramSocket` (stdlib)
-**Storage**: In-memory only (`ConnectionRegistry`, `SongLibrary`) — no persistence
-**Testing**: JUnit4, `./gradlew test` (JVM unit tests), JaCoCo ≥80% overall / ≥60% per file
-**Target Platform**: Android TV (API 28+)
-**Project Type**: Android application module
-**Performance Goals**: Handshake + manifest fetch < 3s on LAN; clock sync offset < 10ms; pitch frame validation < 1ms per frame
-**Constraints**: LAN-only; no cloud services; cleartext HTTP restricted to RFC-1918 addresses; `protocolVersion = 1` only
-**Scale/Scope**: up to 10 concurrent phone connections (`maxConnections=10` per T8.3.7); 2 singer slots (P1 + P2); ~50 pitch frames/sec per active singer; 5-exchange clock sync burst on connect
+**Language/Version**: Kotlin 2.3.10 on Java 11  
+**Primary Dependencies**: Ktor server CIO 3.4.1, ktor-server-websockets 3.4.1, kotlinx-serialization-json 1.10.0, kotlinx-coroutines-core 1.9.0, JmDNS 3.6.3, OkHttp via existing Media3/Coil stack  
+**Storage**: In-memory session/network state only; no persistence  
+**Testing**: JUnit4 JVM unit + acceptance tests, kotlinx-coroutines-test, Ktor test host, MockWebServer, JaCoCo coverage gates  
+**Target Platform**: Android TV app (minSdk 28, target/compileSdk 36)  
+**Project Type**: Mobile app (Android TV host)  
+**Performance Goals**: Keep LAN control-message propagation under spec targets, including playbackState transition delivery within 250 ms and reconnect replay within 1 second  
+**Constraints**: LAN-only operation, TV remains authoritative, no remote asset persistence, fixed 16-byte UDP pitch transport, direct HTTP asset retrieval from phones, JUnit4-only Android testing  
+**Scale/Scope**: One active TV host session, up to 10 connected phones, 2 active singer slots, one authoritative playbackState stream per active assignment
 
 ## Constitution Check
 
-- **LAN-only**: ✅ All communication is WebSocket/UDP/HTTP over LAN. No external endpoints.
-- **Approved stack**: ✅ Ktor CIO + WebSockets, JmDNS, kotlinx-serialization, OkHttp (transitive). No Gson/Moshi/Retrofit/NSD Manager.
-- **Architecture boundaries**: ✅ Business logic in `domain/network/` and `domain/session/` (pure Kotlin). Android wiring in `data/network/`. `ISessionGate` interface keeps 005 decoupled from 006's session lifecycle.
-- **Networking contracts**: ✅ Pitch transport uses fixed 16-byte UDP frames; no batching. Direct HTTP streaming from phone (no TV-side asset storage). WebSocket for control only.
-- **Testing**: ✅ JUnit4 only. Acceptance tests against F12v2, F13, F14v2, F15, F18 fixtures. JaCoCo thresholds enforced.
-- **Branch hygiene**: Branch `005-network-protocol` will be renamed `[✓] 005-network-protocol` after merge to master.
+*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+
+- **Pass**: Plan preserves Couchraoke's LAN-only operating model and keeps the TV Host as the authoritative game engine.
+- **Pass**: No new libraries or forbidden alternatives are introduced; work stays within the approved Android TV stack.
+- **Pass**: Changes remain within Domain/Data boundaries: protocol models and session logic in domain, WebSocket/UDP/network wiring in data.
+- **Pass**: Networking, streaming, and scoring contracts remain intact: direct asset streaming, fixed UDP pitch frames, and no transport fallback changes.
+- **Pass**: Plan includes protocol, reconnect, and acceptance-test updates using existing JUnit4-based Android test tooling.
+- **Pass**: Post-merge branch hygiene remains governed by constitution branch renaming rules; no worktree changes are needed for this feature branch.
 
 ## Project Structure
 
@@ -34,137 +36,140 @@ Implement the TV-side network layer for the Couchraoke karaoke system. A Ktor CI
 
 ```text
 specs/005-network-protocol/
-├── plan.md              ← this file
-├── research.md          ← Phase 0 output
-├── data-model.md        ← Phase 1 output
-├── quickstart.md        ← Phase 1 output
+├── plan.md
+├── research.md
+├── data-model.md
+├── quickstart.md
 ├── contracts/
 │   └── protocol-overview.md
-└── tasks.md             ← Phase 2 output (/speckit.tasks)
+└── tasks.md
 ```
 
-### Source Code
+### Source Code (repository root)
 
 ```text
-app/src/main/kotlin/com/couchraoke/tv/
-  domain/
-    network/
-      protocol/
-        ProtocolMessages.kt       # @Serializable data classes: hello, sessionState, assignSinger,
-                                  #   error, ping, pong, clockAck
-        ControlMessageCodec.kt    # Json decode helper; unknown type → ignore+warn; version check
-      pitch/
-        PitchFrame.kt             # 16-byte frame model + toneValid + tone (midiNote-36)
-        PitchFrameCodec.kt        # ByteArray(16) ↔ PitchFrame; null on invalid length
-      clock/
-        ClockSyncEngine.kt        # Ping dispatch, pong → clockAck, 5-burst + suspend schedule
-    session/
-      ISessionGate.kt             # interface: isLocked, sessionId, maxConnections
-      ConnectionRegistry.kt       # connectionId counter (uint16, +1 from 1), active Map<clientId,Connection>
-      SessionToken.kt             # SecureRandom 64-bit, normalize(), matches(), display grouping
-  data/
-    network/
-      WebSocketServer.kt          # Ktor CIO; token + version + httpPort validation; sessionState with connectionId
-      UdpPitchReceiver.kt         # DatagramSocket.bind(); receive loop; drop rules; route callback
-      ManifestFetcher.kt          # OkHttp GET /manifest.json; parse ManifestEntry list; retain+toast on error
-      MdnsAdvertiser.kt           # JmDNS; multicast lock acquire/release; _karaoke._tcp; TXT code=+v=1
-app/src/main/res/xml/
-  network_security_config.xml     # cleartext for RFC-1918 subnets per §8.7.3.1
-app/src/main/AndroidManifest.xml  # add CHANGE_WIFI_MULTICAST_STATE; add networkSecurityConfig ref
-app/src/test/kotlin/com/couchraoke/tv/
-  domain/
-    network/
-      protocol/
-        ProtocolMessagesTest.kt       # encode/decode round-trip; unknown type ignored
-      pitch/
-        PitchFrameCodecTest.kt        # unit: all fields; midiNote=255; length≠16
-        PitchFrameCodecAcceptanceTest.kt  # F12v2 fixture
-      clock/
-        ClockSyncEngineTest.kt        # unit: ping→pong→clockAck flow; suspend/resume
-    session/
-      SessionTokenTest.kt             # generate entropy; normalize; match; display format
-      ConnectionRegistryTest.kt       # connectionId increment; new id on reconnect; lookup
-  data/
-    network/
-      WebSocketServerTest.kt          # unit: valid hello → sessionState with connectionId
-      WebSocketServerAcceptanceTest.kt  # F15 fixture: T8.3.1–T8.3.13, T8.5.1–T8.5.5
-      UdpPitchReceiverTest.kt         # unit + F12v2: drop rules T8.6.1–T8.6.8
-      ManifestFetcherTest.kt          # unit: success, HTTP error → retain, F18
-      MdnsAdvertiserTest.kt           # unit: service name format; TXT record fields
+app/
+├── src/main/kotlin/com/couchraoke/tv/
+│   ├── data/network/
+│   │   ├── ManifestFetcher.kt
+│   │   ├── MdnsAdvertiser.kt
+│   │   ├── UdpPitchReceiver.kt
+│   │   └── WebSocketServer.kt
+│   ├── domain/network/
+│   │   ├── clock/
+│   │   │   └── ClockSyncEngine.kt
+│   │   ├── pitch/
+│   │   │   ├── PitchFrame.kt
+│   │   │   └── PitchFrameCodec.kt
+│   │   └── protocol/
+│   │       ├── ControlMessageCodec.kt
+│   │       └── ProtocolMessages.kt
+│   ├── domain/session/
+│   │   ├── ConnectionRegistry.kt
+│   │   ├── ISessionGate.kt
+│   │   └── SessionToken.kt
+│   └── domain/library/
+│       ├── ManifestModels.kt
+│       └── SongLibrary.kt
+├── src/main/res/xml/
+│   └── network_security_config.xml
+└── src/test/kotlin/com/couchraoke/tv/
+    ├── data/network/
+    │   ├── ManifestFetcherTest.kt
+    │   ├── UdpPitchReceiverTest.kt
+    │   ├── WebSocketServerAcceptanceTest.kt
+    │   └── WebSocketServerTest.kt
+    ├── domain/network/
+    │   ├── clock/
+    │   │   ├── ClockSyncEngineAcceptanceTest.kt
+    │   │   └── ClockSyncEngineTest.kt
+    │   ├── pitch/
+    │   │   ├── PitchFrameCodecAcceptanceTest.kt
+    │   │   └── PitchFrameCodecTest.kt
+    │   └── protocol/
+    │       └── ControlMessageCodecTest.kt
+    └── domain/session/
+        ├── ConnectionRegistryTest.kt
+        └── FakeSessionGate.kt
 ```
 
-## Implementation Waves
+**Structure Decision**: Keep the existing single Android app module and extend the already-established `domain/network`, `data/network`, and `domain/session` areas instead of introducing new modules or architectural layers.
 
-### Wave 1 — Protocol message models + codec
-**Files**: `ProtocolMessages.kt`, `ControlMessageCodec.kt`
-**Tests**: `ProtocolMessagesTest.kt`
-- All `@Serializable` data classes (hello, sessionState, assignSinger, error, ping, pong, clockAck)
-- `Json { ignoreUnknownKeys = true; coerceInputValues = true }` instance in codec
-- `decodeMessage(json: String): Any?` — returns typed message or null with log on unknown type
-- **Acceptance**: encode→decode round-trip for each message type; unknown `type` → null+warn; missing required field → exception
+## Phase 0: Research Summary
 
-### Wave 2 — Pitch frame codec
-**Files**: `PitchFrame.kt`, `PitchFrameCodec.kt`
-**Tests**: `PitchFrameCodecTest.kt`, `PitchFrameCodecAcceptanceTest.kt`
-- `decode(bytes: ByteArray): PitchFrame?` — null if length ≠ 16; little-endian parsing
-- `encode(frame: PitchFrame): ByteArray`
-- `toneValid = (midiNote != 255)`, `tone = midiNote - 36`
-- **Acceptance**: F12v2 `expected.json` rows — all field values, midiNote=255 → toneValid=false, round-trip
+Resolved in `research.md`:
+- `playbackState` is the single authoritative live playback contract.
+- `assignSinger` is static assignment/config only.
+- Reconnect replays the latest `playbackState` without incrementing `revision`.
+- `playbackState.reason` remains an optional open-ended hint.
+- `thresholdIndex` is removed from the TV→phone assignment contract.
+- `stopAtLyricsTimeMs` replaces phone-facing `endTimeTvMs` semantics.
 
-### Wave 3 — Session token + connection registry
-**Files**: `SessionToken.kt`, `ConnectionRegistry.kt`, `ISessionGate.kt`
-**Tests**: `SessionTokenTest.kt`, `ConnectionRegistryTest.kt`
-- `SessionToken.generate()`: `SecureRandom` 64-bit → 10-char uppercase alphanumeric; display as `XXXXX-XXXXX`
-- `normalize(input)`: uppercase, strip spaces+hyphens
-- `matches(input, token)`: normalize both then compare
-- `ConnectionRegistry`: incrementing `UShort` counter from 1; `register(clientId, ...) → UShort`; `deregister(clientId)`; `getByClientId(clientId): Connection?`; new id on re-register
-- `ISessionGate` stub (fake) for test use in later waves
+## Phase 1: Design & Contracts
 
-### Wave 4 — Clock sync engine
-**Files**: `ClockSyncEngine.kt`
-**Tests**: `ClockSyncEngineTest.kt` (+ F14v2 if applicable)
-- `startInitialSync(clientId)`: dispatches 5 pings 100ms apart
-- `onPong(pong: PongMessage): ClockAckMessage`: builds clockAck immediately
-- `suspend()` / `resumeSingle(clientId)`: song-active state management
-- No internal coroutine scheduler — takes a `Clock` and a `PingSender` interface (injected)
+### Data model implications
 
-### Wave 5 — WebSocket server
-**Files**: `WebSocketServer.kt`
-**Tests**: `WebSocketServerTest.kt`, `WebSocketServerAcceptanceTest.kt`
-- Ktor CIO server on configurable port; single route `ws://<host>:<port>/` with `?token=` query param
-- On connect: validate token → version → httpPort presence → session capacity → isLocked
-- On valid hello: assign connectionId via `ConnectionRegistry`; send `sessionState` with connectionId; trigger manifest fetch; start clock sync
-- **Proactor pattern (normative)**: `ManifestFetcher.fetch` and clock sync MUST be launched in separate coroutines (`launch { }`) so the WebSocket receive loop never blocks. This ensures minimal latency for control messages (ping/pong) which must be processed promptly even while a manifest fetch is in flight.
-- Message loop: route pong → clock engine; route unknown → ignore+warn; unexpected message type **during handshake** = fatal, close connection
-- On close: `ConnectionRegistry.deregister`; `SongLibrary.removePhone`
-- **Acceptance**: F15 cases T8.3.1–T8.3.13, T8.5.1–T8.5.5
+1. **Protocol message updates**
+   - Add `PlaybackStateMessage` to `ProtocolMessages.kt`.
+   - Remove obsolete `AssignSingerMessage` fields: `thresholdIndex`, `startMode`, `countdownMs`, `endTimeTvMs`.
+   - Rename/replace assignment stop-point semantics with `stopAtLyricsTimeMs`.
 
-### Wave 6 — UDP pitch receiver
-**Files**: `UdpPitchReceiver.kt`
-**Tests**: `UdpPitchReceiverTest.kt`
-- `bind(port: Int)`: `DatagramSocket(port)` — called once at session start
-- Receive loop: decode 16 bytes → apply drop rules → invoke `onFrame(frame: PitchFrame)` callback
-- Drop rules (all silent): length≠16; unknown connectionId; connectionId/playerId mismatch; songInstanceSeq mismatch; tvTimeMs regression >200ms
-- Runs on a dedicated background thread; `stop()` closes socket and exits loop
-- **Acceptance**: F12v2 T8.6.1–T8.6.8
+2. **Runtime playback snapshot source**
+   - Introduce or extend a domain-level playback snapshot representation that WebSocket control flow can serialize into `playbackState`.
+   - Ensure revision accounting is tied only to playback contract changes, not reconnect transport retries.
 
-### Wave 7 — Manifest fetcher + library integration
-**Files**: `ManifestFetcher.kt`
-**Tests**: `ManifestFetcherTest.kt`
-- `fetch(phoneIp: String, httpPort: Int, clientId: String): Result<List<ManifestEntry>>`
-- OkHttp synchronous call; `GET http://<phoneIp>:<httpPort>/manifest.json`
-- On 200: parse JSON array → `List<ManifestEntry>` via kotlinx.serialization; call `SongLibrary.addPhone(clientId, entries)`
-- On failure (non-200, timeout, IOE): retain prior catalog; emit error toast event; return `Result.failure`
-- **Acceptance**: success path; HTTP error → retain; F18 (range headers if tested here)
+3. **Reconnect behavior**
+   - Reuse current sender-ID regeneration path in `ConnectionRegistry`.
+   - Extend reconnect replay to emit both `assignSinger` and the latest `playbackState` snapshot.
 
-### Wave 8 — mDNS + platform config
-**Files**: `MdnsAdvertiser.kt`, `network_security_config.xml`, `AndroidManifest.xml`
-**Tests**: `MdnsAdvertiserTest.kt`
-- `start(joinCode: String, wsPort: Int)`: acquire `WifiManager.MulticastLock("jmdns_lock")`; create `JmDNS`; register `_karaoke._tcp` service; instance name = `KaraokeTV-<last4>`; TXT: `code=<normalizedCode>` + `v=1`
-- `stop()`: unregister service; close JmDNS; release multicast lock
-- `network_security_config.xml`: RFC-1918 domain-config per §8.7.3.1 exact XML
-- `AndroidManifest.xml`: add `CHANGE_WIFI_MULTICAST_STATE`; add `android:networkSecurityConfig="@xml/network_security_config"`
+4. **Pitch validation compatibility**
+   - Keep current UDP frame shape unchanged.
+   - Ensure frames after stopped state are dropped consistently with the new playback-state contract.
+
+### Contract updates
+
+- `contracts/protocol-overview.md` now documents:
+  - slimmed `assignSinger`
+  - new `playbackState`
+  - reconnect replay ordering
+  - open-ended `reason` semantics
+
+### Quickstart updates
+
+- `quickstart.md` now guides implementation order around protocol model updates, reconnect replay behavior, and focused network/session test execution.
+
+## Phase 2: Implementation Strategy
+
+### Workstreams
+
+1. **Protocol schema and codec alignment**
+   - Update message data classes and JSON codec expectations.
+   - Preserve compatibility for unknown message handling and protocolVersion enforcement.
+
+2. **WebSocket control-flow changes**
+   - Refactor assignment sending to use static-only `assignSinger` payloads.
+   - Add `playbackState` emission points for countdown, play, pause, seek correction, stop, and reconnect replay.
+   - Ensure reconnect sends latest snapshot with existing revision.
+
+3. **Session/playback integration**
+   - Identify where active playback state is sourced for WebSocket emission.
+   - Keep ownership of broader session lifecycle outside feature 005.
+   - Ensure stopped-state knowledge is available for UDP drop behavior.
+
+4. **Test updates**
+   - Update `ControlMessageCodecTest` for new/removed message fields.
+   - Update `WebSocketServerTest` and `WebSocketServerAcceptanceTest` for playbackState emission and reconnect replay semantics.
+   - Update any fixture-driven expectations impacted by `stopAtLyricsTimeMs` and removed assignment fields.
+   - Preserve or extend acceptance coverage for reconnect, pause/resume, countdown, and stopped-state behavior.
+
+## Post-Design Constitution Check
+
+- **Pass**: Design keeps TV authoritative and LAN-only.
+- **Pass**: No forbidden stack changes or architectural boundary violations are introduced by the new playback contract.
+- **Pass**: Direct asset streaming and UDP pitch transport remain unchanged.
+- **Pass**: Planned test coverage addresses changed control contracts and reconnect behavior using existing JUnit4 tooling.
+- **Pass**: No constitution violations require complexity-tracking exemptions.
 
 ## Complexity Tracking
 
-No constitution violations. No exceptions required.
+No constitution violations or exception cases identified.

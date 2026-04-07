@@ -146,6 +146,11 @@ class WebSocketServer(
         ))
         session.send(Frame.Text(ControlMessageCodec.json.encodeToString(sessionState)))
 
+        gate.getPlaybackReplaySnapshot(hello.clientId)?.let { snapshot ->
+            session.send(Frame.Text(ControlMessageCodec.json.encodeToString(snapshot.assignSinger)))
+            session.send(Frame.Text(ControlMessageCodec.json.encodeToString(snapshot.playbackState)))
+        }
+
         // Proactor - launch two coroutines (do NOT await)
         val scope = session // DefaultWebSocketServerSession is a CoroutineScope
         scope.launch(Dispatchers.IO) {

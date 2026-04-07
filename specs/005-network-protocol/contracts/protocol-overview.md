@@ -1,73 +1,124 @@
 # Protocol Contracts: Network Protocol (005)
 
-Full JSON schemas are normative in `original_spec/tv_couchraoke_spec.md` Appendix B.
-This file summarises the TV-side contracts and any implementation constraints.
+This document summarizes the TV-side protocol contracts after the playback-state clarification update.
 
 ## Transport Channels
 
-| Channel | Direction | Format | Port |
+| Channel | Direction | Format | Notes |
 |---|---|---|---|
-| WebSocket | bidirectional control | JSON | configured at session start |
-| UDP | phone → TV | 16-byte binary (little-endian) | bound at session start, stable for session |
-| HTTP GET `/manifest.json` | TV pulls from phone | JSON array of `SongEntry` | phone's `httpPort` from `hello` |
+| WebSocket | Bidirectional control | JSON | Session control, assignment, playback state, clock sync |
+| UDP | Phone → TV | Fixed 16-byte binary | Real-time pitch frames |
+| HTTP | TV → Phone | JSON/media | Manifest fetch and direct asset retrieval |
 
 ## Control Message Contract
 
-- Every message: `type` (string) + `protocolVersion` (int, must be `1`) required
-- Unknown `type` values → ignore + warn (except during handshake → fatal)
-- `additionalProperties: false` per Appendix B schemas
+- Every JSON control message includes `type` and `protocolVersion`.
+- `protocolVersion` remains `1` for this feature scope.
+- Unknown message types are ignored with a warning after handshake; unexpected handshake message types remain fatal.
+- The TV remains authoritative for session state, singer assignment, and playback state.
 
-## Handshake Sequence (normative)
+## Handshake Sequence
 
+```text
+Phone → TV: hello
+TV validates: token, protocolVersion, httpPort, session capacity, lock state
+TV → Phone: sessionState (includes new sender/connection ID)
+TV → Phone (later/as needed): ping / clockAck, assignSinger, playbackState
+TV → Phone: error (only for rejection cases)
+TV → Phone's HTTP server: manifest fetch from /manifest.json
 ```
-Phone → TV:  hello          (clientId, deviceName, appVersion, protocolVersion, httpPort, capabilities)
-TV checks:   token valid? protocolVersion==1? httpPort present? slots available? isLocked==false?
-  ✗ any →    TV sends error(code=...) and closes
-  ✓ all →    TV assigns connectionId (uint16, incrementing from 1)
-             TV sends sessionState (with connectionId)
-             TV fetches GET /manifest.json from phone
-             TV calls SongLibrary.addPhone(clientId, entries)
-             TV starts clock sync (5 exchanges × 100ms)
-```
 
-## Pitch Frame Wire Format
+## `assignSinger` Contract
 
-```
+Purpose: static assignment/configuration for one singer and one `songInstanceSeq`.
+
+### Required fields
+- `type = "assignSinger"`
+- `protocolVersion = 1`
+- `sessionId`
+- `songInstanceSeq`
+- `playerId`
+- `difficulty`
+- `effectiveMicDelayMs`
+- `expectedPitchFps`
+- `stopAtLyricsTimeMs`
+- `udpPort`
+
+### Optional fields
+- `songTitle`
+- `songArtist`
+- `tsTvMs`
+
+### Explicit exclusions
+- No `thresholdIndex`
+- No `startMode`
+- No `countdownMs`
+- No live playback progression fields
+- No `endTimeTvMs`
+
+## `playbackState` Contract
+
+Purpose: authoritative playback snapshot for countdown, play, pause, stop, reconnect sync, and paused-aware song timing.
+
+### Required fields
+- `type = "playbackState"`
+- `protocolVersion = 1`
+- `sessionId`
+- `songInstanceSeq`
+- `revision`
+- `state`
+- `lyricsTimeMs`
+- `stopAtLyricsTimeMs`
+- `tsTvMs`
+
+### Conditional field
+- `countdownRemainingMs` is required only when `state = "countdown"`
+
+### Optional fields
+- `reason`
+- `songTitle`
+- `songArtist`
+
+### Semantics
+- `state ∈ {countdown, playing, paused, stopped}`
+- `lyricsTimeMs` is the authoritative paused-aware song clock
+- `stopAtLyricsTimeMs` is the phone-facing logical assignment end point in song time
+- `revision` increments on playback contract changes such as pause, resume, seek, and stop
+- reconnect re-sends the latest `playbackState` without incrementing `revision`
+- `reason` is an optional open-ended hint and must not be treated as a closed enum
+
+## Reconnect Contract
+
+On reconnect during an active song assignment:
+1. TV assigns a new sender/connection ID.
+2. TV re-sends `assignSinger` for the active assignment.
+3. TV re-sends the latest `playbackState` snapshot with the existing revision.
+4. Phone resumes from the latest authoritative playback snapshot.
+
+## Pitch Frame Contract
+
+```text
 Offset  Size  Type     Field
-  0      4    uint32   seq              (little-endian)
-  4      4    int32    tvTimeMs         (little-endian)
-  8      4    uint32   songInstanceSeq  (little-endian)
- 12      1    uint8    playerId         (0=P1, 1=P2)
- 13      1    uint8    midiNote         (0..127; 255=unvoiced)
- 14      2    uint16   connectionId     (little-endian)
-Total: 16 bytes exactly. Any other length → silently drop.
+0       4     uint32   seq
+4       4     int32    tvTimeMs
+8       4     uint32   songInstanceSeq
+12      1     uint8    playerId
+13      1     uint8    midiNote
+14      2     uint16   connectionId
 ```
 
-## Clock Sync Sequence
-
-```
-TV → Phone:    ping  { pingId, tTvSendMs }
-Phone → TV:    pong  { pingId, tTvSendMs, tPhoneRecvMs, tPhoneSendMs }
-TV → Phone:    clockAck { pingId, tTvRecvMs }
-
-Phone computes: clockOffsetMs = ((tPhoneRecvMs - tTvSendMs) + (tPhoneSendMs - tTvRecvMs)) / 2
-TV just sends clockAck immediately on pong receipt.
-```
+Drop the frame silently if any of the following is true:
+- packet size is not exactly 16 bytes
+- sender/connection ID is unknown
+- sender/connection ID does not match the assigned player slot
+- `songInstanceSeq` does not match the active assignment
+- assignment is already stopped
 
 ## Error Codes
 
-| Code | Trigger |
+| Code | Meaning |
 |---|---|
-| `invalid_token` | Missing or wrong join code |
-| `protocol_mismatch` | `protocolVersion != 1` |
-| `session_full` | Active connections ≥ `maxConnections` (= 10; T8.3.7) |
-| `session_locked` | `ISessionGate.isLocked == true` (owned by feature 006) |
-
-## Manifest Fetch
-
-```
-GET http://<phone-ip>:<httpPort>/manifest.json
-Response: 200 OK, Content-Type: application/json, Cache-Control: no-cache
-Body: JSON array of SongEntry (Appendix B.2.9)
-On failure: retain prior catalog + show error toast
-```
+| `invalid_token` | Missing or wrong join token |
+| `protocol_mismatch` | Unsupported protocol version |
+| `session_full` | Session capacity reached |
+| `session_locked` | Session locked by external session owner |

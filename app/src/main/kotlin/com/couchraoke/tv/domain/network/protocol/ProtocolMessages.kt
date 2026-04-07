@@ -43,16 +43,30 @@ data class AssignSingerMessage(
     val songInstanceSeq: Long,
     val playerId: String,
     val difficulty: String,
-    val thresholdIndex: Int,
     val effectiveMicDelayMs: Int,
     val expectedPitchFps: Int,
-    val startMode: String,
-    val countdownMs: Int? = null,
-    val endTimeTvMs: Long,
+    val stopAtLyricsTimeMs: Long,
     val udpPort: Int,
     val songTitle: String? = null,
     val songArtist: String? = null,
     val tsTvMs: Long? = null,
+)
+
+@Serializable
+data class PlaybackStateMessage(
+    val type: String = "playbackState",
+    val protocolVersion: Int = 1,
+    val sessionId: String,
+    val songInstanceSeq: Long,
+    val revision: Long,
+    val state: String,
+    val lyricsTimeMs: Long,
+    val stopAtLyricsTimeMs: Long,
+    val countdownRemainingMs: Long? = null,
+    val reason: String? = null,
+    val songTitle: String? = null,
+    val songArtist: String? = null,
+    val tsTvMs: Long,
 )
 
 @Serializable

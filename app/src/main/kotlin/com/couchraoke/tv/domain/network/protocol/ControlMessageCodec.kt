@@ -31,6 +31,7 @@ object ControlMessageCodec {
                 "hello"        -> json.decodeFromString<HelloMessage>(jsonString)
                 "sessionState" -> json.decodeFromString<SessionStateMessage>(jsonString)
                 "assignSinger" -> json.decodeFromString<AssignSingerMessage>(jsonString)
+                "playbackState" -> json.decodeFromString<PlaybackStateMessage>(jsonString)
                 "error"        -> json.decodeFromString<ErrorMessage>(jsonString)
                 "ping"         -> json.decodeFromString<PingMessage>(jsonString)
                 "pong"         -> json.decodeFromString<PongMessage>(jsonString)

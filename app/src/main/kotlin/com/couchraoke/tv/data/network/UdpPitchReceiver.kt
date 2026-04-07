@@ -12,6 +12,7 @@ class UdpPitchReceiver(
     private val onFrame: (PitchFrame) -> Unit,
 ) {
     private val activeSongInstanceSeq = AtomicLong(-1L)
+    private val stoppedSongInstanceSeq = AtomicLong(-1L)
     private val playerConnections = ConcurrentHashMap<Int, Int>()
     private val lastAcceptedTvTimeMs = ConcurrentHashMap<Int, Int>()
     
@@ -54,6 +55,11 @@ class UdpPitchReceiver(
 
     fun setActiveSong(instanceSeq: Long) {
         activeSongInstanceSeq.set(instanceSeq)
+        stoppedSongInstanceSeq.set(-1L)
+    }
+
+    fun markSongStopped(instanceSeq: Long) {
+        stoppedSongInstanceSeq.set(instanceSeq)
     }
 
     fun setPlayerConnection(playerId: Int, connectionId: Int) {
@@ -75,7 +81,8 @@ class UdpPitchReceiver(
         if (expectedConnectionId != frame.connectionId) return
         
         if (frame.songInstanceSeq != activeSongInstanceSeq.get()) return
-        
+        if (frame.songInstanceSeq == stoppedSongInstanceSeq.get()) return
+
         val lastTvTime = lastAcceptedTvTimeMs[frame.playerId]
         if (lastTvTime != null && (lastTvTime - frame.tvTimeMs) > 200) {
             return

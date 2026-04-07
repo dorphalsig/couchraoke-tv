@@ -16,6 +16,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.util.*
@@ -100,6 +102,75 @@ class WebSocketServerTest {
             val response = incoming.receive() as Frame.Text
             val state = ControlMessageCodec.json.decodeFromString<SessionStateMessage>(response.readText())
             assertEquals(2, state.connectionId)
+        }
+    }
+
+    @Test
+    fun `reconnect with playback snapshot sends assignSinger then playbackState with unchanged revision`() = testApplication {
+        gate.playbackReplaySnapshots["client1"] = com.couchraoke.tv.domain.session.PlaybackReplaySnapshot(
+            assignSinger = AssignSingerMessage(
+                sessionId = gate.sessionId,
+                songInstanceSeq = 42L,
+                playerId = "P1",
+                difficulty = "Medium",
+                effectiveMicDelayMs = 120,
+                expectedPitchFps = 50,
+                stopAtLyricsTimeMs = 187000L,
+                udpPort = 49152,
+                songTitle = "Title",
+                songArtist = "Artist",
+            ),
+            playbackState = PlaybackStateMessage(
+                sessionId = gate.sessionId,
+                songInstanceSeq = 42L,
+                revision = 7L,
+                state = "paused",
+                lyricsTimeMs = 15320L,
+                stopAtLyricsTimeMs = 187000L,
+                reason = "reconnect_sync",
+                songTitle = "Title",
+                songArtist = "Artist",
+                tsTvMs = 1234567890L,
+            ),
+        )
+
+        val server = WebSocketServer(token, gate, registry, library, manifestFetcher, clockEngine)
+        application(server.testModule())
+
+        val client = createClient {
+            install(io.ktor.client.plugins.websocket.WebSockets)
+        }
+
+        client.webSocket("/?token=$token") {
+            send(Frame.Text(createHello()))
+
+            val sessionState = ControlMessageCodec.json.decodeFromString<SessionStateMessage>((incoming.receive() as Frame.Text).readText())
+            val assignSinger = ControlMessageCodec.json.decodeFromString<AssignSingerMessage>((incoming.receive() as Frame.Text).readText())
+            val playbackState = ControlMessageCodec.json.decodeFromString<PlaybackStateMessage>((incoming.receive() as Frame.Text).readText())
+
+            assertEquals(1, sessionState.connectionId)
+            assertEquals(42L, assignSinger.songInstanceSeq)
+            assertEquals(187000L, assignSinger.stopAtLyricsTimeMs)
+            assertEquals(7L, playbackState.revision)
+            assertEquals("paused", playbackState.state)
+            assertEquals("reconnect_sync", playbackState.reason)
+        }
+    }
+
+    @Test
+    fun `when no playback snapshot exists then no replay messages are sent after sessionState`() = testApplication {
+        val server = WebSocketServer(token, gate, registry, library, manifestFetcher, clockEngine)
+        application(server.testModule())
+
+        val client = createClient {
+            install(io.ktor.client.plugins.websocket.WebSockets)
+        }
+
+        client.webSocket("/?token=$token") {
+            send(Frame.Text(createHello()))
+            val sessionState = ControlMessageCodec.json.decodeFromString<SessionStateMessage>((incoming.receive() as Frame.Text).readText())
+            assertEquals(1, sessionState.connectionId)
+            assertNull(incoming.tryReceive().getOrNull())
         }
     }
 

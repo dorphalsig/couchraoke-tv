@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Network Protocol
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2026-03-16
+**Created**: 2026-04-07
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -30,5 +30,12 @@
 - [x] No implementation details leak into specification
 
 ## Notes
+
+Validation pass complete on 2026-04-07.
+
+Resolved during this update:
+- Added a dedicated Playback State user story and requirements covering countdown, pause, resume, reconnect sync, and early stop.
+- Re-scoped `assignSinger` to assignment/configuration only and removed microphone sensitivity ownership from the phone contract.
+- Replaced phone-facing end-time progression language with assignment stop-point semantics in song time.
 
 All items pass. Spec is ready for `/speckit.plan`.

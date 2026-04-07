@@ -164,6 +164,30 @@ After MVP: add pitch stream (US3) → verify song file delivery (US4) → add cl
 
 ---
 
+## Delta Phase: playbackState / assignSinger update
+
+**Purpose**: Append the clarified protocol-change work without reopening or rewriting the restored base task list.
+
+**Scope**: Add authoritative `playbackState`, slim `assignSinger`, preserve reconnect replay with unchanged revision, keep countdown ownership in `playbackState`, and keep `reason` open-ended.
+
+### Tests first
+
+- [x] T026 [P] [US3] Add focused codec assertions for `PlaybackStateMessage` and removed `assignSinger` fields in `app/src/test/kotlin/com/couchraoke/tv/domain/network/protocol/ControlMessageCodecTest.kt`
+- [x] T027 [P] [US3] Add focused WebSocket coverage for `playbackState` emission, reconnect replay with unchanged revision, and open-ended `reason` handling in `app/src/test/kotlin/com/couchraoke/tv/data/network/WebSocketServerTest.kt` and `app/src/test/kotlin/com/couchraoke/tv/data/network/WebSocketServerAcceptanceTest.kt`
+- [x] T028 [P] [US3] Add focused post-stop pitch-frame validation coverage in `app/src/test/kotlin/com/couchraoke/tv/data/network/UdpPitchReceiverTest.kt`
+
+### Implementation
+
+- [x] T029 [US3] Update protocol message models and codec for slimmed `assignSinger` plus new `PlaybackStateMessage` in `app/src/main/kotlin/com/couchraoke/tv/domain/network/protocol/ProtocolMessages.kt` and `app/src/main/kotlin/com/couchraoke/tv/domain/network/protocol/ControlMessageCodec.kt`
+- [x] T030 [US3] Add playback snapshot/reconnect replay plumbing for unchanged-revision `playbackState` delivery in `app/src/main/kotlin/com/couchraoke/tv/domain/session/ISessionGate.kt`, `app/src/test/kotlin/com/couchraoke/tv/domain/session/FakeSessionGate.kt`, `app/src/main/kotlin/com/couchraoke/tv/domain/session/ConnectionRegistry.kt`, and `app/src/main/kotlin/com/couchraoke/tv/data/network/WebSocketServer.kt`
+- [x] T031 [US3] Enforce stopped-state pitch dropping against the clarified playback contract in `app/src/main/kotlin/com/couchraoke/tv/data/network/UdpPitchReceiver.kt`
+
+### Consolidated docs and verification
+
+- [x] T032 Reconcile the clarified playback contract across `specs/005-network-protocol/spec.md`, `specs/005-network-protocol/plan.md`, `specs/005-network-protocol/data-model.md`, `specs/005-network-protocol/contracts/protocol-overview.md`, and `specs/005-network-protocol/quickstart.md`, then run `./gradlew networkTest`
+
+---
+
 ## Notes
 
 - `[P]` = different files, no shared dependencies — safe to run in parallel
@@ -172,3 +196,4 @@ After MVP: add pitch stream (US3) → verify song file delivery (US4) → add cl
 - `ISessionGate` interface is owned by this feature; feature 006 provides the real implementation
 - Do NOT modify files outside this feature's scope; report out-of-scope bugs and stop
 - Commit after each phase or logical group
+- Delta tasks T026–T032 are append-only follow-up work for the clarified playback contract
