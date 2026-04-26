@@ -188,19 +188,20 @@ Arguments:
 
 ### Important current caveat
 
-`testBranch` is **not yet fully FQCN-scoped for Detekt and JaCoCo**.
+`testBranch` is selective for tests, and now performs selector-based source/class narrowing for the most common Kotlin and Java cases used by the module.
 
 Current state:
 
 - selected **tests** are truly filtered
 - selective **Detekt** and **JaCoCo** task scaffolding exists
-- but selective source/class narrowing for Detekt and JaCoCo is not yet fully implemented
+- selective JaCoCo class narrowing includes normal compiled classes and Kotlin file-facade classes such as `FooKt.class`
+- some edge cases may still require follow-up work before every possible selector shape is perfectly narrowed
 
-So today, `testBranch` is partially selective:
+So today, `testBranch` is selectively useful in practice:
 
 - **tests:** yes
-- **Detekt:** task exists, but not fully narrowed to the requested FQCNs yet
-- **JaCoCo:** task exists, but not fully narrowed to the requested FQCNs yet
+- **Detekt:** task exists, but may still be broader than the requested FQCNs in some cases
+- **JaCoCo:** narrowed for common class and top-level Kotlin file selectors, with remaining edge cases possible
 
 ## Portability notes
 
