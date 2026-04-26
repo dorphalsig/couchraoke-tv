@@ -4,6 +4,7 @@ import io.gitlab.arturbosch.detekt.Detekt
 import io.gitlab.arturbosch.detekt.extensions.DetektExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.file.FileCollection
 import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.create
 import org.gradle.kotlin.dsl.dependencies
@@ -215,6 +216,10 @@ class QualityConventionsPlugin : Plugin<Project> {
             group = "verification"
             useJUnit()
             systemProperty("robolectric.pixelCopyRenderMode", "hardware")
+            extensions.configure(JacocoTaskExtension::class.java) {
+                isIncludeNoLocationClasses = true
+                excludes = listOf("jdk.internal.*")
+            }
         }
 
         val testBranchRoborazzi = project.tasks.register<Test>("testBranchRoborazzi") {
@@ -223,6 +228,10 @@ class QualityConventionsPlugin : Plugin<Project> {
             useJUnit()
             systemProperty("roborazzi.test.record", "true")
             systemProperty("robolectric.pixelCopyRenderMode", "hardware")
+            extensions.configure(JacocoTaskExtension::class.java) {
+                isIncludeNoLocationClasses = true
+                excludes = listOf("jdk.internal.*")
+            }
             outputs.upToDateWhen { false }
             outputs.doNotCacheIf("Roborazzi screenshots must be regenerated for fresh validation.") { true }
         }
@@ -248,6 +257,12 @@ class QualityConventionsPlugin : Plugin<Project> {
             val variant = extension.variantName.get()
             val capitalizedVariant = variant.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
             val testTaskName = "test${capitalizedVariant}UnitTest"
+            val selectiveClassDirsProvider = srcProvider.map { selectors ->
+                selectiveClassDirectories(project, variant, selectors)
+            }
+            val selectiveSourceDirsProvider = srcProvider.map { selectors ->
+                selectiveProductionSources(project, selectors)
+            }
 
             val realTestTask = project.tasks.findByName(testTaskName) as? Test
             if (realTestTask != null) {
@@ -298,34 +313,8 @@ class QualityConventionsPlugin : Plugin<Project> {
                     html.required.set(true)
                 }
 
-                val classDirsProvider = srcProvider.map { fqcns ->
-                    project.fileTree(project.layout.buildDirectory) {
-                        if (fqcns.isNotEmpty()) {
-                            val patterns = fqcns.flatMap {
-                                val base = it.replace('.', '/')
-                                listOf(
-                                    "tmp/kotlin-classes/$variant/**/$base.class", "tmp/kotlin-classes/$variant/**/$base$*.class",
-                                    "intermediates/javac/$variant/**/$base.class", "intermediates/javac/$variant/**/$base$*.class",
-                                    "intermediates/classes/$variant/**/$base.class", "intermediates/classes/$variant/**/$base$*.class",
-                                    "intermediates/built_in_kotlinc/$variant/**/$base.class", "intermediates/built_in_kotlinc/$variant/**/$base$*.class"
-                                )
-                            }
-                            include(patterns)
-                        } else {
-                            include("**/NonExistentClass.class")
-                        }
-                    }
-                }
-                classDirectories.setFrom(classDirsProvider)
-
-                val srcDirsProvider = srcProvider.map { fqcns ->
-                    val files = fqcns.mapNotNull {
-                        val file = project.file("src/main/kotlin/${it.replace('.', '/')}.kt")
-                        if (file.exists()) file else null
-                    }
-                    project.files(files)
-                }
-                sourceDirectories.setFrom(srcDirsProvider)
+                classDirectories.setFrom(selectiveClassDirsProvider)
+                sourceDirectories.setFrom(selectiveSourceDirsProvider)
 
                 executionData.setFrom(project.fileTree(project.layout.buildDirectory) {
                     include("outputs/unit_test_code_coverage/${variant}UnitTest/testBranchSelectedTests.exec")
@@ -336,34 +325,8 @@ class QualityConventionsPlugin : Plugin<Project> {
             val testBranchJacocoCoverageVerification = project.tasks.register<JacocoCoverageVerification>("testBranchJacocoCoverageVerification") {
                 dependsOn(testBranchJacocoReport)
 
-                val classDirsProvider = srcProvider.map { fqcns ->
-                    project.fileTree(project.layout.buildDirectory) {
-                        if (fqcns.isNotEmpty()) {
-                            val patterns = fqcns.flatMap {
-                                val base = it.replace('.', '/')
-                                listOf(
-                                    "tmp/kotlin-classes/$variant/**/$base.class", "tmp/kotlin-classes/$variant/**/$base$*.class",
-                                    "intermediates/javac/$variant/**/$base.class", "intermediates/javac/$variant/**/$base$*.class",
-                                    "intermediates/classes/$variant/**/$base.class", "intermediates/classes/$variant/**/$base$*.class",
-                                    "intermediates/built_in_kotlinc/$variant/**/$base.class", "intermediates/built_in_kotlinc/$variant/**/$base$*.class"
-                                )
-                            }
-                            include(patterns)
-                        } else {
-                            include("**/NonExistentClass.class")
-                        }
-                    }
-                }
-                classDirectories.setFrom(classDirsProvider)
-
-                val srcDirsProvider = srcProvider.map { fqcns ->
-                    val files = fqcns.mapNotNull {
-                        val file = project.file("src/main/kotlin/${it.replace('.', '/')}.kt")
-                        if (file.exists()) file else null
-                    }
-                    project.files(files)
-                }
-                sourceDirectories.setFrom(srcDirsProvider)
+                classDirectories.setFrom(selectiveClassDirsProvider)
+                sourceDirectories.setFrom(selectiveSourceDirsProvider)
 
                 executionData.setFrom(project.fileTree(project.layout.buildDirectory) {
                     include("outputs/unit_test_code_coverage/${variant}UnitTest/testBranchSelectedTests.exec")
@@ -391,4 +354,60 @@ class QualityConventionsPlugin : Plugin<Project> {
 
 private fun String.isPreviewScreenshotSelector(): Boolean =
     endsWith("ScreenTest") || endsWith("ModalTest")
+
+private fun selectiveProductionSources(project: Project, selectors: List<String>): FileCollection {
+    val files = selectors.mapNotNull { selector ->
+        selectiveProductionFile(project, selector)
+    }
+    return project.files(files)
+}
+
+private fun selectiveProductionFile(project: Project, selector: String) =
+    listOf(
+        project.file("src/main/kotlin/${selector.replace('.', '/')}.kt"),
+        project.file("src/main/java/${selector.replace('.', '/')}.java")
+    ).firstOrNull { it.exists() }
+
+private fun selectiveClassDirectories(project: Project, variant: String, selectors: List<String>) =
+    project.fileTree(project.layout.buildDirectory) {
+        if (selectors.isNotEmpty()) {
+            val patterns = selectors.flatMap { selector ->
+                selectiveClassPatterns(project, variant, selector)
+            }
+            include(patterns)
+        } else {
+            include("**/NonExistentClass.class")
+        }
+    }
+
+private fun selectiveClassPatterns(project: Project, variant: String, selector: String): List<String> {
+    val base = selector.replace('.', '/')
+    val simpleName = selector.substringAfterLast('.')
+    val sourceFile = selectiveProductionFile(project, selector)
+    val compiledBase = if (
+        sourceFile?.extension == "kt" && !sourceFile.declaresMatchingType(simpleName)
+    ) {
+        "${base}Kt"
+    } else {
+        base
+    }
+
+    return listOf(
+        "tmp/kotlin-classes/$variant/**/$compiledBase.class",
+        "tmp/kotlin-classes/$variant/**/$compiledBase$*.class",
+        "intermediates/javac/$variant/**/$compiledBase.class",
+        "intermediates/javac/$variant/**/$compiledBase$*.class",
+        "intermediates/classes/$variant/**/$compiledBase.class",
+        "intermediates/classes/$variant/**/$compiledBase$*.class",
+        "intermediates/built_in_kotlinc/$variant/**/$compiledBase.class",
+        "intermediates/built_in_kotlinc/$variant/**/$compiledBase$*.class"
+    )
+}
+
+private fun java.io.File.declaresMatchingType(simpleName: String): Boolean {
+    val declarationPattern = Regex(
+        """(?m)^\s*(?:\w+\s+)*(?:class|interface|object|typealias)\s+${Regex.escape(simpleName)}\b|^\s*(?:\w+\s+)*fun\s+interface\s+${Regex.escape(simpleName)}\b"""
+    )
+    return declarationPattern.containsMatchIn(readText())
+}
 
