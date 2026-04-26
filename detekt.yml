@@ -1,0 +1,46 @@
+complexity:
+  LongMethod:
+    active: true
+    threshold: 60
+
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 15
+    ignoreSingleWhenExpression: true
+    ignoreSimpleWhenEntries: true
+
+  LargeClass:
+    active: true
+    threshold: 600
+
+  LongParameterList:
+    active: true
+    functionThreshold: 7
+    constructorThreshold: 8
+    ignoreDefaultParameters: true
+
+  NestedBlockDepth:
+    active: true
+    threshold: 5
+
+style:
+  MagicNumber:
+    active: false
+
+naming:
+  FunctionNaming:
+    active: true
+    ignoreAnnotated: ['Composable']
+    functionPattern: '^[a-z`][a-zA-Z0-9 ,_`<>()?.]*$'
+
+formatting:
+  active: true
+  android: true
+  MaximumLineLength:
+    excludes: ['**/test/**', '**/androidTest/**']
+
+test-timeouts:
+  TestTimeoutRule:
+    active: true
+  ComposablePreviewRule:
+    active: false
