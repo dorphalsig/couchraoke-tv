@@ -31,7 +31,18 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- **Host Authority**: Confirm the plan preserves TV host authority, LAN-only assumptions,
+  streaming-only remote song assets, and fixed-size UDP pitch transport for any touched flows.
+- **Architecture Boundaries**: Confirm responsibilities stay within Domain, Data, Presentation,
+  and DI boundaries, with ViewModels as the single source of UI state.
+- **Dependency Governance**: List every dependency or version change required by this feature and
+  confirm each change is planned through `gradle/libs.versions.toml`.
+- **Contracts First**: Identify every material producer/consumer boundary as FQCN + method +
+  signature, plus any required data contract fields.
+- **Workflow Units**: Ensure the feature is represented by exactly one `spec.md`, one `plan.md`,
+  and one `tasks.md`, with phases defined as delivery slices or dependency buckets.
+- **Validation Gate**: Define the scoped `testBranch` command set that must pass fresh before any
+  task or feature can be reported complete.
 
 ## Project Structure
 

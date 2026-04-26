@@ -72,14 +72,19 @@
   Fill them out with the right edge cases.
 -->
 
-- What happens when [boundary condition]?
-- How does system handle [error scenario]?
+- What happens when host-managed state conflicts with companion-reported state?
+- How does the system behave when a LAN-only assumption fails mid-flow?
+- What happens when a boundary depends on a contract payload that is missing or malformed?
+- What happens when the planned validation path cannot produce a fresh `testBranch` pass?
 
 ## Requirements *(mandatory)*
 
 <!--
   ACTION REQUIRED: The content in this section represents placeholders.
   Fill them out with the right functional requirements.
+  Include any host-authority constraints, architecture-boundary constraints,
+  producer/consumer contracts, and fresh `testBranch` validation requirements
+  needed to satisfy the constitution.
 -->
 
 ### Functional Requirements
