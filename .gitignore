@@ -8,7 +8,9 @@
 .externalNativeBuild
 .cxx
 local.properties
-quality-conventions/
+quality-conventions/.gradle/
+quality-conventions/.kotlin/
+quality-conventions/build/
 .gradle/
 build/
 out/
