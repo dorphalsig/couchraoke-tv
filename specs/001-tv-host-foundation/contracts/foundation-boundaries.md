@@ -22,13 +22,18 @@ interface UsdxParser {
 - `songId` is caller-supplied and canonical; parser does not derive it from filesystem paths or URLs.
 - `txtBytes` are raw TXT bytes; parser applies deterministic internal decode rules.
 - Success returns `ParsedSong` with info/warn diagnostics only.
-- Hard-invalid songs return `Result.failure(ParseException)` carrying the populated diagnostics list.
+- Hard-invalid songs return `Result.failure(ParseException)` carrying the structured diagnostics accumulated up to termination, including at least one `Invalid` diagnostic.
 
 ### Required rules
+- Parser diagnostics are machine/test-facing: fixture assertions compare severity, stable code, TXT identifier, and deterministic line number when present.
+- Human-readable diagnostic text is produced by logging or presentation mapping and is not required in the core parse result.
+- Dev/debug builds SHOULD log detailed parser diagnostics at the configured diagnostic log level; release builds MAY log only warning/error summaries.
+- UI error modals may display generic invalid-song messages and do not need direct parser diagnostic text.
+- Fixture validation MUST NOT depend on log scraping.
 - Header parsing stops at the first non-`#` line.
 - Known duplicate header tags keep the last successfully parsed value.
 - Unknown header tags are preserved in `customTags` in encounter order.
-- `#ENCODING`, `#RESOLUTION`, `#NOTESGAP`, `#DUETSINGERP1`, `#DUETSINGERP2`, and `#CALCMEDLEY` remain unknown/custom tags.
+- `#ENCODING`, `#RESOLUTION`, `#NOTESGAP`, `#DUETSINGERP1`, `#DUETSINGERP2`, `#CALCMEDLEY`, `#INSTRUMENTAL`, and `#VOCALS` remain custom tags with no TV-side semantic processing.
 - RELATIVE header tags are preserved, but RELATIVE body syntax invalidates the song.
 
 ## Contract 2: Parsed song result model
@@ -54,7 +59,6 @@ data class SongHeader(
     val bpmFile: Float,
     val gapMs: Float,
     val audio: String,
-    val songPath: String,
     val startSec: Float?,
     val endMs: Int?,
     val videoGapSec: Float?,
@@ -62,8 +66,6 @@ data class SongHeader(
     val video: String?,
     val cover: String?,
     val background: String?,
-    val instrumental: String?,
-    val vocals: String?,
     val version: String,
     val year: Int?,
     val genre: String?,
@@ -95,13 +97,21 @@ data class NoteEvent(
     val toneSemitone: Int,
     val lyric: String
 )
+
+data class DiagnosticEntry(
+    val severity: Severity,
+    val code: String,
+    val txtUri: String,
+    val lineNumber: Int? = null
+)
 ```
 
 ### Required rules
 - Stored beats are authored file beats with no scaling.
-- `durationBeats == 0` converts to `Freestyle`, retains duration `0`, warns, and scores zero.
+- `durationBeats == 0` converts to `Freestyle`, retains duration `0`, emits a warning diagnostic with a line number when deterministic, and scores zero.
 - `lineScoreValue` and `trackScoreValue` are canonical parser outputs and must not be recomputed differently downstream.
 - Note/beat interval convention is `startBeatFile <= beat < startBeatFile + durationBeats`.
+- Parsed `SongHeader.previewStartSec` preserves source tag presence and remains nullable. Fallback/default materialization is applied only by the library/index projection.
 
 ## Contract 3: Library-facing indexed-song seam
 
@@ -112,7 +122,18 @@ data class NoteEvent(
 ```kotlin
 package com.couchraoke.tv.domain.library
 
+import kotlinx.coroutines.flow.StateFlow
+
 interface LibraryManager {
+    /**
+     * Observable catalog seam used by selection flow and later runtime library refresh.
+     *
+     * Phase 0 may back this with fixture/static data only. Live manifest refresh,
+     * disconnect removal, and multi-phone replacement behavior are outside the
+     * Phase 0 implementation gate unless explicitly added later.
+     */
+    val songs: StateFlow<List<IndexedSong>>
+
     fun getSong(songId: String): IndexedSong?
 }
 ```
@@ -140,7 +161,6 @@ data class IndexedSong(
     val isDuet: Boolean,
     val hasRap: Boolean,
     val hasVideo: Boolean,
-    val hasInstrumental: Boolean,
     val canMedley: Boolean,
     val medleySource: String?,
     val medleyStartBeat: Int?,
@@ -151,13 +171,16 @@ data class IndexedSong(
 ```
 
 ### Required rules
+- Phase 0 defines the observable catalog seam because downstream TV consumers depend on it, but Phase 0 only validates fixture/static indexed-song projection. Runtime manifest refresh, disconnect removal, and multi-phone replacement remain later-phase behavior.
 - `songId == phoneClientId + "::" + relativeTxtPath`.
 - `relativeTxtPath` uses `/`, has no leading `/`, contains no `.` or `..` segments, and preserves case.
 - `txtUrl` and `audioUrl` are non-null for valid manifest-eligible entries.
 - `hasVideo == (videoUrl != null)`.
-- `hasInstrumental` is source metadata only and must not change playback strategy.
-- `previewStartSec` derives from `#PREVIEWSTART`, then valid medley start, then `0.0`.
+- `canMedley` is true only when the song is not a duet and valid medley tags exist. Duet songs must produce `canMedley = false` and `medleySource = null` even if source medley beat tags are present.
+- Parsed `SongHeader.previewStartSec` preserves source tag presence and remains nullable. `IndexedSong.previewStartSec` materializes the fallback/default value and is always non-null. Medley fallback uses `BeatCalculator.beatInternalToTimeSec(medleyStartBeat.toDouble(), bpmFile * 4)`.
+- `previewStartSec` derives from valid `#PREVIEWSTART` when present and greater than `0`, otherwise valid solo medley tags converted with static-BPM beat-time math, otherwise `0.0`.
 - `startSec` derives only from `#START`, else `0.0`.
+- The TV always receives and plays one phone-provided premixed audio resource through `IndexedSong.audioUrl`. The phone owns any source-stem handling and premixing. The TV does not expose, request, mix, schedule, or buffer separate instrumental/vocal assets.
 
 ## Contract 4: Beat-time conversion seam
 
@@ -233,6 +256,7 @@ data class PitchSample(
 ```
 
 ### Required rules
+- The public Phase 0 `ScoringEngine` interface does not accept pitch samples directly. Fixture pitch input is injected into the implementation/test harness as a stand-in for the future §2.2 runtime pitch-frame source.
 - `ScoringConfig` is the only source of player difficulty and line-bonus settings for the current song.
 - `toneValid` is derived as `midiNote != 255`.
 - Sample tone is `midiNote - 36`.
@@ -257,10 +281,5 @@ interface NetworkPitchSource {
 ```
 
 ### Required rules
-- This seam is documented during planning because it materially feeds scoring.
-- It is not part of the Phase 0 delivery gate.
-- Phase 0 fixtures use `PitchSample` instead of live UDP/network frames.
-
-## Validation contract
-
-The authoritative validation gate for all contracts in this file is the scoped `:app:testBranch` command defined in `plan.md` and used by the eventual implementation tasks.
+- Runtime pitch transport is out of Phase 0 scope.
+- Later runtime layers may feed scoring through a live pitch source, but Phase 0 validates only the pure math contract via `PitchSample` fixtures.

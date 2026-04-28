@@ -36,7 +36,7 @@ BeatRange
 
 **Validation rules**:
 - Success returns `Result.success(ParsedSong)` with info/warn diagnostics only.
-- Hard-invalid songs fail as `Result.failure(ParseException)` carrying the populated diagnostic list.
+- Hard-invalid songs fail as `Result.failure(ParseException)` carrying the structured diagnostics accumulated up to termination, including at least one `Invalid` diagnostic.
 - Parsed songs must preserve authored beat values and parser-computed score values.
 
 ### SongHeader
@@ -47,16 +47,13 @@ BeatRange
 | `bpmFile` | `Float` | Yes | Must be numeric and `> 0`. |
 | `gapMs` | `Float` | Yes | Defaults to `0`. |
 | `audio` | `String` | Yes | Resolved required audio filename per version rules. |
-| `songPath` | `String` | Yes | Canonical song-root path or URI from caller context. |
 | `startSec` | `Float?` | No | Derived from `#START` only. |
 | `endMs` | `Int?` | No | Parsed from `#END`. |
 | `videoGapSec` | `Float?` | No | Parsed from `#VIDEOGAP`. |
-| `previewStartSec` | `Float?` | No | `#PREVIEWSTART` > medley start > `0.0`. |
+| `previewStartSec` | `Float?` | No | Parsed `#PREVIEWSTART` value when present and valid; absent/null otherwise. Fallback/default materialization is applied only by the library/index projection. |
 | `video` | `String?` | No | Optional media tag. Missing file does not invalidate. |
 | `cover` | `String?` | No | Optional media tag. |
 | `background` | `String?` | No | Optional media tag. |
-| `instrumental` | `String?` | No | Source metadata only. |
-| `vocals` | `String?` | No | Source metadata only. |
 | `version` | `String` | Yes | Defaults to legacy `0.3.0` when absent. |
 | `year` | `Int?` | No | Optional metadata. |
 | `genre` | `String?` | No | Optional metadata. |
@@ -72,7 +69,7 @@ BeatRange
 - `#VERSION >= 2.0.0` is invalid.
 - For version `>= 1.0.0`, `#AUDIO` takes precedence over `#MP3`; at least one must exist.
 - For legacy songs (`#VERSION` absent or `< 1.0.0`), `#MP3` is required and `#AUDIO` is ignored for required-audio resolution.
-- `#ENCODING`, `#RESOLUTION`, `#NOTESGAP`, `#DUETSINGERP1`, `#DUETSINGERP2`, and `#CALCMEDLEY` always remain unknown/custom tags.
+- `#ENCODING`, `#RESOLUTION`, `#NOTESGAP`, `#DUETSINGERP1`, `#DUETSINGERP2`, `#CALCMEDLEY`, `#INSTRUMENTAL`, and `#VOCALS` always remain unknown/custom tags.
 - Duplicate known tags use the last successfully parsed value.
 - Malformed required headers invalidate; malformed optional headers warn and become absent.
 
@@ -132,7 +129,6 @@ BeatRange
 |---|---|---:|---|
 | `severity` | `Severity` | Yes | `Info`, `Warn`, `Invalid`. |
 | `code` | `String` | Yes | Stable fixture-assertable code. |
-| `message` | `String` | Yes | Human-readable deterministic message. |
 | `txtUri` | `String` | Yes | Deterministic TXT identifier. |
 | `lineNumber` | `Int?` | No | 1-based when deterministically attributable. |
 
@@ -170,19 +166,20 @@ BeatRange
 | `isDuet` | `Boolean` | Yes | Derived from parsed chart. |
 | `hasRap` | `Boolean` | Yes | True when `R` or `G` tokens exist. |
 | `hasVideo` | `Boolean` | Yes | Must equal `videoUrl != null`. |
-| `hasInstrumental` | `Boolean` | Yes | Source metadata only; not playback strategy. |
-| `canMedley` | `Boolean` | Yes | True only for valid solo medley-tag songs. |
+| `canMedley` | `Boolean` | Yes | True only when the song is not a duet and valid medley tags exist. |
 | `medleySource` | `String?` | No | `"tag"` or `null` in Phase 0. |
 | `medleyStartBeat` | `Int?` | No | Required when `medleySource == "tag"`. |
 | `medleyEndBeat` | `Int?` | No | Required when `medleySource == "tag"`. |
 | `startSec` | `Float` | Yes | `#START` or `0.0`. |
-| `previewStartSec` | `Float` | Yes | `#PREVIEWSTART` > medley start > `0.0`. |
+| `previewStartSec` | `Float` | Yes | Non-null in the library/index projection. It derives from: 1. valid `#PREVIEWSTART` when present and greater than `0`; 2. otherwise, valid solo medley tags converted from `medleyStartBeat` to seconds using static-BPM beat-time math; 3. otherwise, `0.0`. |
 
 **Validation rules**:
 - Invalid songs never surface as valid manifest/index entries.
 - `medleySource == "tag"` requires both beats and `start < end`.
 - `medleySource == null` requires `canMedley == false`.
-- `hasInstrumental` is display metadata only.
+- `canMedley` is true only when the song is not a duet and valid medley tags exist.
+- Parsed `SongHeader.previewStartSec` remains nullable; `IndexedSong.previewStartSec` materializes the fallback/default value.
+- The TV always consumes a single premixed `audioUrl`; `#INSTRUMENTAL` and `#VOCALS` do not create TV-facing stem fields.
 
 ## Beat-Time and Scoring Entities
 
@@ -254,6 +251,23 @@ BeatRange
 - Raw TXT bytes + caller-supplied `songId`
   - valid parse → `Result.success(ParsedSong)`
   - hard-invalid parse → `Result.failure(ParseException(diagnostics))`
+
+### Preview materialization rule
+```kotlin
+val previewStartSec =
+    when {
+        parsed.header.previewStartSec != null && parsed.header.previewStartSec > 0f ->
+            parsed.header.previewStartSec
+
+        canMedley && parsed.header.medleyStartBeat != null ->
+            BeatCalculator.beatInternalToTimeSec(
+                beatInternal = parsed.header.medleyStartBeat.toDouble(),
+                bpmInternal = parsed.header.bpmFile * 4
+            ).toFloat()
+
+        else -> 0.0f
+    }
+```
 
 ### Scoring lifecycle transitions relevant to Phase 0
 - `loadChart(...)` loads static chart/config state

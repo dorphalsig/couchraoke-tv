@@ -1,0 +1,26 @@
+package com.couchraoke.tv.domain.usdx.model
+
+data class SongHeader(
+    val title: String,
+    val artist: String,
+    val bpmFile: Float,
+    val gapMs: Float,
+    val audio: String,
+    val startSec: Float?,
+    val endMs: Int?,
+    val videoGapSec: Float?,
+    val previewStartSec: Float?,
+    val video: String?,
+    val cover: String?,
+    val background: String?,
+    val version: String,
+    val year: Int?,
+    val genre: String?,
+    val album: String?,
+    val isDuet: Boolean,
+    val p1Name: String?,
+    val p2Name: String?,
+    val medleyStartBeat: Int?,
+    val medleyEndBeat: Int?,
+    val customTags: List<CustomHeaderTag>,
+)

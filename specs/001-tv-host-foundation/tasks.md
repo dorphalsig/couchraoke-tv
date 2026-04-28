@@ -19,9 +19,9 @@
 
 **Purpose**: Create the shared Phase 0 test harness plumbing used by all later stories.
 
-- [ ] T001 Create fixture path and manifest helpers in `app/src/test/kotlin/com/couchraoke/tv/fixtures/FixturePaths.kt`
-- [ ] T002 [P] Create deterministic JSON decode/encode helpers for expected discovery, parsed-song, and score snapshots in `app/src/test/kotlin/com/couchraoke/tv/fixtures/FixtureJson.kt`
-- [ ] T003 [P] Create shared assertions and builders for diagnostics, parsed songs, and pitch samples in `app/src/test/kotlin/com/couchraoke/tv/fixtures/Phase0Assertions.kt`
+- [X] T001 Create fixture path and manifest helpers in `app/src/test/kotlin/com/couchraoke/tv/fixtures/FixturePaths.kt`
+- [X] T002 [P] Create deterministic JSON decode/encode helpers for expected discovery, parsed-song, and score snapshots in `app/src/test/kotlin/com/couchraoke/tv/fixtures/FixtureJson.kt`
+- [X] T003 [P] Create shared assertions and builders for diagnostics, parsed songs, and pitch samples in `app/src/test/kotlin/com/couchraoke/tv/fixtures/Phase0Assertions.kt`
 
 **Checkpoint**: Shared fixture infrastructure exists and later tests can read fixture inputs without leaking I/O into domain code.
 
@@ -33,11 +33,11 @@
 
 **⚠️ CRITICAL**: No user story work should begin until this phase is complete.
 
-- [ ] T004 Create the shared `PlayerId` enum in `app/src/main/kotlin/com/couchraoke/tv/domain/model/PlayerId.kt`
-- [ ] T005 [P] Create scoring model files in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/model/` (`Difficulty.kt`, `BeatRange.kt`, `ScoringConfig.kt`, `PlayerScore.kt`, `PitchSample.kt`)
-- [ ] T006 [P] Create parser enum files in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/model/` (`NoteType.kt`, `Severity.kt`)
-- [ ] T007 [P] Create parser diagnostic/support model files in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/model/` (`CustomHeaderTag.kt`, `DiagnosticEntry.kt`, `SongTiming.kt`)
-- [ ] T008 Create deterministic fixture snapshot DTOs for discovery, parsed-song, and score outputs in `app/src/test/kotlin/com/couchraoke/tv/fixtures/FixtureSnapshots.kt`
+- [X] T004 Create the shared `PlayerId` enum in `app/src/main/kotlin/com/couchraoke/tv/domain/model/PlayerId.kt`
+- [X] T005 [P] Create scoring model files in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/model/` (`Difficulty.kt`, `BeatRange.kt`, `ScoringConfig.kt`, `PlayerScore.kt`, `PitchSample.kt`)
+- [X] T006 [P] Create parser enum files in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/model/` (`NoteType.kt`, `Severity.kt`)
+- [X] T007 [P] Create parser diagnostic/support model files in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/model/` (`CustomHeaderTag.kt`, `DiagnosticEntry.kt`, `SongTiming.kt`)
+- [X] T008 Create deterministic fixture snapshot DTOs for discovery, parsed-song, and score outputs in `app/src/test/kotlin/com/couchraoke/tv/fixtures/FixtureSnapshots.kt`
 
 **Checkpoint**: Shared contracts exist for parser, beat-time, scoring, and snapshot assertions.
 
@@ -51,22 +51,22 @@
 
 ### Validation for User Story 1
 
-- [ ] T009 [P] [US1] Create the recursive discovery fixture test for F01 in `app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxDiscoveryFixtureTest.kt`
-- [ ] T010 [P] [US1] Create the parser fixture test for F02-F05 in `app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxParserFixtureTest.kt`
+- [X] T009 [P] [US1] Create the recursive discovery fixture test for F01 in `app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxDiscoveryFixtureTest.kt`
+- [X] T010 [P] [US1] Create the parser fixture test for F02-F05 in `app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxParserFixtureTest.kt`
 
 ### Implementation for User Story 1
 
-- [ ] T011 [P] [US1] Define the parser entry contract in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/UsdxParser.kt`
-- [ ] T012 [P] [US1] Define the parse failure contract in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/ParseException.kt`
-- [ ] T013 [P] [US1] Define the library-facing contracts in `app/src/main/kotlin/com/couchraoke/tv/domain/library/LibraryManager.kt` and `app/src/main/kotlin/com/couchraoke/tv/domain/library/IndexedSong.kt`
-- [ ] T014 [P] [US1] Create parser result model files in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/model/` (`ParsedSong.kt`, `SongHeader.kt`, `Track.kt`, `Line.kt`, `NoteEvent.kt`)
-- [ ] T015 [US1] Implement stable diagnostic code and message creation for required invalidations and warnings in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/internal/DiagnosticFactory.kt`
-- [ ] T016 [US1] Implement deterministic header parsing, version validation, audio precedence, preview-start fallback, duplicate-tag last-write-wins, and custom-tag preservation in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/internal/HeaderParser.kt`
-- [ ] T017 [US1] Implement body grammar, duet routing, invalid duet marker rejection, unknown-token diagnostics, variable-BPM rejection, RELATIVE body rejection, and zero-duration Freestyle conversion in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/internal/BodyParser.kt`
-- [ ] T018 [US1] Implement canonical `lineScoreValue` and `trackScoreValue` precomputation in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/internal/ScoreValueCalculator.kt`
-- [ ] T019 [US1] Implement pure parser orchestration and `Result`/`ParseException` mapping in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/internal/DefaultUsdxParser.kt`
-- [ ] T020 [US1] Implement fixture-only recursive discovery and indexed-song projection for F01 in `app/src/test/kotlin/com/couchraoke/tv/fixtures/UsdxDiscoveryHarness.kt`
-- [ ] T021 [US1] Wire deterministic JSON snapshot comparison and invalid line-number assertions into `app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxDiscoveryFixtureTest.kt` and `app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxParserFixtureTest.kt`
+- [X] T011 [P] [US1] Define the parser entry contract in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/UsdxParser.kt`
+- [X] T012 [P] [US1] Define the parse failure contract in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/ParseException.kt`
+- [X] T013 [P] [US1] Define the library-facing contracts in `app/src/main/kotlin/com/couchraoke/tv/domain/library/LibraryManager.kt` and `app/src/main/kotlin/com/couchraoke/tv/domain/library/IndexedSong.kt`. `LibraryManager` MUST expose both `val songs: StateFlow<List<IndexedSong>>` and `fun getSong(songId: String): IndexedSong?`. Phase 0 may use a fixture/static `StateFlow`; live refresh is out of scope.
+- [X] T014 [P] [US1] Create parser result model files in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/model/` (`ParsedSong.kt`, `SongHeader.kt`, `Track.kt`, `Line.kt`, `NoteEvent.kt`)
+- [X] T015 [US1] Implement stable diagnostic code creation and structured warning/invalid diagnostic emission for required invalidations and warnings in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/internal/DiagnosticFactory.kt`
+- [X] T016 [US1] Implement deterministic header parsing, version validation, audio precedence, preview-start fallback, duplicate-tag last-write-wins, and custom-tag preservation in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/internal/HeaderParser.kt`
+- [X] T017 [US1] Implement body grammar, duet routing, invalid duet marker rejection, unknown-token diagnostics, variable-BPM rejection, RELATIVE body rejection, and zero-duration Freestyle conversion in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/internal/BodyParser.kt`
+- [X] T018 [US1] Implement canonical `lineScoreValue` and `trackScoreValue` precomputation in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/internal/ScoreValueCalculator.kt`
+- [X] T019 [US1] Implement pure parser orchestration and `Result`/`ParseException` mapping in `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/internal/DefaultUsdxParser.kt`
+- [X] T020 [US1] Implement fixture-only recursive discovery and indexed-song projection for F01 in `app/src/test/kotlin/com/couchraoke/tv/fixtures/UsdxDiscoveryHarness.kt`, including the rule that `canMedley` is true only for non-duet songs with valid medley tags.
+- [X] T021 [US1] Wire deterministic JSON snapshot comparison and invalid line-number assertions into `app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxDiscoveryFixtureTest.kt` and `app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxParserFixtureTest.kt`, including the assertion that a duet song with valid medley tags still yields `isDuet=true`, `canMedley=false`, and `medleySource=null`.
 
 **Checkpoint**: User Story 1 yields deterministic parser, diagnostics, and indexed-song outputs for F01-F05 with no Android/runtime dependencies in the parser core.
 
@@ -80,14 +80,14 @@
 
 ### Validation for User Story 2
 
-- [ ] T022 [P] [US2] Create the F06 beat-time fixture test in `app/src/test/kotlin/com/couchraoke/tv/domain/scoring/BeatCalculatorFixtureTest.kt`
+- [X] T022 [P] [US2] Create the F06 beat-time fixture test in `app/src/test/kotlin/com/couchraoke/tv/domain/scoring/BeatCalculatorFixtureTest.kt`
 
 ### Implementation for User Story 2
 
-- [ ] T023 [P] [US2] Implement `timeSecToMidBeatInternal` and `beatInternalToTimeSec` in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/BeatCalculator.kt`
-- [ ] T024 [US2] Implement note-window time helpers that derive start/end TV milliseconds from BPM, GAP, and mic delay in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/internal/BeatWindowCalculator.kt`
-- [ ] T025 [US2] Add lyric-highlight and scoring-cursor fixture assertions, including the `lyricsTimeSec=5.0`, `GAPms=2000`, `BPM_file=120`, and nonzero `micDelayMs` cases, in `app/src/test/kotlin/com/couchraoke/tv/domain/scoring/BeatCalculatorFixtureTest.kt`
-- [ ] T026 [US2] Add start-inclusive/end-exclusive boundary coverage and `1e-9s` beat↔time round-trip assertions in `app/src/test/kotlin/com/couchraoke/tv/domain/scoring/BeatCalculatorFixtureTest.kt`
+- [X] T023 [P] [US2] Implement `timeSecToMidBeatInternal` and `beatInternalToTimeSec` in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/BeatCalculator.kt`
+- [X] T024 [US2] Implement note-window time helpers that derive start/end TV milliseconds from BPM, GAP, and mic delay in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/internal/BeatWindowCalculator.kt`
+- [X] T025 [US2] Add lyric-highlight and scoring-cursor fixture assertions, including the `lyricsTimeSec=5.0`, `GAPms=2000`, `BPM_file=120`, and nonzero `micDelayMs` cases, in `app/src/test/kotlin/com/couchraoke/tv/domain/scoring/BeatCalculatorFixtureTest.kt`
+- [X] T026 [US2] Add start-inclusive/end-exclusive boundary coverage and `1e-9s` beat↔time round-trip assertions in `app/src/test/kotlin/com/couchraoke/tv/domain/scoring/BeatCalculatorFixtureTest.kt`
 
 **Checkpoint**: User Story 2 yields deterministic beat/time math for lyric highlighting, scoring windows, and boundary semantics.
 
@@ -101,19 +101,19 @@
 
 ### Validation for User Story 3
 
-- [ ] T027 [P] [US3] Create the scoring fixture test for F08-F11 plus F03 `scoring/freestyle_only` in `app/src/test/kotlin/com/couchraoke/tv/domain/scoring/ScoringEngineFixtureTest.kt`; use inline pitch samples for small deterministic cases and fixture files only for timing-sensitive replay data shared across tests
-- [ ] T028 [P] [US3] Create the inline scoring edge-case test for tolerance thresholds, octave loops, rap gating, and display rounding in `app/src/test/kotlin/com/couchraoke/tv/domain/scoring/ScoringMathUnitTest.kt`; construct pitch samples inline—no fixture files needed for these unit-level cases
+- [X] T027 [P] [US3] Create the scoring fixture test for F08-F11 plus F03 `scoring/freestyle_only` in `app/src/test/kotlin/com/couchraoke/tv/domain/scoring/ScoringEngineFixtureTest.kt`; use inline pitch samples for small deterministic cases and fixture files only for timing-sensitive replay data shared across tests
+- [X] T028 [P] [US3] Create the inline scoring edge-case test for tolerance thresholds, octave loops, rap gating, and display rounding in `app/src/test/kotlin/com/couchraoke/tv/domain/scoring/ScoringMathUnitTest.kt`; construct pitch samples inline—no fixture files needed for these unit-level cases
 
 ### Implementation for User Story 3
 
-- [ ] T029 [P] [US3] Define the Phase 0 scoring contract in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/ScoringEngine.kt`
-- [ ] T030 [US3] Implement qualifying-sample selection and `N == 0` note handling in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/internal/QualifyingSampleSelector.kt`
-- [ ] T031 [US3] Implement note hit evaluation for Normal, Golden, Rap, RapGolden, and Freestyle notes plus Easy/Medium/Hard difficulty rules in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/internal/NoteHitEvaluator.kt`
-- [ ] T032 [US3] Implement full-semitone octave normalization without modulo-12 reduction in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/internal/OctaveNormalizer.kt`
-- [ ] T033 [US3] Implement note-score accumulation and medley-window score-value filtering in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/internal/NoteScoreCalculator.kt`
-- [ ] T034 [US3] Implement line bonus, the `MaxLineScore <= 2` forgiveness rule, `scoreLast` checkpoints, and display-rounding asymmetry in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/internal/ScoreBonusAndRounding.kt`
-- [ ] T035 [US3] Implement pure scoring orchestration for `loadChart`, `setSongStart`, `finalizeAll`, and `reset` in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/internal/Phase0ScoringEngine.kt`
-- [ ] T036 [US3] Wire pitch-sample normalization (`midiNote != 255`, `midiNote - 36`) and expected-score snapshot assertions into `app/src/test/kotlin/com/couchraoke/tv/domain/scoring/ScoringEngineFixtureTest.kt`
+- [X] T029 [P] [US3] Define the Phase 0 scoring contract in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/ScoringEngine.kt`
+- [X] T030 [US3] Implement qualifying-sample selection and `N == 0` note handling in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/internal/QualifyingSampleSelector.kt`
+- [X] T031 [US3] Implement note hit evaluation for Normal, Golden, Rap, RapGolden, and Freestyle notes plus Easy/Medium/Hard difficulty rules in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/internal/NoteHitEvaluator.kt`
+- [X] T032 [US3] Implement full-semitone octave normalization without modulo-12 reduction in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/internal/OctaveNormalizer.kt`
+- [X] T033 [US3] Implement note-score accumulation and medley-window score-value filtering in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/internal/NoteScoreCalculator.kt`
+- [X] T034 [US3] Implement line bonus, the `MaxLineScore <= 2` forgiveness rule, `scoreLast` checkpoints, and display-rounding asymmetry in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/internal/ScoreBonusAndRounding.kt`
+- [X] T035 [US3] Implement pure scoring orchestration for `loadChart`, `setSongStart`, `finalizeAll`, and `reset` in `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/internal/Phase0ScoringEngine.kt`, using an explicit implementation/test-harness pitch sample source rather than adding sample loading to the public `ScoringEngine` interface
+- [X] T036 [US3] Wire pitch-sample normalization (`midiNote != 255`, `midiNote - 36`) and expected-score snapshot assertions into `app/src/test/kotlin/com/couchraoke/tv/domain/scoring/ScoringEngineFixtureTest.kt`
 
 **Checkpoint**: User Story 3 yields deterministic pure scoring math with perfect-performance totals of `10000`, correct rap gating, octave normalization, line bonus, and rounding behavior.
 
@@ -129,13 +129,13 @@
 
 - [ ] T037 [P] [US4] Add parser regression coverage for missing required audio, malformed required headers, duplicate-known-tag last-write-wins, and optional-tag warnings in `app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxParserRegressionTest.kt`
 - [ ] T038 [P] [US4] Add scoring regression coverage for perfect `10000` totals, empty-line bonus skip, medley-window filtering, and total-never-exceeds-`10000` in `app/src/test/kotlin/com/couchraoke/tv/domain/scoring/ScoringRegressionTest.kt`
-- [ ] T039 [US4] Add a pure-JVM 10KB parser performance regression test for the Phase 0 `<50ms` budget in `app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxParserPerformanceTest.kt`
+- [ ] T039 [US4] Add a pure-JVM warmed 10KB parser performance regression test for the Phase 0 `<50ms` budget in `app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxParserPerformanceTest.kt`. This test guards gross regressions only; allocation profiling is not part of the Phase 0 gate.
 - [ ] T040 [US4] Run the scoped `:app:testBranch` gate from repo root against `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/`, `app/src/main/kotlin/com/couchraoke/tv/domain/library/`, `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/`, and `app/src/test/kotlin/com/couchraoke/tv/domain/`
 
 **Authoritative command**:
 
 ```bash
-./gradlew :app:testBranch \
+timeout 10m ./gradlew :app:testBranch \
   --src com.couchraoke.tv.domain.usdx.UsdxParser \
   --src com.couchraoke.tv.domain.usdx.ParseException \
   --src com.couchraoke.tv.domain.usdx.model.ParsedSong \
@@ -144,6 +144,7 @@
   --src com.couchraoke.tv.domain.usdx.model.Line \
   --src com.couchraoke.tv.domain.usdx.model.NoteEvent \
   --src com.couchraoke.tv.domain.library.IndexedSong \
+  --src com.couchraoke.tv.domain.library.LibraryManager \
   --src com.couchraoke.tv.domain.scoring.BeatCalculator \
   --src com.couchraoke.tv.domain.scoring.ScoringEngine \
   --src com.couchraoke.tv.domain.scoring.model.BeatRange \
@@ -152,7 +153,8 @@
   --src com.couchraoke.tv.domain.scoring.model.PitchSample \
   --test com.couchraoke.tv.domain.usdx.UsdxParserFixtureTest \
   --test com.couchraoke.tv.domain.scoring.BeatCalculatorFixtureTest \
-  --test com.couchraoke.tv.domain.scoring.ScoringEngineFixtureTest
+  --test com.couchraoke.tv.domain.scoring.ScoringEngineFixtureTest \
+  --test com.couchraoke.tv.domain.scoring.ScoringMathUnitTest
 ```
 
 **Checkpoint**: The scoped quality gate passes fresh with coverage and performance requirements satisfied.
@@ -216,7 +218,7 @@ Task: "T009 Create the recursive discovery fixture test in app/src/test/kotlin/c
 Task: "T010 Create the parser fixture test in app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxParserFixtureTest.kt"
 Task: "T011 Define the parser entry contract in app/src/main/kotlin/com/couchraoke/tv/domain/usdx/UsdxParser.kt"
 Task: "T012 Define the parse failure contract in app/src/main/kotlin/com/couchraoke/tv/domain/usdx/ParseException.kt"
-Task: "T013 Define the library-facing contracts in app/src/main/kotlin/com/couchraoke/tv/domain/library/LibraryManager.kt and app/src/main/kotlin/com/couchraoke/tv/domain/library/IndexedSong.kt"
+Task: "T013 Define the library-facing contracts in app/src/main/kotlin/com/couchraoke/tv/domain/library/LibraryManager.kt and app/src/main/kotlin/com/couchraoke/tv/domain/library/IndexedSong.kt; LibraryManager exposes songs StateFlow and getSong lookup"
 Task: "T014 Create parser result model files in app/src/main/kotlin/com/couchraoke/tv/domain/usdx/model/"
 ```
 
@@ -243,7 +245,7 @@ Task: "T029 Define the scoring contract in app/src/main/kotlin/com/couchraoke/tv
 # Parallelizable starting point for US4
 Task: "T037 Add parser regression coverage in app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxParserRegressionTest.kt"
 Task: "T038 Add scoring regression coverage in app/src/test/kotlin/com/couchraoke/tv/domain/scoring/ScoringRegressionTest.kt"
-Task: "T039 Add the parser performance regression test in app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxParserPerformanceTest.kt"
+Task: "T039 Add the warmed parser performance regression test in app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxParserPerformanceTest.kt"
 ```
 
 ---

@@ -22,8 +22,8 @@
   - Discard unknown tags — rejected because ordered custom-tag preservation is a fixture requirement.
 
 ## Decision 4: Preserve preview/start semantics exactly
-- **Decision**: `previewStartSec` derives from `#PREVIEWSTART` when present and positive, otherwise from valid medley tags, otherwise `0.0`. `#START` affects only `startSec`.
-- **Rationale**: This resolves a clarified ambiguity and keeps library/index behavior deterministic.
+- **Decision**: Parsed `SongHeader.previewStartSec` preserves only a valid source `#PREVIEWSTART` value and remains nullable. Library/index projection materializes non-null `previewStartSec`: use `#PREVIEWSTART` when present and positive; otherwise, for valid solo medley tags use `BeatCalculator.beatInternalToTimeSec(medleyStartBeat.toDouble(), bpmFile * 4).toFloat()`; otherwise use `0.0`. `#START` affects only `startSec`.
+- **Rationale**: This resolves a clarified ambiguity and keeps parser/header state distinct from the deterministic library-facing fallback value.
 - **Alternatives considered**:
   - Reuse `#START` as a preview fallback — rejected because the clarified contract forbids it.
   - Leave preview unset when tags are absent — rejected because the library-facing contract requires deterministic defaults.
@@ -97,3 +97,24 @@
 - **Alternatives considered**:
   - Leave current files in `src/main/java` and place only new code in `src/main/kotlin` — rejected because it would preserve an unnecessary inconsistency.
   - Keep all Kotlin under `src/main/java` — rejected because the scoped validation tooling would not track those files cleanly.
+
+## Decision 15: Preserve the observable library catalog seam in Phase 0
+- **Decision**: `LibraryManager` keeps both `val songs: StateFlow<List<IndexedSong>>` and `fun getSong(songId: String): IndexedSong?`, but Phase 0 may back `songs` with fixture/static data only.
+- **Rationale**: Downstream TV consumers depend on the observable catalog seam even though runtime refresh behavior is out of the Phase 0 gate.
+- **Alternatives considered**:
+  - Reduce the contract to lookup-only — rejected because it narrows the later consumer seam.
+  - Require live refresh now — rejected because that belongs to later runtime phases.
+
+## Decision 16: Keep parser diagnostics structured and machine-facing
+- **Decision**: Core parser diagnostics carry severity, stable code, TXT identifier, and deterministic line number when present; human-readable diagnostic text is produced by logging or presentation mapping, not stored in the core parse result.
+- **Rationale**: This keeps fixture assertions stable and avoids coupling the core parser contract to UI-facing or log-facing text.
+- **Alternatives considered**:
+  - Carry human-readable detail strings in `DiagnosticEntry` — rejected because it weakens the machine-facing contract and invites brittle fixture expectations.
+  - Require UI to display parser diagnostic detail directly — rejected because generic invalid-song messaging is sufficient at the presentation boundary.
+
+## Decision 17: Treat `#INSTRUMENTAL` and `#VOCALS` as custom metadata only
+- **Decision**: `#INSTRUMENTAL` and `#VOCALS` are preserved only in `customTags` and have no TV-side playback semantics. The TV always consumes a single phone-provided premixed `audioUrl`.
+- **Rationale**: Source-stem handling belongs to the phone-side asset contract, not the TV-side Phase 0 parser/index contract.
+- **Alternatives considered**:
+  - Model separate stem fields in `SongHeader` or `IndexedSong` — rejected because the TV no longer consumes separate instrumental/vocal assets.
+  - Keep `hasInstrumental` as behavior-driving metadata — rejected because it would incorrectly leak playback strategy into the TV contract.

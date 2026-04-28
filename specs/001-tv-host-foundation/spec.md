@@ -95,16 +95,16 @@ As a maintainer, I need Phase 0 to provide a fresh, repeatable quality gate so l
 - A song with missing optional media such as `#VIDEO`, `#COVER`, or `#BACKGROUND` remains valid and treats the missing optional asset as absent.
 - Duplicate known header tags use the last successfully parsed value.
 - Unknown header tags, malformed optional header tags, empty-value header tags, and no-separator header lines are non-fatal; they produce diagnostics and preserve custom tag data when applicable.
-- `#ENCODING`, `#RESOLUTION`, `#NOTESGAP`, `#DUETSINGERP1`, `#DUETSINGERP2`, and `#CALCMEDLEY` are always unknown tags with no semantic processing.
+- `#ENCODING`, `#RESOLUTION`, `#NOTESGAP`, `#DUETSINGERP1`, `#DUETSINGERP2`, `#CALCMEDLEY`, `#INSTRUMENTAL`, and `#VOCALS` are always custom tags with no TV-side semantic processing.
 - `#TAGS` is parsed as recognized metadata only for version `>= 1.0.0`; otherwise it is preserved as custom-tag data.
 - Unknown body tokens are non-fatal; they are skipped and diagnosed without rejecting the song.
-- A note with `durationBeats = 0` is converted to Freestyle, keeps duration `0`, produces the warning message `found note with length zero -> converted to FreeStyle` with a line number, and contributes `0` score.
+- A note with `durationBeats = 0` is converted to Freestyle, keeps duration `0`, emits a structured warning diagnostic with a stable code and deterministic line number when attributable, and contributes `0` score.
 - Empty sentences produced during parsing are removed before validation; each track must retain at least one non-empty sentence or the song is invalid.
 - A duet song must produce exactly two tracks; a non-duet song must produce exactly one track.
 - File beat values are used as authored; note activity and sample inclusion use start-inclusive/end-exclusive intervals.
 - Lyric highlighting uses no mic delay; any later lane-beat consumer and scoring windows use configured mic delay.
 - A pitch sample is tone-valid if and only if `midiNote != 255`; fixture shorthands must normalize to that rule before scoring.
-- `#PREVIEWSTART` takes precedence for preview start when present and positive; otherwise `previewStartSec` falls back to medley start when valid medley tags exist, otherwise `0.0`. `#START` affects `startSec` only.
+- `#PREVIEWSTART` takes precedence for preview start when present and positive; otherwise `previewStartSec` falls back to `BeatCalculator.beatInternalToTimeSec(medleyStartBeat.toDouble(), bpmFile * 4)` when valid solo medley tags exist, otherwise `0.0`. `#START` affects `startSec` only.
 - Octave normalization must operate on the full semitone value before comparison, not on pitch class modulo 12.
 - Golden score rounding deliberately uses the opposite direction from the rounded normal score bucket to prevent totals above `10000`.
 - Empty lines do not receive line bonus; very small line max scores (`<= 2`) are treated as perfect by the forgiveness rule.
@@ -144,16 +144,16 @@ As a maintainer, I need Phase 0 to provide a fresh, repeatable quality gate so l
 
 - **FR-013**: The parser MUST accept a caller-supplied canonical song identifier and raw TXT bytes. The parser MUST NOT derive the song identifier from file paths or network data.
 - **FR-014**: A successful parse MUST return `Result.success(ParsedSong)` whose `diagnostics` list may contain info/warn entries only.
-- **FR-015**: A hard-invalid song MUST fail as `Result.failure(ParseException)` carrying the populated diagnostics list, including at least one invalid-severity diagnostic.
+- **FR-015**: A hard-invalid song MUST fail as `Result.failure(ParseException)` carrying the structured diagnostics accumulated up to termination, including at least one invalid-severity diagnostic.
 - **FR-016**: Every parse attempt MUST produce structured diagnostics for warnings and invalidations that are deterministic for fixture assertions.
-- **FR-017**: Diagnostics MUST include severity, stable code, human-readable message, TXT identifier, and optional 1-based line number when a specific line caused the issue.
+- **FR-017**: Diagnostics MUST include severity, stable code, TXT identifier, and optional 1-based line number when a specific line caused the issue.
 
 #### Parsed Song Header Semantics
 
-- **FR-018**: The header MUST include required song title, artist, positive file BPM, GAP in milliseconds defaulting to `0`, resolved audio filename, and canonical song-root path or URI.
+- **FR-018**: The header MUST include required song title, artist, positive file BPM, GAP in milliseconds defaulting to `0`, and resolved audio filename.
 - **FR-019**: The header MUST support optional playback timing fields: start position in seconds, end position in milliseconds, video gap in seconds, and preview start in seconds.
-- **FR-020**: The header MUST support optional media fields: video, cover, background, instrumental, and vocals.
-- **FR-021**: Instrumental and vocals tags MUST be parsed and preserved as source metadata; TV playback strategy MUST still treat later manifest playback as a single pre-mixed audio URL, not separate instrumental/vocal assets.
+- **FR-020**: The header MUST support optional media fields: video, cover, and background.
+- **FR-021**: `#INSTRUMENTAL` and `#VOCALS` are not semantic TV parser tags. If present in source TXT, they MUST be preserved only in `customTags` in encounter order and MUST NOT affect `SongHeader.audio`, `IndexedSong.audioUrl`, playback, preview, scoring, medley behavior, or any TV-facing wire schema.
 - **FR-022**: The header MUST support optional metadata fields for version, year, genre, album, duet singer names, medley start beat, medley end beat, and custom tags.
 - **FR-023**: If `#VERSION` is absent, the parser MUST treat the song as legacy version `0.3.0`.
 - **FR-024**: If `#VERSION` is present but does not parse as dotted numeric version data, the song MUST be invalid.
@@ -163,7 +163,7 @@ As a maintainer, I need Phase 0 to provide a fresh, repeatable quality gate so l
 - **FR-028**: For legacy songs where `#VERSION` is absent or `< 1.0.0`, `#MP3` MUST be present and `#AUDIO` MUST be ignored for required-audio resolution.
 - **FR-029**: The resolved required audio file MUST exist for validation fixtures; missing required audio MUST invalidate the song with `ERROR_CORRUPT_SONG_FILE_NOT_FOUND`.
 - **FR-030**: Missing optional media targets MUST NOT invalidate the song; the missing optional media field MUST be treated as absent.
-- **FR-031**: Derived `previewStartSec` for library-facing indexed songs MUST use `#PREVIEWSTART` when present and greater than `0`; otherwise it MUST use medley start time when valid medley tags produce `medleySource = "tag"`; otherwise it MUST use `0.0`.
+- **FR-031**: Derived `previewStartSec` for library-facing indexed songs MUST use valid `#PREVIEWSTART` when present and greater than `0`; otherwise it MUST use `BeatCalculator.beatInternalToTimeSec(medleyStartBeat.toDouble(), bpmFile * 4)` when valid solo medley tags produce `medleySource = "tag"`; otherwise it MUST use `0.0`.
 - **FR-032**: `#START` MUST represent playback start position only and MUST map to `startSec`; it MUST NOT be used as the preview fallback rule.
 
 #### Header Parsing Rules
@@ -175,7 +175,7 @@ As a maintainer, I need Phase 0 to provide a fresh, repeatable quality gate so l
 - **FR-037**: Malformed optional header tags MUST produce a warning and be treated as absent.
 - **FR-038**: Unknown tags MUST be preserved as custom header tags in encounter order and MUST NOT invalidate the song.
 - **FR-039**: Empty-value tags and no-separator header lines MUST be diagnosed and preserved as custom tags where representable.
-- **FR-040**: `#ENCODING`, `#RESOLUTION`, `#NOTESGAP`, `#DUETSINGERP1`, `#DUETSINGERP2`, and `#CALCMEDLEY` MUST be treated as unknown tags regardless of version; they MUST be preserved and MUST NOT receive semantic processing.
+- **FR-040**: `#ENCODING`, `#RESOLUTION`, `#NOTESGAP`, `#DUETSINGERP1`, `#DUETSINGERP2`, `#CALCMEDLEY`, `#INSTRUMENTAL`, and `#VOCALS` MUST be treated as custom tags regardless of version; they MUST be preserved and MUST NOT receive TV-side semantic processing.
 - **FR-041**: `#RELATIVE` as a header tag MUST be treated as an unknown custom tag with no semantic effect.
 
 #### Supported Header Tags
@@ -186,7 +186,7 @@ As a maintainer, I need Phase 0 to provide a fresh, repeatable quality gate so l
 - **FR-045**: The parser MUST recognize `#GAP` as optional millisecond delay from audio start to first beat, defaulting to `0`.
 - **FR-046**: The parser MUST recognize `#MP3` and `#AUDIO` as version-dependent audio source tags.
 - **FR-047**: The parser MUST recognize `#VIDEO`, `#VIDEOGAP`, `#COVER`, and `#BACKGROUND` as optional media tags.
-- **FR-048**: The parser MUST recognize `#INSTRUMENTAL` as an optional source backing track tag and `#VOCALS` as an optional source vocal stem tag.
+- **FR-048**: The parser MUST preserve `#INSTRUMENTAL` and `#VOCALS` only as custom metadata with no TV-side playback semantics.
 - **FR-049**: The parser MUST recognize `#START`, `#END`, and `#PREVIEWSTART` as optional playback offset tags.
 - **FR-050**: The parser MUST recognize `#VERSION` as the optional source file version tag.
 - **FR-051**: The parser MUST recognize `#MEDLEYSTARTBEAT` and `#MEDLEYENDBEAT` as optional integer beat tags for medley eligibility and scoring-window math.
@@ -218,7 +218,7 @@ As a maintainer, I need Phase 0 to provide a fresh, repeatable quality gate so l
 #### Parser Invariants and Score Values
 
 - **FR-073**: Every parsed note across all tracks MUST have `durationBeats >= 0`.
-- **FR-074**: Any note with `durationBeats = 0` MUST be converted to Freestyle, retain duration `0`, produce the warning message `found note with length zero -> converted to FreeStyle` with a line number, and contribute `0` score.
+- **FR-074**: Any note with `durationBeats = 0` MUST be converted to Freestyle, retain duration `0`, emit a structured warning diagnostic with a stable code and deterministic line number when attributable, and contribute `0` score.
 - **FR-075**: Empty sentences with zero note events after parsing MUST be removed.
 - **FR-076**: After sentence cleanup, every track MUST contain at least one remaining sentence; otherwise the song MUST be invalid with `ERROR_CORRUPT_SONG_NO_NOTES`.
 - **FR-077**: Songs with no valid note lines MUST be invalid with `ERROR_CORRUPT_SONG_NO_NOTES`.
@@ -245,13 +245,13 @@ As a maintainer, I need Phase 0 to provide a fresh, repeatable quality gate so l
 
 - **FR-093**: The Phase 0 validation harness MUST recursively discover `.txt` files under fixture song roots when a fixture requires recursive discovery.
 - **FR-094**: Fixture TXT identifiers MUST be portable and deterministic; absolute local paths and dynamic modified-time values MUST NOT be asserted unless a fixture explicitly requires them.
-- **FR-095**: Valid discovered songs MUST expose deterministic library-facing `IndexedSong` fields when a fixture exercises indexed-song behavior: `songId`, `phoneClientId`, `relativeTxtPath`, `modifiedTimeMs`, `title`, `artist`, `album`, `year`, `genre`, `txtUrl`, `audioUrl`, `videoUrl`, `coverUrl`, `backgroundUrl`, `isDuet`, `hasRap`, `hasVideo`, `hasInstrumental`, `canMedley`, `medleySource`, `medleyStartBeat`, `medleyEndBeat`, `startSec`, and `previewStartSec`.
+- **FR-095**: Valid discovered songs MUST expose deterministic library-facing `IndexedSong` fields when a fixture exercises indexed-song behavior: `songId`, `phoneClientId`, `relativeTxtPath`, `modifiedTimeMs`, `title`, `artist`, `album`, `year`, `genre`, `txtUrl`, `audioUrl`, `videoUrl`, `coverUrl`, `backgroundUrl`, `isDuet`, `hasRap`, `hasVideo`, `canMedley`, `medleySource`, `medleyStartBeat`, `medleyEndBeat`, `startSec`, and `previewStartSec`.
 - **FR-096**: Invalid discovered songs MUST expose deterministic validity, invalid reason code, and invalid line number when fixture expectations require them.
 - **FR-097**: A valid song's derived identifier format for library-facing fixtures MUST be `phoneClientId + "::" + relativeTxtPath`.
 - **FR-098**: Relative TXT paths in fixture-facing indexed-song behavior MUST use forward slashes, MUST NOT start with `/`, MUST NOT contain `.` or `..` segments, and MUST preserve case.
 - **FR-099**: A valid manifest-eligible entry MUST have non-null `txtUrl` and `audioUrl` values.
-- **FR-100**: `hasVideo` MUST equal whether `videoUrl` is present, and `hasInstrumental` MUST reflect source `#INSTRUMENTAL` presence only; playback strategy MUST still rely on a single pre-mixed `audioUrl`.
-- **FR-101**: `medleySource = "tag"` requires non-null `medleyStartBeat` and `medleyEndBeat` with `medleyStartBeat < medleyEndBeat`; `medleySource = null` requires `canMedley = false`.
+- **FR-100**: `hasVideo` MUST equal whether `videoUrl` is present, and the TV MUST always rely on a single pre-mixed `audioUrl` rather than separate instrumental/vocal assets.
+- **FR-101**: `medleySource = "tag"` requires non-null `medleyStartBeat` and `medleyEndBeat` with `medleyStartBeat < medleyEndBeat`; `medleySource = null` requires `canMedley = false`, and duet songs MUST produce `canMedley = false` with `medleySource = null` even when medley beat tags are present.
 - **FR-102**: Medley auto-calculation from refrain-finding tags is out of Phase 0 scope; `#CALCMEDLEY` MUST be preserved as an unknown tag with no semantic processing.
 
 #### Beat-Time Conversion
@@ -271,7 +271,7 @@ As a maintainer, I need Phase 0 to provide a fresh, repeatable quality gate so l
 - **FR-115**: For a note with start beat and duration, the scoring end time MUST be `songStartTvMs + ((startBeat + durationBeats) * 15000 / BPM_file) + GAPms + micDelayMs`.
 - **FR-116**: A pitch sample is within a note window only if `noteStartTvMs <= sample.tvTimeMs < noteEndTvMs`.
 - **FR-117**: F06's static-BPM fixture MUST pass, including the case where `lyricsTimeSec = 5.0`, `GAPms = 2000`, and `BPM_file = 120` produce highlight beat `24`.
-- **FR-118**: F06's scoring-cursor case MUST pass, including the corresponding nonzero mic-delay expectation where the scoring cursor differs from the highlight cursor.
+- **FR-118**: F06's scoring-cursor case MUST pass, including the corresponding nonzero mic-delay expectation from `../spec/tv_app.md` T5.3.2 where `lyricsTimeSec = 5.0`, `GAPms = 2000`, `BPM_file = 120`, and `micDelayMs = 100` produce `currentBeatD = 22`.
 - **FR-119**: Beat-time round trips for deterministic inline tests MUST match within `1e-9s`.
 
 #### Scoring Configuration and Budgets
@@ -380,14 +380,15 @@ interface UsdxParser {
      * @param txtBytes raw file bytes (encoding handled internally).
      * @return Result.success with ParsedSong whose diagnostics may contain
      *         info/warn entries only. Hard-invalid songs return
-     *         Result.failure(ParseException) carrying the populated diagnostics list.
+     *         Result.failure(ParseException) carrying the structured diagnostics
+     *         accumulated up to termination, including at least one Invalid.
      */
     fun parse(songId: String, txtBytes: ByteArray): Result<ParsedSong>
 }
 
 class ParseException(
     val diagnostics: List<DiagnosticEntry>
-) : RuntimeException(diagnostics.firstOrNull { it.severity == Severity.Invalid }?.message)
+) : RuntimeException()
 
 data class ParsedSong(
     val songId: String,
@@ -403,7 +404,6 @@ data class SongHeader(
     val bpmFile: Float,
     val gapMs: Float,
     val audio: String,
-    val songPath: String,
     val startSec: Float?,
     val endMs: Int?,
     val videoGapSec: Float?,
@@ -411,8 +411,6 @@ data class SongHeader(
     val video: String?,
     val cover: String?,
     val background: String?,
-    val instrumental: String?,
-    val vocals: String?,
     val version: String,
     val year: Int?,
     val genre: String?,
@@ -469,7 +467,6 @@ enum class NoteType { Normal, Golden, Rap, RapGolden, Freestyle }
 data class DiagnosticEntry(
     val severity: Severity,
     val code: String,
-    val message: String,
     val txtUri: String,
     val lineNumber: Int? = null
 )
@@ -483,7 +480,9 @@ enum class Severity { Info, Warn, Invalid }
 - Variable-BPM songs are rejected at parse time.
 - `lineScoreValue` and `trackScoreValue` are computed by the parser and are canonical.
 - Parser core is a pure function with no I/O, no network knowledge, no playback knowledge, and no scoring knowledge.
-- Parser SLA for this phase: parse time `< 50ms` for a 10KB TXT and no allocation beyond the result model in profiler validation.
+- Parser SLA for this phase: parse time `< 50ms` for a warmed 10KB TXT regression test on the development baseline.
+- Parser implementation constraints: decode TXT bytes once into a parseable representation; iterate lines in a single pass; do not use `String.split("\n")` plus nested `split(...)` in body hot paths; do not use regex for note-line parsing; use mutable builders internally and materialize immutable model lists at the result boundary; do not log per line or per note in normal operation; do not introduce Android, filesystem, network, playback, or UI dependencies into parser core; collections are allowed for result construction and bounded builders.
+- Diagnostic logging guidance: dev/debug builds SHOULD log detailed parser diagnostics at the configured diagnostic log level; release builds MAY log only warning/error summaries; UI error modals may display generic messages such as "This song file is invalid" and do not need direct parser diagnostic text; fixture validation MUST NOT depend on log scraping.
 
 #### Supporting Types Used by Phase 0
 
@@ -524,7 +523,6 @@ data class IndexedSong(
     val isDuet: Boolean,
     val hasRap: Boolean,
     val hasVideo: Boolean,
-    val hasInstrumental: Boolean,
     val canMedley: Boolean,
     val medleySource: String?,
     val medleyStartBeat: Int?,
@@ -539,10 +537,13 @@ data class IndexedSong(
 - `relativeTxtPath` uses `/`, does not begin with `/`, contains no `.` or `..` path segments, and preserves case.
 - `txtUrl` and `audioUrl` are non-null for manifest-published valid songs.
 - `hasVideo == (videoUrl != null)`.
-- `hasInstrumental` is source metadata only and MUST NOT change TV playback strategy.
+- `canMedley` is true only when the song is not a duet and valid medley tags exist.
 - `medleySource == "tag"` requires non-null beats with `medleyStartBeat < medleyEndBeat`.
-- `previewStartSec` derives from `#PREVIEWSTART`, then medley start when medley tags are valid, then `0.0`.
+- Parsed `SongHeader.previewStartSec` preserves source tag presence and remains nullable.
+- `IndexedSong.previewStartSec` materializes the fallback/default value and is always non-null.
+- `previewStartSec` derives from valid `#PREVIEWSTART` when present and greater than `0`, otherwise valid solo medley tags converted with `BeatCalculator.beatInternalToTimeSec(medleyStartBeat.toDouble(), bpmFile * 4)`, otherwise `0.0`.
 - `startSec` derives from `#START`, else `0.0`.
+- The TV always receives and plays one phone-provided premixed audio resource through `audioUrl`; `#INSTRUMENTAL` and `#VOCALS` have no TV-side playback semantics.
 
 #### Beat-Time Contract
 
@@ -567,19 +568,40 @@ object BeatCalculator {
 
 #### Scoring Contract and Future Runtime Seam
 
+The Phase 0 scoring contract below is normative for this feature slice. Broader runtime scoring APIs from the full TV app specification are documented only as future seams and are not required for Phase 0 completion.
+
 ```kotlin
 interface ScoringEngine {
-    val playerScores: StateFlow<Map<PlayerId, PlayerScore>>
-    val livePitch: SharedFlow<PitchEvent>
+    /**
+     * Loads the parsed chart and all scoring configuration needed for the
+     * current deterministic scoring run.
+     *
+     * Phase 0 validates pure scoring math only. Live pitch transport,
+     * jitter buffering, coroutine scheduling, score streaming, pause/resume,
+     * and UI pitch cursor behavior are future runtime seams.
+     */
+    fun loadChart(
+        chart: ParsedSong,
+        micDelayMs: Int,
+        medleyWindow: BeatRange?,
+        config: ScoringConfig
+    )
 
-    fun loadChart(chart: ParsedSong, micDelayMs: Int, medleyWindow: BeatRange?, config: ScoringConfig)
+    /**
+     * Establishes the TV monotonic song-start anchor used by note-window math.
+     */
     fun setSongStart(songStartTvMs: Long)
-    fun start()
-    fun suspend()
-    fun resume()
+
+    /**
+     * Finalizes the deterministic fixture/math scoring run and returns final
+     * per-player scores.
+     */
     suspend fun finalizeAll(): Map<PlayerId, PlayerScore>
+
+    /**
+     * Clears loaded chart/config/score state for the next deterministic run.
+     */
     fun reset()
-    fun stop()
 }
 
 data class ScoringConfig(
@@ -598,14 +620,6 @@ data class PlayerScore(
     val scoreTotalInt: Int
 )
 
-data class PitchEvent(
-    val playerId: PlayerId,
-    val midiNote: UByte,
-    val toneValid: Boolean,
-    val tvTimeMs: Long,
-    val arrivalTvMs: Long
-)
-
 data class PitchSample(
     val playerId: PlayerId,
     val midiNote: Int,
@@ -613,11 +627,30 @@ data class PitchSample(
 )
 ```
 
+Future runtime scoring seam, deferred from Phase 0:
+
+The broader runtime `ScoringEngine` may later expose score streams, live pitch streams,
+lifecycle controls, jitter buffering, and coroutine-driven note finalization, for example:
+
+- `val playerScores: StateFlow<Map<PlayerId, PlayerScore>>`
+- `val livePitch: SharedFlow<PitchEvent>`
+- `fun start()`
+- `fun suspend()`
+- `fun resume()`
+- `fun stop()`
+
+These members are not part of the Phase 0 delivery gate. Phase 0 validates only pure
+scoring math through `loadChart`, `setSongStart`, `finalizeAll`, and `reset`. Fixture
+pitch input is injected into the Phase 0 implementation/test harness as a stand-in for
+the §2.2 runtime pitch-frame source; it MUST NOT be added to the public `ScoringEngine`
+interface as a sample-loading method.
+
 **Phase 0 scoring seam rules**:
+- Phase 0 owns deterministic scoring math only. The normative scoring seam is `loadChart`, `setSongStart`, `finalizeAll`, and `reset`.
+- Runtime score streaming, live pitch emission, pause/resume lifecycle, jitter buffering, late-frame filtering, and coroutine scheduling are future seams and must not be required by the Phase 0 validation gate.
 - Phase 0 validates only the pure math subset of the scoring contract: beat-window inclusion, per-note scoring, tolerance, octave normalization, line bonus, medley-window score-value math, and display rounding.
-- Runtime jitter buffering, coroutine scheduling, frame staleness filtering, live-pitch emission, and note-finalization orchestration are future seams and are explicitly outside the Phase 0 gate.
 - `ScoringConfig` is the only allowed source of current-song scoring configuration.
-- `PitchSample` is the Phase 0 fixture contract; it MUST normalize to the same semantics as runtime `PitchEvent`, especially `toneValid == (midiNote != 255)` and `tone = midiNote - 36`.
+- `PitchSample` is the Phase 0 fixture contract for the injected implementation/test-harness source; it MUST normalize to the same semantics as runtime pitch inputs, especially `toneValid == (midiNote != 255)` and `tone = midiNote - 36`.
 - Scoring math remains fixture-testable without UDP, sockets, Android runtime, or live coroutine execution.
 
 ## Success Criteria *(mandatory)*
@@ -626,7 +659,7 @@ data class PitchSample(
 
 - **SC-001**: 100% of required Phase 0 fixture groups pass fresh: F01, F02, F03, F04, F05, F06, F08, F09, F10, and F11.
 - **SC-002**: Parser and scoring math modules meet at least 80% test coverage during the scoped validation run.
-- **SC-003**: A 10KB USDX TXT fixture parses in under 50ms in the parser benchmark or equivalent Phase 0 performance test, and parser profiling shows no allocation beyond the result model during parse.
+- **SC-003**: A 10KB USDX TXT fixture parses in under 50ms in a warmed JVM regression test on the development baseline. Parser implementation MUST avoid unbounded per-line temporary collections, regex-driven body parsing, repeated whole-file string splitting in hot paths, and per-note logging/allocation. The parser may allocate the returned `ParsedSong` graph and bounded internal builders needed to produce it.
 - **SC-004**: Perfect scoring fixture performances produce `scoreTotalInt == 10000` in 100% of applicable cases.
 - **SC-005**: Scoring fixtures covering silence, no qualifying samples, or Freestyle-only notes produce `scoreTotalInt == 0` or zero per-note score deltas as specified by their expected outputs.
 - **SC-006**: Static-BPM beat-time conversion fixture F06 matches all expected cursor values, and the round-trip inline test matches within `1e-9s`.

@@ -44,19 +44,21 @@ Deliver a self-contained Phase 0 foundation for the TV host app: pure Kotlin par
 1. `com.couchraoke.tv.domain.usdx.UsdxParser#parse(songId: String, txtBytes: ByteArray): Result<ParsedSong>`
    - Producer: parser core
    - Consumers: fixture harness, library indexing adapter, scoring chart loader
-2. `com.couchraoke.tv.domain.library.LibraryManager#getSong(songId: String): IndexedSong?`
+2. `com.couchraoke.tv.domain.library.LibraryManager#songs: StateFlow<List<IndexedSong>>`
+3. `com.couchraoke.tv.domain.library.LibraryManager#getSong(songId: String): IndexedSong?`
    - Producer: library/index layer
    - Consumers: selection flow and fixture assertions
-3. `com.couchraoke.tv.domain.scoring.BeatCalculator#timeSecToMidBeatInternal(tSec: Double, bpmInternal: Float): Double`
-4. `com.couchraoke.tv.domain.scoring.BeatCalculator#beatInternalToTimeSec(beatInternal: Double, bpmInternal: Float): Double`
+   - Phase 0 defines the observable catalog seam because downstream TV consumers depend on it, but Phase 0 only validates fixture/static indexed-song projection. Runtime manifest refresh, disconnect removal, and multi-phone replacement remain later-phase behavior.
+4. `com.couchraoke.tv.domain.scoring.BeatCalculator#timeSecToMidBeatInternal(tSec: Double, bpmInternal: Float): Double`
+5. `com.couchraoke.tv.domain.scoring.BeatCalculator#beatInternalToTimeSec(beatInternal: Double, bpmInternal: Float): Double`
    - Producer: beat-time math
    - Consumers: lyric highlighting, scoring-window math, medley preview derivation
-5. `com.couchraoke.tv.domain.scoring.ScoringEngine#loadChart(chart: ParsedSong, micDelayMs: Int, medleyWindow: BeatRange?, config: ScoringConfig): Unit`
-6. `com.couchraoke.tv.domain.scoring.ScoringEngine#setSongStart(songStartTvMs: Long): Unit`
-7. `com.couchraoke.tv.domain.scoring.ScoringEngine#finalizeAll(): Map<PlayerId, PlayerScore>`
+6. `com.couchraoke.tv.domain.scoring.ScoringEngine#loadChart(chart: ParsedSong, micDelayMs: Int, medleyWindow: BeatRange?, config: ScoringConfig): Unit`
+7. `com.couchraoke.tv.domain.scoring.ScoringEngine#setSongStart(songStartTvMs: Long): Unit`
+8. `com.couchraoke.tv.domain.scoring.ScoringEngine#finalizeAll(): Map<PlayerId, PlayerScore>`
    - Producer: scoring core
    - Consumers: playback/game coordinator in later phases, fixture harness in Phase 0
-8. Future runtime seam kept documented but out of delivery gate:
+9. Future runtime seam kept documented but out of delivery gate:
    - `com.couchraoke.tv.data.network.NetworkController#pitchFrames: SharedFlow<PitchFrame>`
    - Consumer: `com.couchraoke.tv.domain.scoring.ScoringEngine`
 
@@ -81,6 +83,7 @@ app/
     │       │   ├── model/
     │       │   └── internal/
     │       ├── domain/library/
+    │       │   ├── LibraryManager.kt
     │       │   └── IndexedSong.kt
     │       └── domain/scoring/
     │           ├── BeatCalculator.kt
@@ -119,7 +122,7 @@ app/
 Phase 0 completion must use scoped `testBranch` selectors for the exact production and test classes introduced by this feature. The authoritative command set is:
 
 ```bash
-./gradlew :app:testBranch \
+timeout 10m ./gradlew :app:testBranch \
   --src com.couchraoke.tv.domain.usdx.UsdxParser \
   --src com.couchraoke.tv.domain.usdx.ParseException \
   --src com.couchraoke.tv.domain.usdx.model.ParsedSong \
@@ -128,6 +131,7 @@ Phase 0 completion must use scoped `testBranch` selectors for the exact producti
   --src com.couchraoke.tv.domain.usdx.model.Line \
   --src com.couchraoke.tv.domain.usdx.model.NoteEvent \
   --src com.couchraoke.tv.domain.library.IndexedSong \
+  --src com.couchraoke.tv.domain.library.LibraryManager \
   --src com.couchraoke.tv.domain.scoring.BeatCalculator \
   --src com.couchraoke.tv.domain.scoring.ScoringEngine \
   --src com.couchraoke.tv.domain.scoring.model.BeatRange \
@@ -136,7 +140,8 @@ Phase 0 completion must use scoped `testBranch` selectors for the exact producti
   --src com.couchraoke.tv.domain.scoring.model.PitchSample \
   --test com.couchraoke.tv.domain.usdx.UsdxParserFixtureTest \
   --test com.couchraoke.tv.domain.scoring.BeatCalculatorFixtureTest \
-  --test com.couchraoke.tv.domain.scoring.ScoringEngineFixtureTest
+  --test com.couchraoke.tv.domain.scoring.ScoringEngineFixtureTest \
+  --test com.couchraoke.tv.domain.scoring.ScoringMathUnitTest
 ```
 
 The final task list may add more granular selectors, but it must not widen beyond the Phase 0 parser, beat-time, scoring, and fixture-harness slice.

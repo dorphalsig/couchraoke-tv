@@ -99,7 +99,7 @@ Keep the Phase 0 harness at the pure unit/fixture boundary:
 ### Authoritative completion gate
 
 ```bash
-./gradlew :app:testBranch \
+timeout 10m ./gradlew :app:testBranch \
   --src com.couchraoke.tv.domain.usdx.UsdxParser \
   --src com.couchraoke.tv.domain.usdx.ParseException \
   --src com.couchraoke.tv.domain.usdx.model.ParsedSong \
@@ -108,6 +108,7 @@ Keep the Phase 0 harness at the pure unit/fixture boundary:
   --src com.couchraoke.tv.domain.usdx.model.Line \
   --src com.couchraoke.tv.domain.usdx.model.NoteEvent \
   --src com.couchraoke.tv.domain.library.IndexedSong \
+  --src com.couchraoke.tv.domain.library.LibraryManager \
   --src com.couchraoke.tv.domain.scoring.BeatCalculator \
   --src com.couchraoke.tv.domain.scoring.ScoringEngine \
   --src com.couchraoke.tv.domain.scoring.model.BeatRange \
@@ -116,7 +117,8 @@ Keep the Phase 0 harness at the pure unit/fixture boundary:
   --src com.couchraoke.tv.domain.scoring.model.PitchSample \
   --test com.couchraoke.tv.domain.usdx.UsdxParserFixtureTest \
   --test com.couchraoke.tv.domain.scoring.BeatCalculatorFixtureTest \
-  --test com.couchraoke.tv.domain.scoring.ScoringEngineFixtureTest
+  --test com.couchraoke.tv.domain.scoring.ScoringEngineFixtureTest \
+  --test com.couchraoke.tv.domain.scoring.ScoringMathUnitTest
 ```
 
 ### Expected completion signals

@@ -8,3 +8,15 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+.gradle/
+build/
+out/
+*.class
+*.jar
+*.log
+.env*
+Thumbs.db
+*.tmp
+*.swp
+.vscode/

@@ -6,7 +6,7 @@ MUST read the following before any work — in this order:
 ```
 Read .specify/memory/constitution.md
 Read CLAUDE.md  ← this file
-Read .claude/skills/implementation-orchestration/SKILL.md
+Load skill `orchestration`
 ```
 All three are mandatory. Treat them as invariants for the session.
 ---
