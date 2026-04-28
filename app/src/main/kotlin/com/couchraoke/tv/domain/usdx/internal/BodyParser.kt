@@ -148,7 +148,8 @@ internal object BodyParser {
 
         private fun buildResult(): BodyParseResult {
             val tracks = buildTracks()
-            return if (tracks.isEmpty()) {
+            val invalidTrackCount = tracks.isEmpty() || (isDuet && tracks.size != PlayerId.entries.size)
+            return if (invalidTrackCount) {
                 diagnostics += DiagnosticFactory.invalid(
                     code = DiagnosticFactory.ERROR_CORRUPT_SONG_NO_NOTES,
                     txtUri = txtUri,

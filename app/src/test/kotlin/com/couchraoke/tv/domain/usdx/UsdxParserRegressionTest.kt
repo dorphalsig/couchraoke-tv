@@ -104,4 +104,26 @@ class UsdxParserRegressionTest {
         assertNull(parsed.header.year)
         assertNull(parsed.header.videoGapSec)
     }
+
+    @Test(timeout = 30_000)
+    fun rejectsDuetSongWhenEitherPlayerHasNoRemainingNotes() {
+        val txt = """
+            #TITLE:One Sided Duet
+            #ARTIST:Artist
+            #BPM:120
+            #MP3:song.mp3
+            P1
+            : 0 4 0 hi
+            P2
+            E
+        """.trimIndent()
+
+        val failure = parser
+            .parse("one_sided_duet", txt.encodeToByteArray())
+            .exceptionOrNull() as ParseException
+        val invalid = failure.diagnostics.single { it.severity == Severity.Invalid }
+
+        assertEquals("ERROR_CORRUPT_SONG_NO_NOTES", invalid.code)
+        assertNull(invalid.lineNumber)
+    }
 }

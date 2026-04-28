@@ -127,10 +127,10 @@
 
 ### Validation for User Story 4
 
-- [ ] T037 [P] [US4] Add parser regression coverage for missing required audio, malformed required headers, duplicate-known-tag last-write-wins, and optional-tag warnings in `app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxParserRegressionTest.kt`
-- [ ] T038 [P] [US4] Add scoring regression coverage for perfect `10000` totals, empty-line bonus skip, medley-window filtering, and total-never-exceeds-`10000` in `app/src/test/kotlin/com/couchraoke/tv/domain/scoring/ScoringRegressionTest.kt`
-- [ ] T039 [US4] Add a pure-JVM warmed 10KB parser performance regression test for the Phase 0 `<50ms` budget in `app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxParserPerformanceTest.kt`. This test guards gross regressions only; allocation profiling is not part of the Phase 0 gate.
-- [ ] T040 [US4] Run the scoped `:app:testBranch` gate from repo root against `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/`, `app/src/main/kotlin/com/couchraoke/tv/domain/library/`, `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/`, and `app/src/test/kotlin/com/couchraoke/tv/domain/`
+- [X] T037 [P] [US4] Add parser regression coverage for missing required audio, malformed required headers, duplicate-known-tag last-write-wins, and optional-tag warnings in `app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxParserRegressionTest.kt`
+- [X] T038 [P] [US4] Add scoring regression coverage for perfect `10000` totals, empty-line bonus skip, medley-window filtering, and total-never-exceeds-`10000` in `app/src/test/kotlin/com/couchraoke/tv/domain/scoring/ScoringRegressionTest.kt`
+- [X] T039 [US4] Add a pure-JVM warmed 10KB parser performance regression test for the Phase 0 `<50ms` budget in `app/src/test/kotlin/com/couchraoke/tv/domain/usdx/UsdxParserPerformanceTest.kt`. This test guards gross regressions only; allocation profiling is not part of the Phase 0 gate.
+- [X] T040 [US4] Run the scoped `:app:testBranch` gate from repo root against `app/src/main/kotlin/com/couchraoke/tv/domain/usdx/`, `app/src/main/kotlin/com/couchraoke/tv/domain/library/`, `app/src/main/kotlin/com/couchraoke/tv/domain/scoring/`, and `app/src/test/kotlin/com/couchraoke/tv/domain/`
 
 **Authoritative command**:
 

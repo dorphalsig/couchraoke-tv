@@ -19,6 +19,7 @@ All three are mandatory. Treat them as invariants for the session.
 - MUST NOT navigate into third-party library source; use Context7 for their APIs
 - MUST NOT make out-of-scope changes, even if beneficial
 - MUST report detected OOS issues with a concise suggested fix — MUST NOT fix them
+- MUST NOT edit anything under quality-conventions/ without explicit previous consent by the user
 ---
 
 ## §3 Skills
