@@ -2,6 +2,8 @@ package com.couchraoke.tv.fixtures
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 @Serializable
@@ -20,7 +22,11 @@ data class FixtureManifestEntry(
 data class DiscoverySnapshot(
     val rootRel: String,
     val songs: List<DiscoverySong>,
-)
+) {
+    fun ordered(): DiscoverySnapshot = copy(
+        songs = songs.sortedBy(DiscoverySong::songTxtRel),
+    )
+}
 
 @Serializable
 data class DiscoverySong(
@@ -65,7 +71,18 @@ data class ParsedSongSnapshot(
     val timing: ParsedSongTiming,
     val tracks: List<ParsedSongTrack>,
     val diagnostics: List<ParsedSongDiagnostic>,
-)
+) {
+    fun ordered(): ParsedSongSnapshot = copy(
+        header = header.ordered(),
+        tracks = tracks.sortedBy(ParsedSongTrack::trackIndex).map(ParsedSongTrack::ordered),
+        diagnostics = diagnostics.sortedWith(
+            compareBy<ParsedSongDiagnostic> { it.lineNumber ?: Int.MAX_VALUE }
+                .thenBy { it.severity }
+                .thenBy { it.code }
+                .thenBy { it.txtUri },
+        ),
+    )
+}
 
 @Serializable
 data class ParsedSongHeader(
@@ -82,7 +99,11 @@ data class ParsedSongHeader(
     val relativeMode: Boolean? = null,
     val version: String,
     val customTags: JsonObject,
-)
+) {
+    fun ordered(): ParsedSongHeader = copy(
+        customTags = FixtureSnapshotOrdering.orderedJsonObject(customTags),
+    )
+}
 
 @Serializable
 data class ParsedSongTiming(
@@ -102,7 +123,11 @@ data class ParsedSongBpmChange(
 data class ParsedSongTrack(
     val trackIndex: Int,
     val lines: List<ParsedSongLine>,
-)
+) {
+    fun ordered(): ParsedSongTrack = copy(
+        lines = lines.sortedBy(ParsedSongLine::lineIndex),
+    )
+}
 
 @Serializable
 data class ParsedSongLine(
@@ -135,7 +160,13 @@ data class ScoreSnapshot(
     val perBeat: List<ScorePerBeat>,
     val lineBonus: ScoreLineBonus? = null,
     val expectedTotals: ScoreExpectedTotals,
-)
+) {
+    fun ordered(): ScoreSnapshot = copy(
+        derived = derived?.let(FixtureSnapshotOrdering::orderedJsonObject),
+        perBeat = perBeat.sortedBy(ScorePerBeat::beat),
+        lineBonus = lineBonus?.ordered(),
+    )
+}
 
 @Serializable
 data class ScoreAssumptions(
@@ -167,7 +198,11 @@ data class ScoreLineBonus(
     val lineBonusPerLine: Int? = null,
     val expectedScoreLine: Int,
     val lines: List<ScoreLineBonusLine>? = null,
-)
+) {
+    fun ordered(): ScoreLineBonus = copy(
+        lines = lines?.sortedBy(ScoreLineBonusLine::lineIndex),
+    )
+}
 
 @Serializable
 data class ScoreLineBonusLine(
@@ -203,3 +238,14 @@ data class MedleyExpectedTotals(
     val scoreLineInt: Int,
     val scoreTotalInt: Int,
 )
+
+object FixtureSnapshotOrdering {
+    fun orderedJsonObject(value: JsonObject): JsonObject =
+        FixtureJson.ordered(value) as JsonObject
+
+    fun orderedJsonElement(value: JsonElement): JsonElement =
+        FixtureJson.ordered(value)
+
+    fun orderedJsonArray(value: JsonArray): JsonArray =
+        FixtureJson.ordered(value) as JsonArray
+}

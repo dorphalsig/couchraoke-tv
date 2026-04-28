@@ -88,7 +88,7 @@ object Phase0Assertions {
     private fun assertSnapshot(expectedPath: Path, actual: JsonElement) {
         val expectedRaw = FixtureJson.readElement(expectedPath)
         val expected = canonicalizeDiscovery(expectedRaw)
-        assertEquals(expected, actual)
+        assertEquals(FixtureJson.ordered(expected), FixtureJson.ordered(actual))
     }
 
     private fun canonicalizeDiscovery(element: JsonElement): JsonElement {

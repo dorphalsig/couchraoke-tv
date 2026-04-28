@@ -1,5 +1,6 @@
 package com.couchraoke.tv.fixtures
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -19,6 +20,7 @@ class FixtureSnapshotsTest {
         val snapshot = FixtureJson.decode<DiscoverySnapshot>(path)
         assertNotNull(snapshot.rootRel)
         assertTrue(snapshot.songs.isNotEmpty())
+        assertEquals(snapshot.songs.sortedBy(DiscoverySong::songTxtRel), snapshot.ordered().songs)
     }
 
     @Test(timeout = 30_000)
@@ -35,6 +37,17 @@ class FixtureSnapshotsTest {
         val snapshot = FixtureJson.decode<ScoreSnapshot>(path)
         assertNotNull(snapshot.assumptions)
         assertNotNull(snapshot.expectedTotals)
+        assertEquals(snapshot.perBeat.sortedBy(ScorePerBeat::beat), snapshot.ordered().perBeat)
+    }
+
+    @Test(timeout = 30_000)
+    fun decodesF04ParsedSong() {
+        val path = FixturePaths.fixtureFile(
+            "F04_duet_parsing_track_routing",
+            "songs_root/a/valid_duet_interleaved/expected.parsedSong.json",
+        )
+        val snapshot = FixtureJson.decode<ParsedSongSnapshot>(path)
+        assertEquals(snapshot.tracks.sortedBy(ParsedSongTrack::trackIndex), snapshot.ordered().tracks)
     }
 
     @Test(timeout = 30_000)
