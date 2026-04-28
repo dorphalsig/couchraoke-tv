@@ -13,7 +13,7 @@ When you apply `com.couchraoke.quality-conventions` to an Android app or library
 - applies RoBorazzi
 - automatically configures preview-driven RoBorazzi generation for `com.couchraoke.*`
 - loads Detekt formatting rules
-- loads the custom Detekt rules from `quality-conventions/detekt-rules`
+- loads the custom Detekt rules packaged in the included `quality-conventions` build
 - configures full-module Detekt for `src/main/kotlin` and `src/test/kotlin`
 - adds `testBranch` and related selective quality tasks
 - adds JaCoCo report and coverage verification tasks for debug unit tests
@@ -28,9 +28,8 @@ That includes:
 - `quality-conventions/build.gradle.kts`
 - `quality-conventions/settings.gradle.kts`
 - `quality-conventions/src/...`
-- `quality-conventions/detekt-rules/...`
 
-Do **not** copy only the plugin source. The custom Detekt rules jar is built from `quality-conventions/detekt-rules` and is required by the plugin.
+Do **not** copy only selected plugin files. The custom Detekt rules are packaged in the included build jar and are required by the plugin.
 
 ## How to include it in another repo
 
@@ -184,7 +183,7 @@ Arguments:
 - selective JaCoCo tasks exist and run
 - full Detekt can load:
   - formatting rules
-  - custom `test-timeouts` rules from the copied plugin folder
+  - custom `test-timeouts` rules packaged in the included plugin build
 
 ### Important current caveat
 
@@ -207,13 +206,7 @@ So today, `testBranch` is selectively useful in practice:
 
 This plugin is portable because it is an included build, not build-logic in the target repo.
 
-However, portability currently depends on carrying the whole `quality-conventions/` folder so that the custom Detekt rules jar can be built and loaded from:
-
-```text
-quality-conventions/detekt-rules/build/libs/
-```
-
-The plugin expects exactly one jar in that directory when the consumer module is configured.
+Portability currently depends on carrying the whole `quality-conventions/` folder so that the included build can produce the plugin jar. That jar contains both the Gradle conventions plugin and the custom Detekt rules, and Gradle composite-build substitution resolves `com.couchraoke:quality-conventions:1.0.0` for `detektPlugins`.
 
 ## Typical setup checklist
 
