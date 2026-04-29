@@ -33,21 +33,21 @@
 
 ### Validation for Foundational Contracts
 
-- [ ] T004 [P] Add network protocol contract tests in `app/src/test/kotlin/com/couchraoke/tv/data/network/NetworkControllerContractTest.kt`
-- [ ] T005 [P] Add playback domain contract tests in `app/src/test/kotlin/com/couchraoke/tv/domain/playback/PlaybackContractsTest.kt`
-- [ ] T006 [P] Add playback UI seam contract tests for Iteration 1 intents/events and no-op medley-only `PrebufferNext`, `FadeOut`, and `Crossfade` intent handling with comments that they must be wired in Iteration 4 in `app/src/test/kotlin/com/couchraoke/tv/presentation/playback/PlaybackContractsTest.kt`
-- [ ] T007 [P] Add singing rendering contract tests for single-singer layout tokens, lyrics band constraints, score placeholder contract, and no live pitch/scoring state in `app/src/test/kotlin/com/couchraoke/tv/presentation/singing/SingingRenderContractsTest.kt`
+- [X] T004 [P] Add network protocol contract tests in `app/src/test/kotlin/com/couchraoke/tv/data/network/NetworkControllerContractTest.kt`
+- [X] T005 [P] Add playback domain contract tests in `app/src/test/kotlin/com/couchraoke/tv/domain/playback/PlaybackContractsTest.kt`
+- [X] T006 [P] Add playback UI seam contract tests for Iteration 1 intents/events and no-op medley-only `PrebufferNext`, `FadeOut`, and `Crossfade` intent handling with comments that they must be wired in Iteration 4 in `app/src/test/kotlin/com/couchraoke/tv/presentation/playback/PlaybackContractsTest.kt`
+- [X] T007 [P] Add singing rendering contract tests for single-singer layout tokens, lyrics band constraints, score placeholder contract, and no live pitch/scoring state in `app/src/test/kotlin/com/couchraoke/tv/presentation/singing/SingingRenderContractsTest.kt`
 
 ### Implementation for Foundational Contracts
 
-- [ ] T008 Implement network protocol model types in `app/src/main/kotlin/com/couchraoke/tv/data/network/NetworkModels.kt`
-- [ ] T009 Implement `NetworkController` interface in `app/src/main/kotlin/com/couchraoke/tv/data/network/NetworkController.kt`
-- [ ] T010 Implement playback domain model types in `app/src/main/kotlin/com/couchraoke/tv/domain/playback/PlaybackModels.kt`
-- [ ] T011 Implement `PlaybackCoordinator` interface in `app/src/main/kotlin/com/couchraoke/tv/domain/playback/PlaybackCoordinator.kt`
-- [ ] T012 Implement playback UI intent/event types and LibVLC seam in `app/src/main/kotlin/com/couchraoke/tv/presentation/playback/PlaybackContract.kt` and `app/src/main/kotlin/com/couchraoke/tv/presentation/playback/LibVlcPlayerHandle.kt`, including medley-only `PrebufferNext`, `FadeOut`, and `Crossfade` intents as no-ops with code comments that they must be wired in Iteration 4
-- [ ] T013 Implement singing render models and renderer contracts in `app/src/main/kotlin/com/couchraoke/tv/presentation/singing/SingingRenderModels.kt`, `app/src/main/kotlin/com/couchraoke/tv/presentation/singing/SingingRenderModelBuilder.kt`, and `app/src/main/kotlin/com/couchraoke/tv/presentation/singing/PitchLaneRenderer.kt`, preserving Iteration 1 static-note/no-live-pitch/no-scoring state and carrying layout data needed for top metadata, single lane, score placeholder, elapsed time, and two-line lyrics
-- [ ] T014 Implement shared route and modal-state contracts in `app/src/main/kotlin/com/couchraoke/tv/presentation/navigation/AppRoute.kt` and `app/src/main/kotlin/com/couchraoke/tv/presentation/common/UiModalState.kt`
-- [ ] T015 Run scoped foundational `testBranch` for `app/src/main/kotlin/com/couchraoke/tv/data/network/NetworkController.kt`, `app/src/main/kotlin/com/couchraoke/tv/domain/playback/PlaybackCoordinator.kt`, `app/src/main/kotlin/com/couchraoke/tv/presentation/playback/PlaybackContract.kt`, `app/src/main/kotlin/com/couchraoke/tv/presentation/singing/SingingRenderModels.kt`, and their tests under `app/src/test/kotlin/com/couchraoke/tv/`
+- [X] T008 Implement network protocol model types in `app/src/main/kotlin/com/couchraoke/tv/data/network/NetworkModels.kt`
+- [X] T009 Implement `NetworkController` interface in `app/src/main/kotlin/com/couchraoke/tv/data/network/NetworkController.kt`
+- [X] T010 Implement playback domain model types in `app/src/main/kotlin/com/couchraoke/tv/domain/playback/PlaybackModels.kt`
+- [X] T011 Implement `PlaybackCoordinator` interface in `app/src/main/kotlin/com/couchraoke/tv/domain/playback/PlaybackCoordinator.kt`
+- [X] T012 Implement playback UI intent/event types and LibVLC seam in `app/src/main/kotlin/com/couchraoke/tv/presentation/playback/PlaybackContract.kt` and `app/src/main/kotlin/com/couchraoke/tv/presentation/playback/LibVlcPlayerHandle.kt`, including medley-only `PrebufferNext`, `FadeOut`, and `Crossfade` intents as no-ops with code comments that they must be wired in Iteration 4
+- [X] T013 Implement singing render models and renderer contracts in `app/src/main/kotlin/com/couchraoke/tv/presentation/singing/SingingRenderModels.kt`, `app/src/main/kotlin/com/couchraoke/tv/presentation/singing/SingingRenderModelBuilder.kt`, and `app/src/main/kotlin/com/couchraoke/tv/presentation/singing/PitchLaneRenderer.kt`, preserving Iteration 1 static-note/no-live-pitch/no-scoring state and carrying layout data needed for top metadata, single lane, score placeholder, elapsed time, and two-line lyrics
+- [X] T014 Implement shared route and modal-state contracts in `app/src/main/kotlin/com/couchraoke/tv/presentation/navigation/AppRoute.kt` and `app/src/main/kotlin/com/couchraoke/tv/presentation/common/UiModalState.kt`
+- [X] T015 Run scoped foundational `testBranch` for `app/src/main/kotlin/com/couchraoke/tv/data/network/NetworkController.kt`, `app/src/main/kotlin/com/couchraoke/tv/domain/playback/PlaybackCoordinator.kt`, `app/src/main/kotlin/com/couchraoke/tv/presentation/playback/PlaybackContract.kt`, `app/src/main/kotlin/com/couchraoke/tv/presentation/singing/SingingRenderModels.kt`, and their tests under `app/src/test/kotlin/com/couchraoke/tv/`
 
 **Checkpoint**: Foundation ready; user story work can start.
 
