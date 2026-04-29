@@ -15,6 +15,7 @@ coil = "3.2.0"
 jmdns = "3.6.2"
 kotlinxSerializationJson = "1.9.0"
 libvlc = "3.6.0"
+qrcodeKotlin = "4.5.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -47,6 +48,7 @@ ktor-server-websockets = { group = "io.ktor", name = "ktor-server-websockets", v
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 libvlc-all = { group = "org.videolan.android", name = "libvlc-all", version.ref = "libvlc" }
+qrcode-kotlin = { group = "io.github.g0dkar", name = "qrcode-kotlin", version.ref = "qrcodeKotlin" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
