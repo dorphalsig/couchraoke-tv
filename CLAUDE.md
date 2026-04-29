@@ -59,10 +59,10 @@ These apply at all times, no skill exempts them:
 
 
 ## Active Technologies
-- Kotlin 2.3.20, Java 11 + AndroidX Core/AppCompat, Jetpack Compose + Compose for TV, Lifecycle ViewModel, Kotlin Coroutines, Kotlinx Serialization JSON, Ktor server/websockets, Media3 ExoPlayer + OkHttp datasource, Coil 3, DataStore Preferences, Hilt, jmDNS, ZXing, JUnit/Robolectric/AndroidX test (002-solo-sing-playback)
-- DataStore preferences for host settings; no persistent storage for remote song assets (002-solo-sing-playback)
 - Kotlin 2.2.10, Java 11 + AndroidX Core/AppCompat, Jetpack Compose + Compose for TV, Lifecycle Runtime, Kotlin Coroutines, Kotlinx Serialization JSON, JUnit 4, quality-conventions `testBranch` (001-tv-host-foundation)
 - N/A for Phase 0 core logic; fixture files only at test harness boundary (001-tv-host-foundation)
+- Kotlin 2.2.10, Java 11 + AndroidX Core/AppCompat, Jetpack Compose + Compose for TV, Lifecycle Runtime, Kotlin Coroutines, Kotlinx Serialization JSON, Ktor server/websockets/client, jmDNS, LibVLC, Coil, JUnit 4, quality-conventions `testBranch` (002-solo-sing-playback)
+- DataStore preferences only if needed for existing settings defaults; no persistence for remote song assets; manifest/chart/audio/video assets are streamed from phone-provided LAN URLs (002-solo-sing-playback)
 
 ## Recent Changes
-- 002-solo-sing-playback: Added Kotlin 2.3.20, Java 11 + AndroidX Core/AppCompat, Jetpack Compose + Compose for TV, Lifecycle ViewModel, Kotlin Coroutines, Kotlinx Serialization JSON, Ktor server/websockets, Media3 ExoPlayer + OkHttp datasource, Coil 3, DataStore Preferences, Hilt, jmDNS, ZXing, JUnit/Robolectric/AndroidX test
+- 002-solo-sing-playback: Planned Iteration 1 solo-sing playback with Ktor LAN session, jmDNS discovery, LibVLC streaming, static note lanes, and scoring/results out of scope
