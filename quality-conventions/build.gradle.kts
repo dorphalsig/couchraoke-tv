@@ -18,7 +18,7 @@ publishing {
 dependencies {
     implementation("io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.8")
     implementation("io.gitlab.arturbosch.detekt:detekt-api:1.23.8")
-    implementation("org.jacoco:org.jacoco.core:0.8.12")
+    implementation("org.jacoco:org.jacoco.core:0.8.14")
     implementation("io.github.takahirom.roborazzi:roborazzi-gradle-plugin:1.59.0")
     compileOnly("com.android.tools.build:gradle:9.1.0")
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.10")

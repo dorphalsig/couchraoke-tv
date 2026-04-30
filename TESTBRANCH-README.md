@@ -81,6 +81,34 @@ plugins {
 
 You can customize the plugin with the `qualityConventions` extension.
 
+### JaCoCo class exclusions
+
+Add a `jacoco.excludes` property in `gradle.properties` to exclude additional class patterns from all JaCoCo analysis:
+
+```properties
+jacoco.excludes=**/MyGeneratedClass*.class,**/di/**
+```
+
+Built-in exclusions (always applied, no configuration needed):
+
+- `**/R.class`, `**/R$*.class`
+- `**/BuildConfig.*`, `**/Manifest*.*`
+- `**/ComposableSingletons$*.class` — Compose-generated singleton lambdas
+
+Classes annotated with `@NoCoverageGenerated` (from `com.couchraoke.quality`) are also excluded automatically. The plugin scans `src/main/kotlin` at configuration time and derives class exclusion patterns. No `gradle.properties` entry is needed for annotated classes.
+
+The annotation is declared with `@Retention(AnnotationRetention.BINARY)`, which keeps it in the class file where JaCoCo's bytecode reader can see it. However, JaCoCo only auto-excludes `@javax.annotation.Generated` and `@lombok.Generated` by name — it has no built-in support for custom annotation names. The source scan bridges this gap.
+
+Three annotation forms are detected:
+
+| Usage | What gets excluded |
+|---|---|
+| `@file:NoCoverageGenerated` at top of file | `FilenameKt.class` and `FilenameKt$*.class` |
+| `@NoCoverageGenerated` on a `class` or `object` | `ClassName.class` and `ClassName$*.class` |
+| `@NoCoverageGenerated` on a `fun` (top-level composables) | `FilenameKt.class` and `FilenameKt$*.class` |
+
+The function-level form is the one used by composable screens and UI helpers. Annotating any function in a file excludes the entire file's compiled class, which is the correct behavior since a Kotlin file compiles to a single `FilenameKt` class.
+
 ### RoBorazzi preview generation
 
 The conventions plugin configures the RoBorazzi plugin for automatic `@Preview`-driven Robolectric screenshot tests.
@@ -184,6 +212,10 @@ Arguments:
 - full Detekt can load:
   - formatting rules
   - custom `test-timeouts` rules packaged in the included plugin build
+- classes annotated with `@NoCoverageGenerated` are excluded from JaCoCo via source scanning
+- Compose-generated singleton lambdas (`ComposableSingletons$*`) are excluded by default
+- additional class exclusions configurable via `jacoco.excludes` in `gradle.properties`
+- JaCoCo reports use CSV format; report path is printed to build output
 
 ### Important current caveat
 

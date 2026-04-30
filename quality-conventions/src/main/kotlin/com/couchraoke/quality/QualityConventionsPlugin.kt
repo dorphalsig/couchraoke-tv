@@ -26,9 +26,6 @@ class QualityConventionsPlugin : Plugin<Project> {
             minimumCoverage.convention(0.80)
         }
 
-        project.pluginManager.withPlugin("com.android.application") { configureAndroidTesting(project) }
-        project.pluginManager.withPlugin("com.android.library") { configureAndroidTesting(project) }
-
         project.plugins.apply("io.gitlab.arturbosch.detekt")
         project.plugins.apply("jacoco")
         project.plugins.apply("io.github.takahirom.roborazzi")
@@ -90,7 +87,7 @@ class QualityConventionsPlugin : Plugin<Project> {
         }
     }
 
-    private fun configureDetekt(project: Project) {
+        private fun configureDetekt(project: Project) {
         project.extensions.configure<DetektExtension>("detekt") {
             toolVersion = "1.23.8"
             config.setFrom(project.rootProject.files("detekt.yml"))
@@ -103,7 +100,12 @@ class QualityConventionsPlugin : Plugin<Project> {
             )
         }
 
+        val pluginClasspath = project.files(
+            java.io.File(QualityConventionsPlugin::class.java.protectionDomain.codeSource.location.toURI())
+        )
         project.dependencies {
+            add("compileOnly", pluginClasspath)
+            add("testImplementation", pluginClasspath)
             add("detektPlugins", "io.gitlab.arturbosch.detekt:detekt-formatting:1.23.8")
             add("detektPlugins", "com.couchraoke:quality-conventions:1.0.0")
         }
@@ -130,11 +132,13 @@ class QualityConventionsPlugin : Plugin<Project> {
             val jacocoReportTaskName = "jacoco${testTaskName.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }}Report"
             val jacocoCoverageTaskName = "jacoco${testTaskName.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }}CoverageVerification"
 
+            val jacocoExcludes = resolveJacocoExcludes(project)
             val reportTask = project.tasks.register<JacocoReport>(jacocoReportTaskName) {
                 dependsOn(testTaskName)
                 reports {
-                    xml.required.set(true)
-                    html.required.set(true)
+                    xml.required.set(false)
+                    html.required.set(false)
+                    csv.required.set(true)
                 }
 
                 val mainSrc = project.files("src/main/kotlin", "src/main/java").asFileTree
@@ -146,12 +150,16 @@ class QualityConventionsPlugin : Plugin<Project> {
                         "intermediates/classes/$variant/**/*.class",
                         "intermediates/built_in_kotlinc/$variant/**/*.class"
                     )
-                    exclude("**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*")
+                    exclude(jacocoExcludes)
                 }
                 classDirectories.setFrom(classDirs)
                 executionData.setFrom(project.fileTree(project.layout.buildDirectory) {
                     include("jacoco/$testTaskName.exec")
                 })
+                doLast {
+                    val csvFile = (this as JacocoReport).reports.csv.outputLocation.get().asFile
+                    if (csvFile.exists()) println("JaCoCo coverage report: ${csvFile.absolutePath}")
+                }
             }
 
             val verifyTask = project.tasks.register<JacocoCoverageVerification>(jacocoCoverageTaskName) {
@@ -166,7 +174,7 @@ class QualityConventionsPlugin : Plugin<Project> {
                         "intermediates/classes/$variant/**/*.class",
                         "intermediates/built_in_kotlinc/$variant/**/*.class"
                     )
-                    exclude("**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*")
+                    exclude(jacocoExcludes)
                 }
                 classDirectories.setFrom(classDirs)
                 executionData.setFrom(project.fileTree(project.layout.buildDirectory) {
@@ -253,8 +261,9 @@ class QualityConventionsPlugin : Plugin<Project> {
             val variant = extension.variantName.get()
             val capitalizedVariant = variant.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
             val testTaskName = "test${capitalizedVariant}UnitTest"
+            val testBranchExcludes = resolveJacocoExcludes(project)
             val selectiveClassDirsProvider = srcProvider.map { selectors ->
-                selectiveClassDirectories(project, variant, selectors)
+                selectiveClassDirectories(project, variant, selectors, testBranchExcludes)
             }
             val selectiveSourceDirsProvider = srcProvider.map { selectors ->
                 selectiveProductionSources(project, selectors)
@@ -306,8 +315,9 @@ class QualityConventionsPlugin : Plugin<Project> {
                 dependsOn(testBranchSelectedTests)
                 mustRunAfter(testBranchRoborazzi)
                 reports {
-                    xml.required.set(true)
-                    html.required.set(true)
+                    xml.required.set(false)
+                    html.required.set(false)
+                    csv.required.set(true)
                 }
 
                 classDirectories.setFrom(selectiveClassDirsProvider)
@@ -317,6 +327,10 @@ class QualityConventionsPlugin : Plugin<Project> {
                     include("outputs/unit_test_code_coverage/${variant}UnitTest/testBranchSelectedTests.exec")
                     include("jacoco/testBranchSelectedTests.exec")
                 })
+                doLast {
+                    val csvFile = (this as JacocoReport).reports.csv.outputLocation.get().asFile
+                    if (csvFile.exists()) println("JaCoCo coverage report: ${csvFile.absolutePath}")
+                }
             }
 
             val testBranchJacocoCoverageVerification = project.tasks.register<JacocoCoverageVerification>("testBranchJacocoCoverageVerification") {
@@ -365,17 +379,22 @@ private fun selectiveProductionFile(project: Project, selector: String) =
         project.file("src/main/java/${selector.replace('.', '/')}.java")
     ).firstOrNull { it.exists() }
 
-private fun selectiveClassDirectories(project: Project, variant: String, selectors: List<String>) =
-    project.fileTree(project.layout.buildDirectory) {
-        if (selectors.isNotEmpty()) {
-            val patterns = selectors.flatMap { selector ->
-                selectiveClassPatterns(project, variant, selector)
-            }
-            include(patterns)
-        } else {
-            include("**/NonExistentClass.class")
+private fun selectiveClassDirectories(
+    project: Project,
+    variant: String,
+    selectors: List<String>,
+    excludes: List<String> = emptyList(),
+) = project.fileTree(project.layout.buildDirectory) {
+    if (selectors.isNotEmpty()) {
+        val patterns = selectors.flatMap { selector ->
+            selectiveClassPatterns(project, variant, selector)
         }
+        include(patterns)
+    } else {
+        include("**/NonExistentClass.class")
     }
+    if (excludes.isNotEmpty()) exclude(excludes)
+}
 
 private fun selectiveClassPatterns(project: Project, variant: String, selector: String): List<String> {
     val base = selector.replace('.', '/')
@@ -406,5 +425,64 @@ private fun java.io.File.declaresMatchingType(simpleName: String): Boolean {
         """(?m)^\s*(?:\w+\s+)*(?:class|interface|object|typealias)\s+${Regex.escape(simpleName)}\b|^\s*(?:\w+\s+)*fun\s+interface\s+${Regex.escape(simpleName)}\b"""
     )
     return declarationPattern.containsMatchIn(readText())
+}
+
+private val BUILTIN_JACOCO_EXCLUDES = listOf(
+    "**/R.class",
+    "**/R$*.class",
+    "**/BuildConfig.*",
+    "**/Manifest*.*",
+    "**/ComposableSingletons$*.class",
+)
+
+private fun resolveJacocoExcludes(project: Project): List<String> {
+    val userExcludes = (project.findProperty("jacoco.excludes") as? String)
+        ?.split(",")
+        ?.map { it.trim() }
+        ?.filter { it.isNotEmpty() }
+        ?: emptyList()
+    return BUILTIN_JACOCO_EXCLUDES + userExcludes + findNoCoverageGeneratedExcludes(project)
+}
+
+private fun findNoCoverageGeneratedExcludes(project: Project): List<String> {
+    val srcDir = project.file("src/main/kotlin")
+    if (!srcDir.exists()) return emptyList()
+    val classDecl = Regex(
+        """^\s*(?:(?:public|internal|private|protected|abstract|sealed|data|open|inner|enum|annotation)\s+)*(?:class|object|interface)\s+(\w+)"""
+    )
+    val funDecl = Regex("""^\s*(?:\w+\s+)*fun\s+""")
+    val patterns = mutableListOf<String>()
+    srcDir.walkTopDown().filter { it.extension == "kt" }.forEach { file ->
+        val lines = file.readLines()
+        val name = file.nameWithoutExtension
+        if (lines.any { it.trimStart().startsWith("@file:NoCoverageGenerated") }) {
+            patterns += "**/${name}Kt.class"
+            patterns += "**/${name}Kt$*.class"
+            return@forEach
+        }
+        var lookingForDecl = false
+        var fileKtExcluded = false
+        for (line in lines) {
+            val trimmed = line.trim()
+            when {
+                trimmed.startsWith("@NoCoverageGenerated") -> lookingForDecl = true
+                lookingForDecl && trimmed.startsWith("@") -> Unit
+                lookingForDecl -> {
+                    val classMatch = classDecl.find(line)
+                    if (classMatch != null) {
+                        val className = classMatch.groupValues[1]
+                        patterns += "**/$className.class"
+                        patterns += "**/$className$*.class"
+                    } else if (funDecl.containsMatchIn(line) && !fileKtExcluded) {
+                        patterns += "**/${name}Kt.class"
+                        patterns += "**/${name}Kt$*.class"
+                        fileKtExcluded = true
+                    }
+                    lookingForDecl = false
+                }
+            }
+        }
+    }
+    return patterns
 }
 
