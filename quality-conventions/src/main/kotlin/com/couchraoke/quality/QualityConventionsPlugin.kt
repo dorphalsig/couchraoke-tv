@@ -16,8 +16,6 @@ import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 import org.gradle.testing.jacoco.tasks.JacocoReport
 import io.github.takahirom.roborazzi.RoborazziExtension
 import com.android.build.api.dsl.CommonExtension
-import com.android.build.api.dsl.ApplicationExtension
-import com.android.build.api.dsl.LibraryExtension
 
 class QualityConventionsPlugin : Plugin<Project> {
     override fun apply(project: Project) {
@@ -60,33 +58,6 @@ class QualityConventionsPlugin : Plugin<Project> {
             add("testImplementation", "org.robolectric:robolectric:4.16.1")
         }
     }
-    private fun configureAndroidTesting(project: Project) {
-        val android = project.extensions.findByName("android")
-        if (android is ApplicationExtension) {
-            android.testOptions.unitTests.isReturnDefaultValues = true
-            android.testOptions.unitTests.isIncludeAndroidResources = true
-            android.testOptions.unitTests.all { test ->
-                test.failFast = false
-                test.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
-                test.extensions.configure(JacocoTaskExtension::class.java) {
-                    isIncludeNoLocationClasses = true
-                    excludes = listOf("jdk.internal.*")
-                }
-            }
-        } else if (android is LibraryExtension) {
-            android.testOptions.unitTests.isReturnDefaultValues = true
-            android.testOptions.unitTests.isIncludeAndroidResources = true
-            android.testOptions.unitTests.all { test ->
-                test.failFast = false
-                test.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
-                test.extensions.configure(JacocoTaskExtension::class.java) {
-                    isIncludeNoLocationClasses = true
-                    excludes = listOf("jdk.internal.*")
-                }
-            }
-        }
-    }
-
         private fun configureDetekt(project: Project) {
         project.extensions.configure<DetektExtension>("detekt") {
             toolVersion = "1.23.8"
@@ -224,6 +195,8 @@ class QualityConventionsPlugin : Plugin<Project> {
                 isIncludeNoLocationClasses = true
                 excludes = listOf("jdk.internal.*")
             }
+            outputs.upToDateWhen { false }
+            outputs.doNotCacheIf("testBranch selectors are command-scoped validation inputs.") { true }
         }
 
         val testBranchRoborazzi = project.tasks.register<Test>("testBranchRoborazzi") {
@@ -335,6 +308,8 @@ class QualityConventionsPlugin : Plugin<Project> {
             val testBranchJacocoReport = project.tasks.register<JacocoReport>("testBranchJacocoReport") {
                 dependsOn(testBranchSelectedTests)
                 mustRunAfter(testBranchRoborazzi)
+                outputs.upToDateWhen { false }
+                outputs.doNotCacheIf("testBranch selectors are command-scoped validation inputs.") { true }
                 reports {
                     xml.required.set(false)
                     html.required.set(false)
@@ -356,6 +331,8 @@ class QualityConventionsPlugin : Plugin<Project> {
 
             val testBranchJacocoCoverageVerification = project.tasks.register<JacocoCoverageVerification>("testBranchJacocoCoverageVerification") {
                 dependsOn(testBranchJacocoReport)
+                outputs.upToDateWhen { false }
+                outputs.doNotCacheIf("testBranch selectors are command-scoped validation inputs.") { true }
 
                 classDirectories.setFrom(selectiveClassDirsProvider)
                 sourceDirectories.setFrom(selectiveSourceDirsProvider)
