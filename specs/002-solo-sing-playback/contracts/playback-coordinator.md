@@ -89,13 +89,13 @@ Note: The future full FSM includes `Stopped` and `Results`; Iteration 1 returns 
 4. Fetch song TXT through `NetworkController.fetchTxt(song.txtUrl)`.
 5. Parse with `UsdxParser.parse(song.songId, txtBytes)`.
 6. Build `SingingRenderModel` with static note targets and sentence-paged lyrics.
-7. Emit `PlaybackIntent.Prepare(audioUrl, videoUrl, videoGapSec, startSec)`.
-8. Wait for `PlaybackEvent.Prepared(effectivePlaybackDurationMs)`.
-9. Compute `stopAtLyricsTimeMs` from `#END` if present, otherwise prepared effective duration.
+7. Emit `PlaybackIntent.Prepare(audioUrl, videoUrl, videoGapSec, startSec, chartEndLyricsTimeMs)` immediately after parse/build, where `chartEndLyricsTimeMs` is parsed `#END` converted to milliseconds when present and positive, otherwise null.
+8. Wait for `PlaybackEvent.Prepared(effectivePlaybackDurationMs)` sourced from the authoritative audio handle duration.
+9. Compute/finalize `stopAtLyricsTimeMs = chartEndLyricsTimeMs ?: effectivePlaybackDurationMs`; if `chartEndLyricsTimeMs` is null and no usable prepared duration exists, follow the playback preparation error path.
 10. Obtain one valid clock-sync sample for the selected singer.
-11. Send `AssignSingerMessage` to selected phone only.
-12. Lock session and emit playback state for countdown or playing.
-13. Countdown if enabled; otherwise emit `PlaybackIntent.Play` immediately.
+11. Send `AssignSingerMessage` to selected phone only using the finalized `stopAtLyricsTimeMs`.
+12. Lock session and emit playback state for countdown or playing using the finalized `stopAtLyricsTimeMs`.
+13. Countdown if enabled; otherwise emit `PlaybackIntent.Play(stopAtLyricsTimeMs)` with the finalized stop boundary. `Play` MUST NOT be emitted before `Prepared`, clock-sync, `assignSinger`, and playback-state emission complete.
 14. On `PlaybackEvent.Ready(songStartTvMs)`, call `ScoringEngine.setSongStart(songStartTvMs)` only as a gate compatibility call; no note finalization/scoring is in scope.
 
 ## Pause / Resume / Restart / Quit

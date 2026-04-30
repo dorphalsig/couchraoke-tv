@@ -136,12 +136,20 @@ data class AssignSingerMessage(
     val songTitle: String,
     val songArtist: String
 )
+
+enum class StartMode {
+    Countdown, // wire value: "countdown"
+    Live, // wire value: "live"
+}
 ```
 
 Rules:
+- Serialized JSON MUST include common envelope fields `type="assignSinger"` and `protocolVersion=1`; implementations may model these as constants rather than caller-supplied constructor fields.
 - Iteration 1 sends only `P1` to the selected singer phone.
 - TV MUST NOT send `assignSinger` to non-selected devices.
 - TV obtains at least one valid clock-sync sample before sending/start.
+- `stopAtLyricsTimeMs` MUST be the finalized value computed after `PlaybackEvent.Prepared`: parsed `#END` when present and positive, otherwise prepared audio duration.
+- `assignSinger` MUST be sent after `Prepared` and before `PlaybackIntent.Play`.
 - `udpPort` remains required by protocol, but UDP pitch-frame processing is later scope.
 
 ## PlaybackStateMessage
@@ -163,6 +171,8 @@ data class PlaybackStateMessage(
 Rules:
 - Constructed only by PlaybackCoordinator.
 - Emitted on countdown, playing, paused, stopped, resume, seek, and reconnect paths.
+- `stopAtLyricsTimeMs` MUST be the finalized value computed after `PlaybackEvent.Prepared`: parsed `#END` when present and positive, otherwise prepared audio duration.
+- Countdown/playing playback-state emission for song start MUST occur after `Prepared` and before `PlaybackIntent.Play`.
 - Reasons in Iteration 1: `""`, `user_pause`, `singer_disconnected`, `song_end`, `user_quit`, `restart`.
 
 ## Clock Sync Gate

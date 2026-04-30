@@ -12,7 +12,7 @@
 - Q: How should duet/medley controls from shared screens behave in Iteration 1? → A: Show duet/medley controls but disable them in Iteration 1.
 - Q: What pitch content should Iteration 1 draw on the Singing screen? → A: Static note lanes from the song file only; live pitch from pitch frames is out of scope.
 - Q: What happens on normal song completion in Iteration 1? → A: Results screen is out of scope; return to Song List.
-- Q: How should the Join QR be generated? → A: Use `qrcode-kotlin` for actual QR rendering, but account for qrcode-kotlin issue #197 (`Unable to consistently generate an image of a specific size`) by testing short and full endpoint payload sizing instead of relying blindly on fixed-canvas helpers.
+- Q: How should the Join QR be generated? → A: Use `QRose` for actual QR rendering, with the QR-only dependency `io.github.alexzhirkevich:qrose` and not `qrose-oned`. The basic on-screen usage is `Image(painter = rememberQrCodePainter(payload), contentDescription = ...)`; for the Join overlay, keep a QRose painter inside the fixed 400dp QR box and supply explicit QR options: `colors { dark = QrBrush.solid(Color.Black); light = QrBrush.solid(Color.White) }`, `errorCorrectionLevel = QrErrorCorrectionLevel.Medium`, and `scale = qrContentScale`. Render the painter directly; PNG byte export is not required. Validate both short and full endpoint payloads for centered output within the requested square, preserving at least a 4-module quiet zone.
 - Q: What owns preview/playback volume in Iteration 1? → A: The TV/system media volume owns audibility; the app MUST NOT add an app-level preview preamp or depend on an out-of-scope Settings > Audio Preview Volume source.
 - Q: How should OK on Search invoke text entry? → A: Keep the ViewModel framework-free and use the simplest presentation/platform-facing Android TV text input launcher; if the platform text dialog is not practical on target TV, use the native IME behavior of the Search field rather than building a custom keyboard.
 - Q: How should optional video behave? → A: Video is best-effort and, when available, renders full-screen as the Singing screen background. Audio is required for a playable start; video/background failure is non-fatal and falls back to a static background.
@@ -37,6 +37,7 @@ As a host using the Android TV app, I can discover a phone on the LAN, see its s
 2. **Given** the Song List has at least one valid song, **When** the host presses OK on a song tile, **Then** the Select Players modal opens with title `SELECT PLAYERS` and subtitle `<Artist> — <Title>`.
 3. **Given** a non-duet song and at least one connected phone, **When** the host selects a Player 1 phone and presses `Start`, **Then** the TV fetches `txtUrl`, parses the chart, hands `audioUrl` and optional `videoUrl` to playback, and begins the song flow.
 4. **Given** song playback starts successfully, **When** the Singing screen appears, **Then** it shows song title/artist, elapsed time, one centered lane, and exactly two lyrics lines with sentence-based paging.
+5. **Given** focus remains on the same Song List tile for 500 ms, **When** preview starts, **Then** preview uses that song's manifest `audioUrl` and `previewStartSec` when `previewStartSec > 0.0`, otherwise starts at 0 seconds; preview stops immediately when focus changes, focus leaves the grid, an overlay/modal/settings/singing opens, or Song List exits; preview HTTP failures are suppressed silently and preview audibility follows TV/system media volume.
 
 ---
 
@@ -82,6 +83,8 @@ As a host, I can see consistent blocking interruption UI when a song cannot star
 - Audio focus is denied before playback: UI emits `PlaybackEvent.Error` and follows the playback error handling path.
 - `audioUrl` is unreachable on Start: abort, return to Song List, and show the blocking `ERROR` modal.
 - Optional `videoUrl` or background media fails to load during singing: keep audio playback active and fall back to a static background without showing an error modal.
+- Singing video exceeds 720p and hardware decoder support cannot be confirmed before load: start with audio plus static background instead of attaching the video handle.
+- Optional video is disabled by policy or encounters a playback failure during singing: disable the decorative video for the current song, fall back to static background, and continue audio/playback/session state without a blocking error modal.
 - Spectator disconnects: do not trigger disconnect auto-pause.
 - Song List has no phones connected: empty state body instructs the host to open the karaoke app on the phone and scan the QR code.
 - Phones are connected but no valid songs are present: empty state shows `No songs found.` with the specified guidance.
@@ -97,20 +100,23 @@ As a host, I can see consistent blocking interruption UI when a song cannot star
 - **FR-005**: Song List header MUST contain Search, Join, and Settings, with Search visually strongest and Join/Settings equal secondary controls.
 - **FR-006**: Search MUST perform case-insensitive substring matching across artist, album, and title with 150 ms debounce, and OK on Search MUST invoke a presentation/platform-facing Android TV text input launcher while keeping the ViewModel free of Android framework types. If the system text dialog is not practical on target TV, the Search field MAY rely on native IME focus behavior; the feature MUST NOT add a custom in-app keyboard in Iteration 1.
 - **FR-007**: OK on a song tile MUST open Select Players. Duet and medley controls from shared screens MUST remain visible but disabled in Iteration 1; duet/medley execution is out of scope.
-- **FR-008**: Join button MUST open the Join overlay, and the QR code MUST be rendered as an actual QR using `qrcode-kotlin`. The QR code MUST encode the full WebSocket endpoint URL including the `token` query parameter; it MUST NOT encode an NSD/mDNS identifier. Implementation MUST account for qrcode-kotlin issue #197 (`Unable to consistently generate an image of a specific size`) by testing both short payloads and full endpoint payloads for centered/scaled output within the 400dp QR box: the rendered PNG bounds MUST fit within the requested square size, preserve a 4-module quiet zone, and center the QR content with opposite-side padding differing by no more than 1 pixel.
+- **FR-008**: Join button MUST open the Join overlay, and the QR code MUST be rendered as an actual QR using `QRose` (`io.github.alexzhirkevich:qrose`). Do not add `qrose-oned` for this feature. The QR code MUST encode the full WebSocket endpoint URL including the `token` query parameter; it MUST NOT encode an NSD/mDNS identifier. The implementation contract is mandatory: the basic Compose usage is `Image(painter = rememberQrCodePainter(payload), contentDescription = ...)`, and the Join overlay MUST use a QRose painter with explicit options: `colors { dark = QrBrush.solid(Color.Black); light = QrBrush.solid(Color.White) }`, `errorCorrectionLevel = QrErrorCorrectionLevel.Medium`, and `scale = qrContentScale`. The renderer MUST validate both short payloads and full endpoint payloads for centered/scaled output within the 400dp QR box: the rendered QR metadata MUST fit within the requested square size, preserve at least a 4-module quiet zone, and center the QR content with opposite-side padding differing by no more than 1 pixel. PNG byte export is not required.
 - **FR-009**: Join Overlay MUST render as a modal over Song List, with the QR as the dominant centered object, the short join code directly below it, a static QR, and Back closing the overlay.
+- **FR-009a**: Song List preview playback MUST be screen-scoped and LibVLC-backed for codec consistency with Singing playback. It MUST start only after focus remains on the same song tile for 500 ms, prepare the manifest `audioUrl`, seek to `previewStartSec` when `previewStartSec > 0.0`, otherwise seek to 0 seconds, play until stopped with no fixed 10-second cap, stop immediately when focus changes, focus leaves the grid, an overlay/modal/settings/singing opens, or Song List exits, suppress HTTP/playback failures silently, and use only TV/system media volume in Iteration 1.
 - **FR-010**: Select Players MUST render as a modal overlay on `SurfaceLevel2` with title `SELECT PLAYERS` and subtitle `<Artist> — <Title>` for single-song play.
 - **FR-011**: For non-duet songs, Select Players MUST require Player 1, keep Player 2 visible but disabled, and hide Player 2 Difficulty when Player 2 is `(none)`.
 - **FR-012**: If no phones are connected, Select Players MUST show blocking message `No phones connected` with an action to open the same Join QR overlay as the Song List Join button.
 - **FR-013**: On Start, the TV MUST fetch `txtUrl` synchronously, parse it, and hand `audioUrl` and optional `videoUrl` to playback.
 - **FR-014**: If `audioUrl` is unreachable on Start, the app MUST abort, return to Song List, and show blocking error: title `ERROR`, body `This song can't be played.` / `Check Settings > Song Library — the song's phone may be disconnected.`, single `OK` action.
-- **FR-015**: Before countdown or live playback, the UI MUST emit `PlaybackEvent.Prepared(effectivePlaybackDurationMs)` to the coordinator.
+- **FR-015**: Before countdown or live playback, the UI MUST emit `PlaybackEvent.Prepared(effectivePlaybackDurationMs)` to the coordinator. `PlaybackIntent.Prepare` MAY be emitted immediately after parse with `chartEndLyricsTimeMs` set to parsed positive `#END` in milliseconds, or null when `#END` is absent or non-positive. For audio-only playback, `effectivePlaybackDurationMs` comes from the prepared audio duration exposed by the audio LibVLC handle; for audio+video playback, audio remains authoritative and the prepared duration still comes from the audio handle because video is decorative. The coordinator MUST finalize `stopAtLyricsTimeMs` after `Prepared` as `chartEndLyricsTimeMs ?: effectivePlaybackDurationMs`. If `chartEndLyricsTimeMs` is null and the audio handle cannot report a usable duration, preparation MUST fail through the playback error path rather than guessing a stop boundary.
 - **FR-016**: Before countdown or live playback, the coordinator MUST obtain at least one valid clock-sync sample for every assigned singer.
-- **FR-017**: On Start, the TV MUST send `assignSinger` to each selected singer phone with `playerId`, `songInstanceSeq`, `startMode`, `countdownMs`, `udpPort`, and `stopAtLyricsTimeMs`, and MUST NOT send `assignSinger` to non-selected devices.
+- **FR-017**: On Start, after `PlaybackEvent.Prepared` and before `PlaybackIntent.Play`, the TV MUST send `assignSinger` to each selected singer phone with `playerId`, `songInstanceSeq`, `startMode`, `countdownMs`, `udpPort`, and finalized `stopAtLyricsTimeMs`, and MUST NOT send `assignSinger` to non-selected devices.
 - **FR-018**: If Ready countdown is ON, the app MUST show an N-second countdown at 1 Hz using a centered `DisplayHeroNumber` numeral over a dimmed static background; if OFF, playback MUST begin immediately.
 - **FR-019**: If a required singer disconnects during countdown, the app MUST cancel countdown, return to Select Players, and show blocking modal title `DISCONNECTED`, body `A required singer disconnected during countdown. Please reconnect and start again.`, single `OK`, with default focus on `OK`.
 - **FR-020**: The Singing screen MUST use a full-screen video/background presentation with one centered lane for a single singer, a top metadata strip, and a full-width bottom lyrics band. Optional video MUST render full-screen as the background when available, but audio remains the required playable asset; video/background load failure MUST be non-fatal and fall back to a static background without surfacing an error modal.
-- **FR-021**: The Singing screen MUST show the minimum content defined in §2.6.16: progressive-highlight lyrics, pitch bars per active singer, live score using display format `XXXXX`, elapsed time, and song title/artist.
+- **FR-020a**: Songs with optional video MUST use two independent LibVLC players in the UI/playback layer: an authoritative audio player for `audioUrl` and timing, plus a decorative video player for `videoUrl` when admitted. The video player MUST be configured without audio, MUST NOT influence `currentPositionMs`, `songStartTvMs`, `Ready`, `Prepared`, `stopAtLyricsTimeMs`, scoring, or session state, and MUST be released/fallback to static background if it fails.
+- **FR-020b**: Before attaching optional singing video, the app MUST run a static admission gate that disables the video path at load time and uses the static background when the video is greater than 720p and hardware decoder support cannot be confirmed via Android codec capability inspection. During singing, video playback failure or a runtime gameplay-degradation report MUST disable decorative video for the current song and fall back to static background while audio continues unaffected. Iteration 1 MUST NOT test dropped decorative-video frames; gameplay degradation checks apply to gameplay signals such as future pitch-frame/render quality, not decorative video frame drops.
+- **FR-021**: The Singing screen MUST show the minimum content adjusted for Iteration 1 scope: sentence-paged lyrics with progressive highlight, static note bars from the parsed song file, constant `00000` score placeholder, elapsed time, and song title/artist. Iteration 2 wires live pitch cursor and live score.
 - **FR-022**: For Iteration 1, the pitch lane MUST draw static note lanes from the parsed song file only. Live pitch from pitch frames, pitch cursor driven by phone input, hit/miss feedback, and scoring calculations are out of scope.
 - **FR-023**: For Iteration 1, the score component MUST render in the screen layout and display constant `00000` until scoring is wired in.
 - **FR-024**: During active solo singing, the screen MUST show exactly one centered lane band at `SingingSingleLaneHeight` (192dp), full width, vertically centered on screen.
@@ -127,10 +133,11 @@ As a host, I can see consistent blocking interruption UI when a song cannot star
 - **FR-035**: The UI layer MUST register a single event listener on the audio `LibVlcPlayerHandle` before calling `play()` and MUST compute `songStartTvMs = (System.nanoTime() / 1_000_000) − playerHandle.timeMs` on the first `LibVlcEvent.Playing` after `play()`.
 - **FR-036**: The UI layer MUST capture `fallbackStartTvMs` at the moment `play()` is called and MUST emit `PlaybackEvent.Ready(fallbackStartTvMs)` if `LibVlcEvent.Playing` has not fired within 500 ms.
 - **FR-037**: The coordinator MUST wait for `PlaybackEvent.Ready(songStartTvMs)` before calling `ScoringEngine.setSongStart(songStartTvMs)`, and ScoringEngine MUST NOT finalize any notes until `songStartTvMs` has been set.
-- **FR-038**: The UI MUST enforce `stopAtLyricsTimeMs` as the authoritative playback stop boundary, call `LibVlcPlayerHandle.stop()` when reached, and emit `PlaybackEvent.Ended`.
+- **FR-038**: `PlaybackIntent.Play` MUST carry the finalized `stopAtLyricsTimeMs`. The UI MUST enforce that value as the authoritative playback stop boundary, call `LibVlcPlayerHandle.stop()` when reached, and emit `PlaybackEvent.Ended`.
 - **FR-039**: On song end in Iteration 1, the app MUST return to Song List. Results screen and score finalization are out of scope for this iteration, even though §4.1 defines the full future FSM route through Results.
 - **FR-040**: Pitch-frame ingestion and pitch-frame-driven behavior are out of scope for Iteration 1; later scoring/pitch-pipeline work MUST handle ignoring pitch frames at or beyond `stopAtLyricsTimeMs`.
-- **FR-041**: On `LibVlcEvent.EncounteredError` during singing, the app MUST stop playback and scoring immediately, return to Song List, and show blocking `ERROR` modal whose second body line is the last LibVLC warning/error log line truncated to 120 chars when available.
+- **FR-041**: On `LibVlcEvent.EncounteredError` from the authoritative audio player during singing, the app MUST stop playback and scoring immediately, return to Song List, and show blocking `ERROR` modal whose second body line is the last LibVLC warning/error log line truncated to 120 chars when available. `LibVlcEvent.EncounteredError` from the decorative video player MUST be logged and converted to static-background fallback, not the blocking playback-error modal.
+- **FR-041a**: The LibVLC adapter MUST maintain the most recent warning/error diagnostic line from LibVLC logging, truncated to 120 characters, and include that value in audio `PlaybackEvent.Error` / `LibVlcEvent.EncounteredError` payloads used by the blocking error modal.
 - **FR-042**: A playback error MUST NOT crash the app, corrupt session state, or leave the session Locked; session returns to Open on error exit.
 - **FR-043**: The UI layer MUST request `AUDIOFOCUS_GAIN` before playback, pause on transient losses, resume on `AUDIOFOCUS_GAIN`, follow the playback error path on permanent loss, and abandon audio focus on song end, error exit, or Restart.
 - **FR-044**: App-wide UI shell MUST consist of `MainActivity`, `CouchraokeTheme`, and `AppNavHost`, with `MainActivity` as the single Android Activity and `setContent {}` as the only theme/navigation host instantiation site.
@@ -141,8 +148,10 @@ As a host, I can see consistent blocking interruption UI when a song cannot star
 ### Key Entities *(include if feature involves data)*
 
 - **SongEntry**: A manifest-provided song record used for Song List display and start handoff. Relevant fields in the extracted scope include artist, album, title, cover, tags, `canMedley`, `audioUrl`, optional `videoUrl`, `previewStartSec`, and `txtUrl`.
+- **PreviewPlayback**: Song List screen-scoped LibVLC preview state for the focused song's `audioUrl`, start offset, debounce state, silent failure handling, and teardown on Song List exit.
 - **PlaybackEvent**: UI-to-coordinator playback events in the extracted flow: `Prepared(effectivePlaybackDurationMs)`, `Ready(songStartTvMs)`, `Error(cause)`, and `Ended`.
 - **PlaybackIntent**: Coordinator-to-UI playback commands used by the extracted flow: `Prepare`, `Play`, `Pause`, `Stop`, and `Seek`; medley-only `PrebufferNext`, `FadeOut`, and `Crossfade` may exist in the shared contract but MUST remain inert/no-op in Iteration 1 with Iteration 4 wiring comments.
+- **LibVLC player handles**: UI/playback-owned wrappers where the audio handle is authoritative for preparation duration, timing, stop-boundary enforcement, and blocking audio errors, while optional preview/video handles are screen-scoped and never own Singing timing/session state.
 - **SelectPlayers selection**: The TV-owned assignment state for chosen singer phone(s), difficulty, and `playerId` mapping used when sending `assignSinger`.
 - **Interruption overlay shell**: The shared modal surface reused by pause, disconnect, playback error, and no-phone states.
 
@@ -163,9 +172,9 @@ As a host, I can see consistent blocking interruption UI when a song cannot star
 - Scoring remains out of Iteration 1; displayed scores stay at zero until a later scoring task wires real scoring.
 - Results screen is out of scope for Iteration 1; normal song completion returns to Song List.
 - Live pitch drawing from pitch frames is out of scope for Iteration 1. The pitch lane draws static note targets from the parsed song file only.
-- Join QR rendering uses qrcode-kotlin, with explicit coverage for qrcode-kotlin issue #197 around inconsistent fixed-size output.
+- Join QR rendering uses the QR-only QRose artifact (`io.github.alexzhirkevich:qrose`), not `qrose-oned`, with an explicit implementation contract for working on-screen Compose painter rendering so implementers do not need to infer library usage details.
 - Preview and playback volume are controlled by the TV/system media volume in Iteration 1; the app does not add a preview preamp or depend on Settings > Audio.
-- Optional video is best-effort full-screen background media; audio is the required playable asset and video/background failure falls back to a static background.
+- Optional video is best-effort full-screen background media; audio is the required playable asset and video/background failure falls back to a static background. Hardware-specific acceptance is not an Iteration 1 gate, but the app still disables optional video when decoder support cannot be confirmed or the decorative video path fails. Dropped-frame degradation checks are only for gameplay pitch frames in future iterations, not decorative video frames.
 - Visible out-of-scope no-ops carry code comments naming the target wiring iteration: Iteration 2 for scoring/live pitch/Results, Iteration 3 for duet/two-player/settings, and Iteration 4 for medley execution/prebuffer/crossfade.
 - The new feature spec intentionally preserves source details from `tv_app.md` rather than simplifying or reinterpreting them.
 - The app continues to treat the TV as the authoritative host, the phone as the source of manifest/audio/chart assets, and the flow as LAN-only with no cloud dependencies.
@@ -322,13 +331,13 @@ User selects song in UI
     ┌─────┴─────┬──────────────┬─────────────────┐
     ▼           ▼              ▼                 ▼
 NetworkCtrl  UsdxParser    ScoringEngine      UI Layer
-fetchTxt()   parse()       loadChart(config) (via Intent)
-    │           │              │            Prepare()
-    │           │              │                │
-    └─────┬─────┘              │                │
-          ▼                    │                │
-    ParsedSong ────────────────┘                │
-                                                │
+fetchTxt()   parse()       loadChartNoOp(config) Prepare()
+    │           │              │            │
+    │           │              │            │
+    └─────┬─────┘              │            │
+          ▼                    │            │
+    ParsedSong ────────────────┘            │
+                                            │
     ┌───────────────────────────────────────────┘
     ▼
 PlaybackEvent.Prepared(durationMs)
@@ -342,14 +351,18 @@ UI.Play() ──→ LibVLC starts ──→ PlaybackEvent.Ready(songStartTvMs)
                                         │
                                         ▼
                               ScoringEngine.setSongStart()
-                              ScoringEngine.start()
+                              ScoringEngine.startNoOp()
 ```
 
 ### PlaybackCoordinator ↔ UI Layer
 
 - Coordinator emits `PlaybackIntent` (Prepare, Play, Pause, etc.).
 - UI/playback layer observes intents and executes them through one authoritative audio `LibVlcPlayerHandle` plus an optional best-effort decorative full-screen video/background handle.
+- UI/playback emits `Prepared(effectivePlaybackDurationMs)` from the prepared audio handle duration. `#START` only changes the initial seek and does not shift the lyrics-time origin; `#END > 0` can still provide the stop boundary, but when `#END` is absent or non-positive the audio duration is required.
+- UI/playback emits `Ready(songStartTvMs)` only from the first authoritative audio `Playing` event or the 500 ms fallback captured at `play()` time. Video player events MUST NOT emit `Ready` or affect `songStartTvMs`.
 - UI is responsible for enforcing the active `stopAtLyricsTimeMs` boundary on the audio handle using the current playback plan.
 - When UI detects that playback has reached the active `stopAtLyricsTimeMs`, it MUST stop the active audio handle and any decorative video/background handle, then emit `PlaybackEvent.Ended`.
 - UI emits `PlaybackEvent` (`Prepared` with effective playback-plan duration, `Ready` with songStartTvMs, `Error`, `Ended`).
 - UI exposes `currentPositionMs: StateFlow<Long>` for observation; this is always the audio handle position.
+- The singing visual stack is ordered back-to-front as: optional full-screen video/background `SurfaceView`, pitch-lane rendering `SurfaceView`, then Compose metadata/score/lyrics/countdown/pause overlays. Full-screen video uses `SurfaceView.setZOrderMediaOverlay(true)` and not `TextureView`; pitch-lane drawing remains a separate SurfaceView-backed renderer so Compose does not own frame rendering.
+- LibVLC warning/error diagnostics are captured by the LibVLC adapter and surfaced through audio error payloads for the blocking error modal; decorative video errors only drive static-background fallback.

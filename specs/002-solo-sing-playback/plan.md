@@ -10,7 +10,7 @@ Deliver Iteration 1 solo-sing playback for the TV host app: one phone can join o
 ## Technical Context
 
 **Language/Version**: Kotlin 2.2.10, Java 11  
-**Primary Dependencies**: AndroidX Core/AppCompat, Jetpack Compose + Compose for TV, Lifecycle Runtime, Kotlin Coroutines, Kotlinx Serialization JSON, Ktor server/websockets/client, jmDNS, LibVLC, Coil, qrcode-kotlin (`io.github.g0dkar:qrcode-kotlin:4.5.0`), JUnit 4, quality-conventions `testBranch`  
+**Primary Dependencies**: AndroidX Core/AppCompat, Jetpack Compose + Compose for TV, Lifecycle Runtime, Kotlin Coroutines, Kotlinx Serialization JSON, Ktor server/websockets/client, jmDNS, LibVLC, Coil, QRose (`io.github.alexzhirkevich:qrose:1.1.2`), JUnit 4, quality-conventions `testBranch`
 **Storage**: DataStore preferences only if needed for existing settings defaults; no persistence for remote song assets; manifest/chart/audio/video assets are streamed from phone-provided LAN URLs  
 **Testing**: JVM unit tests, Robolectric/Compose UI tests or Roborazzi screenshots where available, direct Ktor WebSocket/HTTP tests, focused fake playback-handle tests, scoped `:app:testBranch` validation  
 **Target Platform**: Android TV 11-14, min API 30, single `:app` Android module  
@@ -24,9 +24,10 @@ Deliver Iteration 1 solo-sing playback for the TV host app: one phone can join o
 - Results screen, real scoring, note finalization, line bonus, live pitch cursor, hit/miss feedback, duet execution, and medley execution are out of Iteration 1 scope.
 - Shared UI may show duet/medley controls, but they remain disabled in Iteration 1 with code comments naming the intended wiring iteration: Iteration 3 for duet/two-player behavior and Iteration 4 for medley behavior.
 - Optional video renders full-screen as the Singing background when available, but audio is the required playable asset; video/background failures are non-fatal and fall back to a static background.
-- Preview/playback audibility follows TV/system media volume; Iteration 1 must not add an app-level preview preamp or depend on out-of-scope Settings > Audio Preview Volume state.
+- Preview playback is LibVLC-backed for stack consistency and wide codec support, including legacy USDX song codecs that Media3 may not cover as reliably. Preview/playback audibility follows TV/system media volume; Iteration 1 must not add an app-level preview preamp or depend on out-of-scope Settings > Audio Preview Volume state.
+- Hardware-specific LibVLC acceptance is not an Iteration 1 gate. The runtime still guards optional video through two gates: a static admission gate that disables video at load time when video is greater than 720p and hardware decoder support cannot be confirmed, and a runtime gameplay-degradation report path that disables decorative video during singing, falls back to static background, and keeps audio/playback/session state running. Gameplay degradation is about gameplay quality, not dropped decorative-video frames.
 - Android framework types stay in platform/presentation/data-adapter layers; ViewModels own UI state.
-- Dependency changes must go through `gradle/libs.versions.toml`; this plan adds qrcode-kotlin 4.5.0 through the catalog for actual Join QR rendering.
+- Dependency changes must go through `gradle/libs.versions.toml`; this plan adds QRose 1.1.2 through the catalog for actual Join QR rendering and short/full payload sizing validation.
 **Scale/Scope**:
 - One feature slice in `specs/002-solo-sing-playback`.
 - One connected phone, one selected singer, one normal non-duet song.
@@ -38,7 +39,7 @@ Deliver Iteration 1 solo-sing playback for the TV host app: one phone can join o
 
 - **Host Authority**: PASS. The TV owns session token, connected roster, selected singer assignment, `songInstanceSeq`, playback lifecycle, song end, and return-to-Song-List behavior. Phones only supply manifest/assets and receive host-authored session/playback messages.
 - **Architecture Boundaries**: PASS. Domain contracts remain pure. Ktor, jmDNS, LibVLC, Android audio focus, multicast lock, and cleartext HTTP concerns stay in data/platform/presentation-facing adapters. ViewModels are planned as the single source of UI state for screens and modals.
-- **Dependency Governance**: PASS. One dependency addition is planned: qrcode-kotlin 4.5.0 via `gradle/libs.versions.toml` and `app/build.gradle.kts`. Existing catalog entries cover Ktor, jmDNS, LibVLC, Coil, Compose TV, coroutines, and serialization.
+- **Dependency Governance**: PASS. One dependency addition is planned: QRose 1.1.2 via `gradle/libs.versions.toml` and `app/build.gradle.kts`. Existing catalog entries cover Ktor, jmDNS, LibVLC, Coil, Compose TV, coroutines, and serialization.
 - **Contracts First**: PASS. Material producer/consumer boundaries are listed below with FQCN + method + signature and payload contracts.
 - **Workflow Units**: PASS. This remains exactly one `spec.md`, one `plan.md`, and one future `tasks.md`; phases are research, design/contracts, and later implementation tasks.
 - **Validation Gate**: PASS. The scoped `testBranch` command is defined in the Validation Gate section and must pass fresh before completion claims.
@@ -94,30 +95,50 @@ Deliver Iteration 1 solo-sing playback for the TV host app: one phone can join o
    - Data contract: `SongStartSelection(songId, playerPhoneId, difficulty, startMode/countdown)`, `GamePhase`, `songInstanceSeq`, `stopAtLyricsTimeMs`.
 21. `com.couchraoke.tv.presentation.playback.PlaybackController#intents: StateFlow<PlaybackIntent>` or equivalent ViewModel-observed stream.
 22. `com.couchraoke.tv.presentation.playback.PlaybackController#events: SharedFlow<PlaybackEvent>` or callback to coordinator.
+23. `com.couchraoke.tv.presentation.playback.PlaybackController#currentPositionMs: StateFlow<Long>` or equivalent observable audio position.
    - Producer/consumer boundary between coordinator and UI/playback layer.
-   - Payload contracts: `PlaybackIntent.Prepare(audioUrl, videoUrl, videoGapSec, seekToSec)`, `Play`, `Pause`, `Stop`, `Seek`; `PlaybackEvent.Prepared(effectivePlaybackDurationMs)`, `Ready(songStartTvMs)`, `Error(cause)`, `Ended`.
-23. `com.couchraoke.tv.presentation.playback.LibVlcPlayerHandle#prepare(url: String): Unit`
-24. `com.couchraoke.tv.presentation.playback.LibVlcPlayerHandle#play(): Unit`
-25. `com.couchraoke.tv.presentation.playback.LibVlcPlayerHandle#pause(): Unit`
-26. `com.couchraoke.tv.presentation.playback.LibVlcPlayerHandle#stop(): Unit`
-27. `com.couchraoke.tv.presentation.playback.LibVlcPlayerHandle#seekTo(positionMs: Long): Unit`
-28. `com.couchraoke.tv.presentation.playback.LibVlcPlayerHandle#timeMs: Long`
+   - Payload contracts: `PlaybackIntent.Prepare(audioUrl, videoUrl, videoGapSec, seekToSec, chartEndLyricsTimeMs?)`, `Play(stopAtLyricsTimeMs)`, `Pause`, `Stop`, `Seek`; `PlaybackEvent.Prepared(effectivePlaybackDurationMs)`, `Ready(songStartTvMs)`, `Error(cause)`, `Ended`.
+   - Prepared contract: `effectivePlaybackDurationMs` is read from the prepared authoritative audio handle duration. `#START` changes seek position only and does not shift lyrics-time origin; `chartEndLyricsTimeMs` is parsed positive `#END` in milliseconds or null. Coordinator finalizes `stopAtLyricsTimeMs = chartEndLyricsTimeMs ?: effectivePlaybackDurationMs`; if `chartEndLyricsTimeMs` is null and no usable audio duration is available, preparation fails through `PlaybackEvent.Error`. `Play(stopAtLyricsTimeMs)` is emitted only after finalization, `assignSinger`, and playback-state emission.
+   - Ready contract: `Ready(songStartTvMs)` is emitted only from the first audio-handle `Playing` event or the 500 ms fallback captured at `play()` time. Decorative video events never influence `Ready`, `songStartTvMs`, `currentPositionMs`, scoring, or session state.
+24. `com.couchraoke.tv.presentation.playback.LibVlcPlayerHandle#setEventListener(listener: (LibVlcEvent) -> Unit): Unit`
+25. `com.couchraoke.tv.presentation.playback.LibVlcPlayerHandle#prepare(url: String): Unit`
+26. `com.couchraoke.tv.presentation.playback.LibVlcPlayerHandle#play(): Unit`
+27. `com.couchraoke.tv.presentation.playback.LibVlcPlayerHandle#pause(): Unit`
+28. `com.couchraoke.tv.presentation.playback.LibVlcPlayerHandle#stop(): Unit`
+29. `com.couchraoke.tv.presentation.playback.LibVlcPlayerHandle#seekTo(positionMs: Long): Unit`
+30. `com.couchraoke.tv.presentation.playback.LibVlcPlayerHandle#timeMs: Long`
+31. `com.couchraoke.tv.presentation.playback.LibVlcPlayerHandle#durationMs: Long?`
    - Producer: LibVLC adapter.
-   - Consumers: Singing playback controller and tests.
-   - Iteration 1 contract: audio handle is authoritative; optional video handle is decorative full-screen background and video/background failure falls back to static background without emitting playback error.
-29. `com.couchraoke.tv.presentation.join.QrCodeRenderer#render(payload: String, sizePx: Int): ByteArray`
-   - Producer: presentation/platform QR adapter backed by qrcode-kotlin.
-   - Consumer: Join overlay UI.
-   - Data contract: returns PNG bytes for the exact WebSocket endpoint payload; implementation must keep the QR centered/scaled inside the requested box for both short and full endpoint payloads despite qrcode-kotlin issue #197.
-30. `com.couchraoke.tv.presentation.search.TvTextInputLauncher#launch(initialValue: String, onResult: (String) -> Unit): Unit`
+   - Consumers: Singing playback controller, Song List preview controller/state, and tests.
+   - Iteration 1 contract: one handle wraps one LibVLC MediaPlayer. The audio handle is authoritative for `Prepared`, `Ready`, `currentPositionMs`, stop-boundary enforcement, audio errors, and audio focus. Optional video handle is decorative full-screen background, configured without audio, and video/background failure falls back to static background without emitting a blocking playback error. The adapter owns LibVLC warning/error log capture and maps the most recent warning/error line, truncated to 120 chars, into `LibVlcEvent.EncounteredError(lastWarningOrError)` for audio error modals.
+32. `com.couchraoke.tv.presentation.playback.SongPreviewController#preparePreview(audioUrl: String, startPositionMs: Long): Unit`
+33. `com.couchraoke.tv.presentation.playback.SongPreviewController#play(): Unit`
+34. `com.couchraoke.tv.presentation.playback.SongPreviewController#stop(): Unit`
+35. `com.couchraoke.tv.presentation.playback.SongPreviewController#release(): Unit`
+   - Producer: Song List screen/ViewModel focus state.
+   - Consumer: screen-scoped LibVLC preview player.
+   - Contract: after a 500 ms same-tile focus debounce, preview prepares the focused song `audioUrl`, seeks to `previewStartSec` when positive or 0 seconds when absent/non-positive, and plays until stopped. It stops immediately when focus changes, focus leaves grid, overlay/modal/settings/singing opens, or Song List exits; HTTP/LibVLC failures are silent; volume is TV/system media volume only. This uses LibVLC rather than Media3 to match Singing playback's wide codec support, especially for older USDX libraries with legacy codecs.
+36. `com.couchraoke.tv.presentation.join.QrCodeRenderer#render(payload: String, sizePx: Int): RenderedQrCode`
+   - Producer: presentation/platform QR adapter backed by the QR-only QRose artifact (`io.github.alexzhirkevich:qrose`), not `qrose-oned`.
+   - Consumer: Join overlay UI and QR renderer tests.
+   - Data contract: the basic Compose usage is `Image(painter = rememberQrCodePainter(payload), contentDescription = ...)`; the Join overlay must configure a QRose painter with `colors { dark = QrBrush.solid(Color.Black); light = QrBrush.solid(Color.White) }`, `errorCorrectionLevel = QrErrorCorrectionLevel.Medium`, and `scale = qrContentScale`. The implementation renders the painter directly and returns computed content bounds for validation. The implementation must keep the QR centered/scaled inside the requested box for both short and full endpoint payloads while preserving at least a 4-module quiet zone; PNG byte export is not required.
+37. `com.couchraoke.tv.presentation.search.TvTextInputLauncher#launch(initialValue: String, onResult: (String) -> Unit): Unit`
    - Producer: presentation/platform text input adapter or native IME focus fallback.
    - Consumer: Song List Search UI.
    - Contract: invokes Android TV text entry without exposing Android framework types to `SongListViewModel`; no custom in-app keyboard in Iteration 1.
-31. `com.couchraoke.tv.presentation.singing.SingingRenderModelBuilder#build(song: IndexedSong, parsedSong: ParsedSong, playerId: PlayerId): SingingRenderModel`
+38. `com.couchraoke.tv.presentation.singing.VideoAdmissionPolicy#shouldUseVideo(metadata: VideoMetadata, codecs: List<CodecCapability>): Boolean`
+   - Producer: presentation/platform media-capability adapter backed by Android codec capability inspection (`MediaCodecList` / `MediaCodecInfo`).
+   - Consumer: Singing playback controller/UI before creating the decorative video handle.
+   - Contract: returns false when optional video is greater than 720p and hardware decoder support for the video codec cannot be confirmed; this is a load-time best-effort guard, not a target-device certification gate.
+39. `com.couchraoke.tv.presentation.singing.GameplayDegradationReporter#reportDegradation(reason: GameplayDegradationReason): Unit`
+   - Producer: gameplay-quality monitors such as future pitch-frame/render-quality checks.
+   - Consumer: Singing playback controller/UI during active singing.
+   - Contract: when gameplay degradation is reported, disable decorative video for the current song, fall back to static background, and optionally surface a non-blocking degradation notice; audio playback/session state continues unaffected. Iteration 1 does not test dropped decorative-video frames.
+40. `com.couchraoke.tv.presentation.singing.SingingRenderModelBuilder#build(song: IndexedSong, parsedSong: ParsedSong, playerId: PlayerId): SingingRenderModel`
    - Producer: presentation/domain adapter for singing UI.
    - Consumer: SingingViewModel and pitch-lane renderer.
    - Data contract: immutable title/artist, lyrics sentences, static note targets for P1, playback timing metadata, optional background/video assets.
-32. `com.couchraoke.tv.presentation.singing.PitchLaneRenderer#drawPitchLane(canvas: Canvas, viewport: Rect, state: LaneRenderState): Unit`
+41. `com.couchraoke.tv.presentation.singing.PitchLaneRenderer#drawPitchLane(canvas: Canvas, viewport: Rect, state: LaneRenderState): Unit`
    - Producer: renderer.
    - Consumer: Singing screen surface.
    - Iteration 1 data contract: `LaneRenderState` contains static note targets and current lyrics-time position only; no live pitch, no hit/miss feedback.
@@ -176,10 +197,12 @@ app/
 ## Phase 0: Research & Decision Consolidation
 
 1. Resolve Iteration 1 scope boundaries against `tv_app.md`: static note lanes only, no live pitch, no scoring, no Results, disabled duet/medley controls.
-2. Add qrcode-kotlin 4.5.0 through `gradle/libs.versions.toml` and `app/build.gradle.kts` for actual QR rendering; verify QR sizing behavior against qrcode-kotlin issue #197 with short and full WebSocket endpoint payloads.
+2. Add QRose 1.1.2 through `gradle/libs.versions.toml` and `app/build.gradle.kts` for actual QR rendering; use only the QR artifact (`io.github.alexzhirkevich:qrose`) and do not add `qrose-oned`; document the exact QRose usage contract (basic Compose usage `Image(painter = rememberQrCodePainter(payload), ...)`, explicit Join-overlay painter options, black-on-white colors, `QrErrorCorrectionLevel.Medium`, direct painter rendering, and implementation-controlled `scale` for visual padding) and verify short/full WebSocket endpoint payloads against the centered 400dp quiet-zone requirements.
 3. Lock the minimal network/session behavior: mDNS advertisement, token-gated WebSocket handshake, manifest fetch, selected-singer assign/playbackState, and clock-sync gate.
-4. Lock the playback behavior: UI emits Prepared and Ready, captures `songStartTvMs` from first audio `Playing`, enforces `stopAtLyricsTimeMs`, handles audio focus and LibVLC errors.
-5. Lock the UI behavior and screenshot states: Song List, Join overlay with actual QR, Select Players non-duet/no-phone, Singing single-singer/countdown/pause/confirm/error, disabled/no-op scoped affordances with comments naming their target iteration, and best-effort full-screen video background fallback.
+4. Lock the playback behavior: UI emits Prepared from the authoritative audio handle duration and Ready from first audio `Playing` or 500 ms fallback, captures `songStartTvMs` from audio only, enforces `stopAtLyricsTimeMs`, handles audio focus, treats video as decorative, and carries LibVLC warning/error diagnostics into audio error payloads.
+5. Lock the UI behavior and screenshot states: Song List, LibVLC-backed preview playback, Join overlay with actual QR, Select Players non-duet/no-phone, Singing single-singer/countdown/pause/confirm/error, disabled/no-op scoped affordances with comments naming their target iteration, and best-effort full-screen video background fallback.
+6. Lock the visual compositing stack: optional full-screen video/background `SurfaceView` behind a separate pitch-lane rendering `SurfaceView`, with Compose metadata, score, lyrics, countdown, and overlays above both surfaces. Full-screen video uses `SurfaceView.setZOrderMediaOverlay(true)` and never `TextureView`; pitch-lane drawing remains SurfaceView-backed and renderer-owned.
+7. Lock optional-video runtime guardrails: no hardware-specific sign-off gate in this Iteration 1 feature slice, but load-time video admission must disable video when resolution is >720p and hardware decoder support cannot be confirmed, and active singing must expose a gameplay-degradation report path that disables decorative video and falls back to static background without testing dropped decorative-video frames.
 
 ## Phase 1: Design & Contracts
 
@@ -187,8 +210,8 @@ app/
 2. Create `data-model.md` for connected phones, session state, manifest entries, indexed songs, song start selection, game phase, playback events/intents, singing render model, lane render state, and modal states.
 3. Create `contracts/network-protocol.md` for WebSocket, mDNS, HTTP manifest/txt, assignSinger, playbackState, sessionState, and explicit Iteration 1 UDP non-scope.
 4. Create `contracts/playback-coordinator.md` for coordinator, FSM subset, start/pause/resume/restart/quit/song-end, and clock-sync gate.
-5. Create `contracts/playback-ui.md` for playback intents/events, LibVLC handle seam, audio focus, stop boundary, and error handling.
-6. Create `contracts/singing-rendering.md` for static note lane rendering, lyrics paging, score placeholder, and excluded live-pitch/scoring behavior.
+5. Create `contracts/playback-ui.md` for playback intents/events, LibVLC handle seam, Song List preview playback seam, audio focus, stop boundary, prepared duration source, Ready timing, video fallback, degradation guardrails, and error diagnostics.
+6. Create `contracts/singing-rendering.md` for static note lane rendering, lyrics paging, score placeholder, SurfaceView/Compose compositing, and excluded live-pitch/scoring behavior.
 7. Create `quickstart.md` with implementation order, validation commands, UI verification checklist, and known OOS issues.
 8. Run `.specify/scripts/bash/update-agent-context.sh claude` after artifacts are written.
 9. Re-check constitution compliance after design artifacts are complete.
@@ -210,6 +233,9 @@ timeout 10m ./gradlew :app:testBranch \
   --src com.couchraoke.tv.domain.usdx.UsdxParser \
   --src com.couchraoke.tv.presentation.playback.PlaybackController \
   --src com.couchraoke.tv.presentation.playback.LibVlcPlayerHandle \
+  --src com.couchraoke.tv.presentation.playback.SongPreviewController \
+  --src com.couchraoke.tv.presentation.singing.VideoAdmissionPolicy \
+  --src com.couchraoke.tv.presentation.singing.VideoDegradationMonitor \
   --src com.couchraoke.tv.presentation.singing.SingingRenderModelBuilder \
   --src com.couchraoke.tv.presentation.singing.PitchLaneRenderer \
   --src com.couchraoke.tv.presentation.songlist.SongListViewModel \
@@ -230,8 +256,8 @@ Task-level gates may narrow selectors to the exact files changed, but must not o
 
 - **Host Authority**: Maintained. The TV owns session, song lifecycle, playback state, assignment, and song-end routing. Phones provide assets and receive host state.
 - **Architecture Boundaries**: Maintained. Domain contracts avoid Android/Ktor/LibVLC types; platform adapters and ViewModels isolate framework concerns.
-- **Dependency Governance**: Maintained. qrcode-kotlin 4.5.0 is the only planned dependency addition and must be routed through `gradle/libs.versions.toml` plus `app/build.gradle.kts`.
-- **Contracts First**: Satisfied by generated contracts artifacts and explicit FQCN/signature boundaries.
+- **Dependency Governance**: Maintained. QRose 1.1.2 is the only planned dependency addition and must be routed through `gradle/libs.versions.toml` plus `app/build.gradle.kts`.
+- **Contracts First**: Satisfied by generated contracts artifacts and explicit FQCN/signature boundaries, including Song List preview, two-handle LibVLC singing playback, prepared duration, Ready timing, error diagnostics, and optional-video admission/degradation seams.
 - **Workflow Units**: Maintained as one feature with bounded design outputs and future task list.
 - **Validation Gate**: Scoped `testBranch` and UI verification requirements are defined.
 

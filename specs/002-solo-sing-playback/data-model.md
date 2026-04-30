@@ -82,6 +82,23 @@ Relationships:
 - Produced by manifest aggregation.
 - Consumed by Song List, Select Players, PlaybackCoordinator, and Singing render model builder.
 
+## PreviewPlayback
+
+Song List screen-scoped playback state for focused-song preview.
+
+| Field | Type | Rules |
+|---|---|---|
+| `songId` | `String` | Focused song that owns the pending or active preview. |
+| `audioUrl` | `String` | Manifest audio URL prepared by the LibVLC preview player. |
+| `startPositionMs` | `Long` | Positive `previewStartSec` in ms, otherwise 0. |
+| `debounceMs` | `Long` | Preview starts after 500 ms of same-tile focus. |
+
+Rules:
+- Screen-scoped to Song List and released on Song List exit.
+- Stops on focus changes, grid exit, overlay/modal/settings/singing transitions, or Song List exit.
+- Player/HTTP failures are silent.
+- Uses TV/system media volume only in Iteration 1.
+
 ## SongStartSelection
 
 TV-owned handoff from Select Players to PlaybackCoordinator.
@@ -118,11 +135,14 @@ Coordinator-to-playback/UI command.
 
 | Variant | Fields | Rules |
 |---|---|---|
-| `Prepare` | `audioUrl`, `videoUrl?`, `videoGapSec?`, `seekToSec` | Prepares streamed media and reports duration. |
-| `Play` | none | Requests playback start/resume. |
+| `Prepare` | `audioUrl`, `videoUrl?`, `videoGapSec?`, `seekToSec`, `chartEndLyricsTimeMs?` | Prepares streamed media and reports authoritative audio duration. `chartEndLyricsTimeMs` is parsed `#END` converted to milliseconds when present and positive; otherwise null. |
+| `Play` | `stopAtLyricsTimeMs` | Requests playback start/resume with the finalized stop boundary. `Play` MUST NOT be emitted before `Prepared`, clock-sync, `assignSinger`, and playback-state emission complete. |
 | `Pause` | none | Pauses current playback. |
 | `Stop` | none | Stops playback and tears down active handles. |
 | `Seek` | `positionMs` | Used for restart/resume where needed. |
+| `PrebufferNext` | `audioUrl`, `videoUrl?`, `videoGapSec?`, `seekToSec` | Medley-only command; inert/no-op in Iteration 1 and wired in Iteration 4. |
+| `FadeOut` | `durationSec` | Medley-only command; inert/no-op in Iteration 1 and wired in Iteration 4. |
+| `Crossfade` | `fadeOutSec`, `fadeInSec` | Medley-only command; inert/no-op in Iteration 1 and wired in Iteration 4. |
 
 ## PlaybackEvent
 
@@ -130,8 +150,8 @@ Playback/UI-to-coordinator event.
 
 | Variant | Fields | Rules |
 |---|---|---|
-| `Prepared` | `effectivePlaybackDurationMs: Long` | Must arrive before countdown/live playback. |
-| `Ready` | `songStartTvMs: Long` | Captured from first audio Playing event or fallback. |
+| `Prepared` | `effectivePlaybackDurationMs: Long` | Must arrive before countdown/live playback; sourced from the authoritative audio handle duration. |
+| `Ready` | `songStartTvMs: Long` | Captured from first audio Playing event or fallback; never from decorative video. |
 | `Error` | `cause: Throwable` | Triggers playback-error path to Song List. |
 | `Ended` | none | Triggers Iteration 1 return to Song List. |
 
@@ -146,7 +166,7 @@ Required fields:
 - `songInstanceSeq`
 - `playerId="P1"`
 - `difficulty`
-- `startMode`
+- `startMode`: `countdown` or `live`
 - `countdownMs` when countdown mode
 - `stopAtLyricsTimeMs`
 - `udpPort`
@@ -156,7 +176,20 @@ Required fields:
 Rules:
 - Sent only to selected singer phone.
 - Requires a valid clock-sync sample before send/start.
+- Uses the finalized `stopAtLyricsTimeMs` computed after `Prepared`: parsed `#END` when present and positive, otherwise the prepared audio duration.
+- Serialized JSON MUST include common envelope fields `type` and `protocolVersion`; implementations may model them as constants rather than caller-supplied constructor fields.
 - UDP frame behavior remains future scope, but `udpPort` remains part of the contract.
+
+## StartMode
+
+Wire enum used by `AssignSingerMessage`.
+
+| Value | Wire value | Rules |
+|---|---|---|
+| `Countdown` | `countdown` | Phone waits for `countdownMs` before sending future pitch frames. |
+| `Live` | `live` | Phone may begin future pitch-frame behavior immediately. |
+
+Pitch-frame transmission remains out of scope for Iteration 1.
 
 ## PlaybackStateMessage
 
@@ -171,11 +204,14 @@ Required fields:
 - `state`: `countdown`, `playing`, `paused`, or `stopped`
 - `lyricsTimeMs`
 - `stopAtLyricsTimeMs`
+- `countdownRemainingMs` when state is `countdown`; otherwise null or omitted by the wire serializer
 - `reason`
+- `tsTvMs` optional TV timestamp
 
 Rules:
 - Constructed by PlaybackCoordinator only.
 - Emitted on playback-bearing game phase transitions.
+- Uses the finalized `stopAtLyricsTimeMs` computed after `Prepared`: parsed `#END` when present and positive, otherwise the prepared audio duration.
 - Not emitted for `Idle`, `Loading`, or future `Results`.
 
 ## SingingRenderModel
@@ -193,11 +229,28 @@ Immutable model for the Singing screen.
 | `stopAtLyricsTimeMs` | `Long` | Authoritative stop boundary. |
 | `audioUrl` | `String` | Streamed audio URL. |
 | `videoUrl` | `String?` | Optional decorative video URL. |
-| `videoGapSec` | `Float?` | Optional video timing offset. |
+| `videoGapSec` | `Float?` | Optional video timing offset for decorative video only. |
 
 Rules:
 - Built after `txtUrl` fetch and parse, before countdown/live playback.
 - Contains no live pitch-frame data.
+- Video fields describe optional decorative media; playback timing and stop boundaries remain audio-owned.
+
+## SingingBackground
+
+Presentation state for optional decorative video/static background during Singing.
+
+| Variant | Fields | Rules |
+|---|---|---|
+| `Static` | `imageUrl?`, `defaultImageKey` | Uses the parsed song `#BACKGROUND` / manifest `backgroundUrl` when present, otherwise the app-shipped default static singing background. |
+| `Video` | `videoUrl`, `fallbackImageUrl?`, `defaultImageKey`, `disabledReason?` | Decorative only; falls back to `fallbackImageUrl` when present, otherwise the app-shipped default static singing background. `disabledReason` is set when static admission, video failure, or gameplay-degradation fallback disables video. |
+
+Rules:
+- Does not affect audio playback, `Ready`, `Prepared`, scoring, or session state.
+- Static admission disables video before creating a decorative handle when video is greater than 720p and hardware decoder support cannot be confirmed.
+- Video load or playback errors update only the decorative background path.
+- Runtime gameplay-degradation reports may disable decorative video and fall back to static background without affecting audio/playback/session state.
+- Iteration 1 does not test dropped decorative-video frames; gameplay degradation checks apply to gameplay signals such as future pitch-frame/render quality, not decorative video frame drops.
 
 ## LaneRenderState
 

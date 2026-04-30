@@ -115,6 +115,21 @@ Rules:
 - Back opens Pause overlay.
 - Ended playback returns to Song List.
 
+## Visual Stack
+
+Back-to-front order:
+1. Optional full-screen video/background `SurfaceView` for decorative video or static background.
+2. Pitch-lane rendering `SurfaceView` using `PitchLaneRenderer`.
+3. Compose overlay for top metadata, score, lyrics, countdown, pause, and interruption surfaces.
+
+Rules:
+- Full-screen video uses `SurfaceView.setZOrderMediaOverlay(true)` and not `TextureView`.
+- Pitch-lane frame rendering remains SurfaceView-backed and renderer-owned; Compose must not render the pitch-lane frames.
+- Decorative video fallback to static background must not affect audio playback or session state.
+- Static admission disables decorative video before creating a video handle when video is greater than 720p and hardware decoder support cannot be confirmed.
+- Runtime gameplay-degradation reports may disable decorative video during active singing, fall back to static background, optionally show a non-blocking notice, and keep the same lane/lyrics layout.
+- Iteration 1 does not test dropped decorative-video frames; gameplay degradation checks apply to gameplay signals such as future pitch-frame/render quality, not decorative video frame drops.
+
 ## Explicit Non-Scope
 
 - Live pitch from pitch frames.
