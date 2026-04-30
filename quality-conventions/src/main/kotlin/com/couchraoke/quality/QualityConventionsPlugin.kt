@@ -238,6 +238,20 @@ class QualityConventionsPlugin : Plugin<Project> {
             }
             outputs.upToDateWhen { false }
             outputs.doNotCacheIf("Roborazzi screenshots must be regenerated for fresh validation.") { true }
+            val roborazziOutputDir = project.layout.buildDirectory.dir("outputs/roborazzi")
+            doLast {
+                val roborazziDir = roborazziOutputDir.get().asFile
+                if (roborazziDir.exists()) {
+                    val screenshots = roborazziDir.walkTopDown()
+                        .filter { it.extension == "png" }
+                        .sortedBy { it.name }
+                        .toList()
+                    if (screenshots.isNotEmpty()) {
+                        println("Roborazzi screenshots (${screenshots.size}):")
+                        screenshots.forEach { println("  ${it.absolutePath}") }
+                    }
+                }
+            }
         }
 
         val testBranchDetekt = project.tasks.register<Detekt>("testBranchDetekt") {
@@ -262,6 +276,7 @@ class QualityConventionsPlugin : Plugin<Project> {
             val capitalizedVariant = variant.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
             val testTaskName = "test${capitalizedVariant}UnitTest"
             val testBranchExcludes = resolveJacocoExcludes(project)
+            val composableScreenFqcns = findComposableScreenFqcns(project)
             val selectiveClassDirsProvider = srcProvider.map { selectors ->
                 selectiveClassDirectories(project, variant, selectors, testBranchExcludes)
             }
@@ -294,16 +309,22 @@ class QualityConventionsPlugin : Plugin<Project> {
                     dependsOn("generate${capitalizedVariant}ComposePreviewRobolectricTests")
                     doFirst {
                         val selectedTests = testProvider.get()
+                        val selectedSrcs = srcProvider.get()
                         val previewGenerated = generatedPreviewTest.get().asFile.exists()
                         filter.includePatterns.clear()
-                        if (selectedTests.isNotEmpty()) {
-                            selectedTests.map { selector ->
-                                if (previewGenerated && selector.isPreviewScreenshotSelector()) {
-                                    "com.github.takahirom.roborazzi.RoborazziPreviewParameterizedTests"
-                                } else {
-                                    selector
-                                }
-                            }.distinct().forEach { filter.includeTestsMatching(it) }
+                        val effectiveTests = selectedTests.map { selector ->
+                            if (previewGenerated && selector.isPreviewScreenshotSelector()) {
+                                "com.github.takahirom.roborazzi.RoborazziPreviewParameterizedTests"
+                            } else {
+                                selector
+                            }
+                        }.toMutableList()
+                        if (previewGenerated && selectedSrcs.any { it in composableScreenFqcns }) {
+                            effectiveTests += "com.github.takahirom.roborazzi.RoborazziPreviewParameterizedTests"
+                        }
+                        val finalTests = effectiveTests.distinct()
+                        if (finalTests.isNotEmpty()) {
+                            finalTests.forEach { filter.includeTestsMatching(it) }
                         } else {
                             filter.includeTestsMatching("**/NonExistentTest")
                         }
@@ -442,6 +463,21 @@ private fun resolveJacocoExcludes(project: Project): List<String> {
         ?.filter { it.isNotEmpty() }
         ?: emptyList()
     return BUILTIN_JACOCO_EXCLUDES + userExcludes + findNoCoverageGeneratedExcludes(project)
+}
+
+private fun findComposableScreenFqcns(project: Project): Set<String> {
+    val srcDir = project.file("src/main/kotlin")
+    if (!srcDir.exists()) return emptySet()
+    val result = mutableSetOf<String>()
+    srcDir.walkTopDown().filter { it.extension == "kt" }.forEach { file ->
+        val content = file.readText()
+        if (!content.contains("@NoCoverageGenerated")) return@forEach
+        if (!content.contains("@Composable")) return@forEach
+        val pkg = Regex("""^package\s+([\w.]+)""", RegexOption.MULTILINE)
+            .find(content)?.groupValues?.get(1) ?: return@forEach
+        result += "$pkg.${file.nameWithoutExtension}"
+    }
+    return result
 }
 
 private fun findNoCoverageGeneratedExcludes(project: Project): List<String> {
