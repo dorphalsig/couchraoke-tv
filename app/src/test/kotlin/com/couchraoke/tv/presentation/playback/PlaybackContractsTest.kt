@@ -3,24 +3,28 @@ package com.couchraoke.tv.presentation.playback
 import com.couchraoke.tv.fixtures.SoloSingFixtures
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlaybackContractsTest {
     @Test(timeout = 30_000)
-    fun prepareIntentCarriesStreamingAudioVideoSeekAndStopBoundary() {
+    fun prepareIntentCarriesStreamingAudioVideoSeekAndChartBoundary() {
         val intent = PlaybackIntent.Prepare(
             audioUrl = SoloSingFixtures.assetUrl("/songs/solo/demo-song.mp3"),
             videoUrl = SoloSingFixtures.assetUrl("/songs/solo/demo-song.mp4"),
             videoGapSec = 0.25f,
             seekToSec = SoloSingFixtures.StartSec,
-            stopAtLyricsTimeMs = SoloSingFixtures.StopAtLyricsTimeMs,
+            chartEndLyricsTimeMs = SoloSingFixtures.StopAtLyricsTimeMs,
         )
+        val play = PlaybackIntent.Play(stopAtLyricsTimeMs = SoloSingFixtures.StopAtLyricsTimeMs)
 
         assertEquals(SoloSingFixtures.StartSec, intent.seekToSec)
-        assertEquals(SoloSingFixtures.StopAtLyricsTimeMs, intent.stopAtLyricsTimeMs)
+        assertEquals(SoloSingFixtures.StopAtLyricsTimeMs, intent.chartEndLyricsTimeMs)
+        assertEquals(SoloSingFixtures.StopAtLyricsTimeMs, play.stopAtLyricsTimeMs)
         assertFalse(intent.isIteration1NoOp())
+        assertFalse(play.isIteration1NoOp())
     }
 
     @Test(timeout = 30_000)
@@ -39,9 +43,9 @@ class PlaybackContractsTest {
 
     @Test(timeout = 30_000)
     fun medleyOnlyIntentsAreIteration1NoOps() {
-        val prebuffer = PlaybackIntent.PrebufferNext("audio-a", null)
-        val fadeOut = PlaybackIntent.FadeOut(durationMs = 500L)
-        val crossfade = PlaybackIntent.Crossfade("audio-b", durationMs = 1_000L)
+        val prebuffer = PlaybackIntent.PrebufferNext("audio-a", videoUrl = null, videoGapSec = 0.5f, seekToSec = 1.25f)
+        val fadeOut = PlaybackIntent.FadeOut(durationSec = 0.5f)
+        val crossfade = PlaybackIntent.Crossfade(fadeOutSec = 1.0f, fadeInSec = 1.25f)
 
         assertTrue(prebuffer.isIteration1NoOp())
         assertTrue(fadeOut.isIteration1NoOp())
@@ -51,9 +55,62 @@ class PlaybackContractsTest {
         assertTrue(handleIteration1NoOp(crossfade))
         assertEquals("audio-a", prebuffer.audioUrl)
         assertNull(prebuffer.videoUrl)
-        assertEquals(500L, fadeOut.durationMs)
-        assertEquals("audio-b", crossfade.nextAudioUrl)
-        assertEquals(1_000L, crossfade.durationMs)
+        assertEquals(0.5f, prebuffer.videoGapSec)
+        assertEquals(1.25f, prebuffer.seekToSec)
+        assertEquals(0.5f, fadeOut.durationSec)
+        assertEquals(1.0f, crossfade.fadeOutSec)
+        assertEquals(1.25f, crossfade.fadeInSec)
+    }
+
+    @Test(timeout = 30_000)
+    fun playbackErrorCausesCarryAudioFailureAndFocusDenialPayloads() {
+        val audioUnavailable = PlaybackErrorCause.AudioUnavailable("duration missing")
+        val focusDenied = PlaybackErrorCause.AudioFocusDenied("focus denied")
+        val playerError = PlaybackErrorCause.PlayerError("vlc warning")
+
+        assertEquals("duration missing", audioUnavailable.message)
+        assertEquals("focus denied", focusDenied.message)
+        assertEquals("vlc warning", playerError.lastWarningOrError)
+        assertEquals(null, PlaybackErrorCause.AudioFocusDenied().message)
+        assertEquals(null, PlaybackErrorCause.PlayerError().lastWarningOrError)
+        assertNotEquals(audioUnavailable, PlaybackErrorCause.AudioUnavailable())
+        assertNotEquals(focusDenied, PlaybackErrorCause.AudioFocusDenied())
+        assertNotEquals(playerError, PlaybackErrorCause.PlayerError())
+    }
+
+    @Test(timeout = 30_000)
+    fun playbackContractModelsKeepPublicCopyAndIdentitySemantics() {
+        val prepare = PlaybackIntent.Prepare(
+            audioUrl = "audio-a",
+            videoUrl = "video-a",
+            videoGapSec = 0.25f,
+            seekToSec = 1f,
+            chartEndLyricsTimeMs = 20_000L,
+        )
+        val seek = PlaybackIntent.Seek(positionMs = 4_000L)
+        val preview = PreviewPlaybackState(
+            songId = "song-a",
+            audioUrl = "audio-a",
+            startPositionMs = 2_000L,
+        )
+        val prebuffer = PlaybackIntent.PrebufferNext(
+            audioUrl = "audio-a",
+            videoUrl = "video-a",
+            videoGapSec = 0.5f,
+            seekToSec = 3f,
+        )
+
+        assertEquals("audio-b", prepare.copy(audioUrl = "audio-b").audioUrl)
+        assertEquals(null, prepare.copy(videoUrl = null, chartEndLyricsTimeMs = null).chartEndLyricsTimeMs)
+        assertEquals(4_000L, seek.positionMs)
+        assertEquals(6_000L, seek.copy(positionMs = 6_000L).positionMs)
+        assertEquals(500L, preview.debounceMs)
+        assertEquals(750L, preview.copy(debounceMs = 750L).debounceMs)
+        assertEquals("video-a", prebuffer.videoUrl)
+        assertEquals("audio-b", prebuffer.copy(audioUrl = "audio-b").audioUrl)
+        assertNotEquals(prepare, prepare.copy(seekToSec = 2f))
+        assertTrue(prepare.toString().contains("audio-a"))
+        assertTrue(preview.toString().contains("song-a"))
     }
 
     @Test(timeout = 30_000)
@@ -64,10 +121,49 @@ class PlaybackContractsTest {
 
         handle.prepare("http://phone/song.mp3")
         handle.play()
+        handle.release()
 
         assertEquals(1_500L, handle.timeMs)
         assertEquals(18_000L, handle.durationMs)
+        assertTrue(handle.released)
         assertEquals(listOf(LibVlcEvent.Prepared, LibVlcEvent.Playing), events)
+    }
+
+    @Test(timeout = 30_000)
+    fun vlcHandleAdapterExposesPreparePlayPauseStopSeekAndReleaseEvents() {
+        val handle = VlcLibVlcPlayerHandle()
+        val events = mutableListOf<LibVlcEvent>()
+        handle.setEventListener(events::add)
+
+        handle.prepare("http://phone/song.mp3")
+        handle.seekTo(42_000L)
+        handle.play()
+        handle.pause()
+        handle.stop()
+        handle.release()
+        handle.play()
+
+        assertEquals(42_000L, handle.timeMs)
+        assertEquals(0L, handle.durationMs)
+        assertEquals(
+            listOf(LibVlcEvent.Prepared, LibVlcEvent.Playing, LibVlcEvent.Paused, LibVlcEvent.Stopped),
+            events,
+        )
+    }
+
+    @Test(timeout = 30_000)
+    fun songPreviewContractUsesDebouncedScreenScopedAudioPreviewState() {
+        val state = PreviewPlaybackState(
+            songId = SoloSingFixtures.SongId,
+            audioUrl = SoloSingFixtures.assetUrl("/songs/solo/demo-song.mp3"),
+            startPositionMs = previewStartPositionMs(SoloSingFixtures.PreviewStartSec),
+        )
+
+        assertEquals(500L, state.debounceMs)
+        assertEquals(12_000L, state.startPositionMs)
+        assertEquals(0L, previewStartPositionMs(null))
+        assertEquals(0L, previewStartPositionMs(0f))
+        assertEquals(0L, previewStartPositionMs(-1f))
     }
 
     private class FakeLibVlcPlayerHandle(
@@ -90,8 +186,14 @@ class PlaybackContractsTest {
 
         override fun pause() = Unit
         override fun stop() = Unit
+        var released = false
+
         override fun seekTo(positionMs: Long) {
             timeMs = positionMs
+        }
+
+        override fun release() {
+            released = true
         }
     }
 }

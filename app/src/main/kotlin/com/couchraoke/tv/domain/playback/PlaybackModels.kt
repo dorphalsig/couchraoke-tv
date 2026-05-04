@@ -3,6 +3,7 @@ package com.couchraoke.tv.domain.playback
 import com.couchraoke.tv.domain.library.IndexedSong
 import com.couchraoke.tv.domain.model.PlayerId
 import com.couchraoke.tv.domain.scoring.model.Difficulty
+import com.couchraoke.tv.domain.scoring.model.PlayerScore
 import com.couchraoke.tv.domain.usdx.model.ParsedSong
 
 data class SongStartSelection(
@@ -60,6 +61,15 @@ sealed interface GamePhase {
         val title: String,
         val bodyLines: List<String>,
     ) : GamePhase
+
+    // Iteration 2: song reached stopAtLyricsTimeMs; triggers scoring finalization before Results.
+    data class Stopped(val plan: PlaybackPlan) : GamePhase
+
+    // Iteration 2: Results screen visible; returns to Open when user navigates back to Song List.
+    data class Results(val scores: Map<PlayerId, PlayerScore>) : GamePhase
+
+    // Iteration 3: required singer WebSocket dropped during Live; auto-pauses until resolved.
+    data class DisconnectPaused(val plan: PlaybackPlan, val disconnectedPlayer: PlayerId) : GamePhase
 }
 
 data class PlaybackCoordinatorState(

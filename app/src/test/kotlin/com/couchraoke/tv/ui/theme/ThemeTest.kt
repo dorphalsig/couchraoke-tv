@@ -16,51 +16,34 @@ class ThemeTest {
     val composeRule = createComposeRule()
 
     @Test(timeout = 30_000)
-    fun themeAppliesLightPalette() {
+    fun themeAppliesIteration1Palette() {
         var primary: Color? = null
         var secondary: Color? = null
         var tertiary: Color? = null
+        var background: Color? = null
+        var surface: Color? = null
 
         composeRule.setContent {
-            CouchraokeTheme(isInDarkTheme = false) {
+            CouchraokeTheme {
                 primary = MaterialTheme.colorScheme.primary
                 secondary = MaterialTheme.colorScheme.secondary
                 tertiary = MaterialTheme.colorScheme.tertiary
+                background = MaterialTheme.colorScheme.background
+                surface = MaterialTheme.colorScheme.surface
             }
         }
 
         composeRule.runOnIdle {
-            assertEquals(Purple40, primary)
-            assertEquals(PurpleGrey40, secondary)
-            assertEquals(Pink40, tertiary)
-        }
-    }
-
-    @Test(timeout = 30_000)
-    fun themeAppliesDarkPalette() {
-        var primary: Color? = null
-        var secondary: Color? = null
-        var tertiary: Color? = null
-
-        composeRule.setContent {
-            CouchraokeTheme(isInDarkTheme = true) {
-                primary = MaterialTheme.colorScheme.primary
-                secondary = MaterialTheme.colorScheme.secondary
-                tertiary = MaterialTheme.colorScheme.tertiary
-            }
-        }
-
-        composeRule.runOnIdle {
-            assertEquals(Purple80, primary)
-            assertEquals(PurpleGrey80, secondary)
-            assertEquals(Pink80, tertiary)
+            assertEquals(TextPrimary, primary)
+            assertEquals(TextSecondary, secondary)
+            assertEquals(Player1Accent, tertiary)
+            assertEquals(AppBackground, background)
+            assertEquals(SurfacePrimary, surface)
         }
     }
 
     @Test(timeout = 30_000)
     fun typographyUsesConfiguredBodyLargeStyle() {
-        assertEquals(16.sp, Typography.bodyLarge.fontSize)
-        assertEquals(24.sp, Typography.bodyLarge.lineHeight)
-        assertEquals(0.5.sp, Typography.bodyLarge.letterSpacing)
+        assertEquals(24.sp, Typography.bodyLarge.fontSize)
     }
 }

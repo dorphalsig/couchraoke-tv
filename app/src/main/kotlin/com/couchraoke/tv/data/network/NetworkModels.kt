@@ -96,7 +96,9 @@ data class PlaybackStateMessage(
     val state: PlaybackNetworkState,
     val lyricsTimeMs: Long,
     val stopAtLyricsTimeMs: Long,
+    val countdownRemainingMs: Int? = null,
     val reason: String,
+    val tsTvMs: Long? = null,
 ) : NetworkMessage {
     override val type: String = "playbackState"
     override val protocolVersion: Int = 1
@@ -127,7 +129,7 @@ enum class StartMode(val wireValue: String) {
 enum class PlaybackNetworkState(val wireValue: String) {
     Open("open"),
     Countdown("countdown"),
-    Live("live"),
+    Playing("playing"),
     Paused("paused"),
     Stopped("stopped"),
     Error("error"),

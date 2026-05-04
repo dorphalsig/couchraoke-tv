@@ -6,10 +6,12 @@ sealed interface PlaybackIntent {
         val videoUrl: String?,
         val videoGapSec: Float?,
         val seekToSec: Float,
-        val stopAtLyricsTimeMs: Long,
+        val chartEndLyricsTimeMs: Long?,
     ) : PlaybackIntent
 
-    data object Play : PlaybackIntent
+    data class Play(
+        val stopAtLyricsTimeMs: Long,
+    ) : PlaybackIntent
     data object Pause : PlaybackIntent
     data object Stop : PlaybackIntent
 
@@ -19,16 +21,18 @@ sealed interface PlaybackIntent {
 
     data class PrebufferNext(
         val audioUrl: String,
-        val videoUrl: String?,
+        val videoUrl: String? = null,
+        val videoGapSec: Float? = null,
+        val seekToSec: Float,
     ) : PlaybackIntent
 
     data class FadeOut(
-        val durationMs: Long,
+        val durationSec: Float,
     ) : PlaybackIntent
 
     data class Crossfade(
-        val nextAudioUrl: String,
-        val durationMs: Long,
+        val fadeOutSec: Float,
+        val fadeInSec: Float,
     ) : PlaybackIntent
 }
 

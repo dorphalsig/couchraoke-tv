@@ -20,6 +20,10 @@ class SingingRenderContractsTest {
         assertEquals(SingingLaneVerticalPosition.Centered, layout.singleLaneVerticalPosition)
         assertEquals(144, layout.scoreBoxWidthDp)
         assertEquals(88, layout.scoreBoxHeightDp)
+        assertEquals(20, layout.laneHorizontalPaddingDp)
+        assertEquals(16, layout.laneVerticalPaddingDp)
+        assertEquals(24, layout.lyricsBandPaddingHorizontalDp)
+        assertEquals(8, layout.lyricsBandLineGapDp)
     }
 
     @Test(timeout = 30_000)
@@ -36,6 +40,9 @@ class SingingRenderContractsTest {
         assertEquals("Hello", model.lyrics.currentLine.text)
         assertEquals("couchraoke", model.lyrics.nextLine.text)
         assertTrue(model.lanes.single().lane.noteTargets.isNotEmpty())
+        assertEquals(SoloSingFixtures.StartSec, model.startSec)
+        assertEquals(SoloSingFixtures.indexedSong().audioUrl, model.audioUrl)
+        assertEquals(SoloSingFixtures.indexedSong().videoUrl, model.videoUrl)
     }
 
     @Test(timeout = 30_000)
@@ -49,6 +56,23 @@ class SingingRenderContractsTest {
 
         assertFalse(lane.hasLivePitch)
         assertFalse(lane.hasScoringFeedback)
+        assertTrue(lane.showNoteLines)
+        assertTrue(lane.visibleWindowMs.last > lane.visibleWindowMs.first)
+        assertEquals(StaticNoteType.Regular, lane.noteTargets.first().noteType)
+    }
+
+    @Test(timeout = 30_000)
+    fun lyricsContractUsesTwoLineClippedRevealOnly() {
+        val model = DefaultSingingRenderModelBuilder().build(
+            song = SoloSingFixtures.indexedSong(),
+            parsedSong = SoloSingUsdxFixtures.parsedStaticSoloChart(),
+            playerId = PlayerId.P1,
+        )
+
+        assertEquals(LyricsHighlightMode.ClippedReveal, model.lyrics.highlightMode)
+        assertEquals("Hello", model.lyrics.currentLine.text)
+        assertEquals("couchraoke", model.lyrics.nextLine.text)
+        assertTrue(model.lyrics.highlightFraction in 0f..1f)
     }
 
     @Test(timeout = 30_000)

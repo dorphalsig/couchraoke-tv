@@ -213,6 +213,10 @@ object SoloSingFixtures {
         token: String = SessionToken,
     ): String = "ws://$host:$port/?token=$token"
 
+    fun manifestJson(entry: SongEntryFixture = songEntry()): String = """
+        {"songs":[{"relativeTxtPath":"${entry.relativeTxtPath}","modifiedTimeMs":${entry.modifiedTimeMs},"title":"${entry.title}","artist":"${entry.artist}","album":"${entry.album}","year":${entry.year},"genre":"${entry.genre}","isDuet":${entry.isDuet},"hasRap":${entry.hasRap},"hasVideo":${entry.hasVideo},"hasInstrumental":${entry.hasInstrumental},"canMedley":${entry.canMedley},"startSec":${entry.startSec},"previewStartSec":${entry.previewStartSec},"txtUrl":"${entry.txtUrl}","audioUrl":"${entry.audioUrl}","videoUrl":"${entry.videoUrl}","coverUrl":"${entry.coverUrl}","backgroundUrl":"${entry.backgroundUrl}"}]}
+    """.trimIndent()
+
     fun assetUrl(path: String, host: String = PhoneIpAddress, port: Int = PhoneHttpPort): String {
         val normalizedPath = if (path.startsWith('/')) path else "/$path"
         return "http://$host:$port$normalizedPath"

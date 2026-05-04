@@ -7,6 +7,10 @@ data class SingingRenderModel(
     val songId: String,
     val title: String,
     val artist: String,
+    val startSec: Float,
+    val audioUrl: String,
+    val videoUrl: String?,
+    val videoGapSec: Float?,
     val background: SingingBackground,
     val layout: SingingLayout = SingingLayout(),
     val lanes: List<SingerLaneRenderModel>,
@@ -27,6 +31,8 @@ data class LaneRenderState(
     val playerId: PlayerId,
     val noteTargets: List<StaticNoteTarget>,
     val currentLyricsTimeMs: Long,
+    val visibleWindowMs: LongRange = 0L..0L,
+    val showNoteLines: Boolean = true,
     val hasLivePitch: Boolean = false,
     val hasScoringFeedback: Boolean = false,
 )
@@ -36,13 +42,26 @@ data class StaticNoteTarget(
     val endTimeMs: Long,
     val toneSemitone: Int,
     val lyric: String,
+    val noteType: StaticNoteType = StaticNoteType.Regular,
 )
+
+enum class StaticNoteType {
+    Regular,
+    Golden,
+    Freestyle,
+    Rap,
+}
 
 data class LyricsRenderState(
     val currentLine: LyricsLine,
     val nextLine: LyricsLine,
     val highlightFraction: Float,
+    val highlightMode: LyricsHighlightMode = LyricsHighlightMode.ClippedReveal,
 )
+
+enum class LyricsHighlightMode {
+    ClippedReveal,
+}
 
 data class LyricsLine(
     val text: String,

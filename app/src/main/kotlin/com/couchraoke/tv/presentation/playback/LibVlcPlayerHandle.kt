@@ -15,6 +15,8 @@ interface LibVlcPlayerHandle {
     fun stop()
 
     fun seekTo(positionMs: Long)
+
+    fun release()
 }
 
 sealed interface LibVlcEvent {

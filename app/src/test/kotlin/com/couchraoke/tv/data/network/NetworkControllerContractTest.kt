@@ -105,6 +105,77 @@ class NetworkControllerContractTest {
     }
 
     @Test(timeout = 30_000)
+    fun playbackStateCarriesFinalizedStopBoundaryCountdownAndTimestamp() {
+        val message = PlaybackStateMessage(
+            sessionId = SoloSingFixtures.SessionId,
+            songInstanceSeq = SoloSingFixtures.SongInstanceSeq,
+            revision = 2L,
+            state = PlaybackNetworkState.Countdown,
+            lyricsTimeMs = 0L,
+            stopAtLyricsTimeMs = SoloSingFixtures.StopAtLyricsTimeMs,
+            countdownRemainingMs = 3_000,
+            reason = "song_start",
+            tsTvMs = 123_456L,
+        )
+
+        assertEquals("playbackState", message.type)
+        assertEquals(1, message.protocolVersion)
+        assertEquals("countdown", message.state.wireValue)
+        assertEquals(3_000, message.countdownRemainingMs)
+        assertEquals(123_456L, message.tsTvMs)
+        assertEquals(SoloSingFixtures.StopAtLyricsTimeMs, message.stopAtLyricsTimeMs)
+    }
+
+    @Test(timeout = 30_000)
+    fun playingPlaybackStateUsesPlayingWireValueWithoutCountdown() {
+        val message = PlaybackStateMessage(
+            sessionId = SoloSingFixtures.SessionId,
+            songInstanceSeq = SoloSingFixtures.SongInstanceSeq,
+            revision = 1L,
+            state = PlaybackNetworkState.Playing,
+            lyricsTimeMs = 0L,
+            stopAtLyricsTimeMs = SoloSingFixtures.StopAtLyricsTimeMs,
+            reason = "",
+        )
+
+        assertEquals("playing", message.state.wireValue)
+        assertNull(message.countdownRemainingMs)
+    }
+
+    @Test(timeout = 30_000)
+    fun networkMessageEnvelopeIsModeledAsConstants() {
+        val assignSinger = AssignSingerMessage(
+            sessionId = SoloSingFixtures.SessionId,
+            songInstanceSeq = SoloSingFixtures.SongInstanceSeq,
+            playerId = PlayerId.P1,
+            difficulty = Difficulty.Medium,
+            startMode = StartMode.Live,
+            countdownMs = null,
+            stopAtLyricsTimeMs = SoloSingFixtures.StopAtLyricsTimeMs,
+            udpPort = SoloSingFixtures.UdpPort,
+            songTitle = SoloSingFixtures.SongTitle,
+            songArtist = SoloSingFixtures.SongArtist,
+        )
+        val playbackState = PlaybackStateMessage(
+            sessionId = SoloSingFixtures.SessionId,
+            songInstanceSeq = SoloSingFixtures.SongInstanceSeq,
+            revision = 1L,
+            state = PlaybackNetworkState.Playing,
+            lyricsTimeMs = 0L,
+            stopAtLyricsTimeMs = SoloSingFixtures.StopAtLyricsTimeMs,
+            reason = "",
+        )
+
+        val assignSingerEnvelope: NetworkMessage = assignSinger
+        val playbackStateEnvelope: NetworkMessage = playbackState
+
+        assertEquals("assignSinger", assignSingerEnvelope.type)
+        assertEquals("playbackState", playbackStateEnvelope.type)
+        assertEquals(1, assignSinger.protocolVersion)
+        assertEquals(1, playbackState.protocolVersion)
+    }
+
+    @Test(timeout = 30_000)
     fun phoneEventsCarryRequiredDisconnectAndReconnectState() {
         val phone = ConnectedPhone(
             clientId = SoloSingFixtures.PhoneClientId,

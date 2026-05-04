@@ -1,5 +1,8 @@
 package com.couchraoke.tv.presentation.navigation
 
+import com.couchraoke.quality.NoCoverageGenerated
+
+@NoCoverageGenerated
 sealed interface AppRoute {
     val route: String
 

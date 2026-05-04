@@ -1,3 +1,5 @@
+@file:NoCoverageGenerated
+
 package com.couchraoke.tv
 
 import android.content.pm.PackageManager
@@ -8,16 +10,23 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Surface
-import androidx.tv.material3.Text
+import androidx.tv.material3.SurfaceDefaults
+import com.couchraoke.quality.NoCoverageGenerated
+import com.couchraoke.tv.data.library.ManifestLibraryManager
+import com.couchraoke.tv.data.network.ConnectedPhone
+import com.couchraoke.tv.data.network.KtorNetworkController
+import com.couchraoke.tv.domain.playback.DefaultPlaybackCoordinator
+import com.couchraoke.tv.domain.usdx.internal.DefaultUsdxParser
+import com.couchraoke.tv.presentation.navigation.AppNavHost
 import com.couchraoke.tv.ui.theme.CouchraokeTheme
 
+@NoCoverageGenerated
 class MainActivity : ComponentActivity() {
     private val requestLocalNetworkPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -35,9 +44,44 @@ class MainActivity : ComponentActivity() {
             CouchraokeTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    shape = RectangleShape
+                    shape = RectangleShape,
+                    colors = SurfaceDefaults.colors(containerColor = Color.Black),
                 ) {
-                    Greeting("Android")
+                    val networkController = KtorNetworkController(
+                        sessionId = DemoSoloSingSeed.SessionId,
+                        sessionToken = DemoSoloSingSeed.SessionToken,
+                        joinCode = DemoSoloSingSeed.JoinCode,
+                        hostAddress = DemoSoloSingSeed.TvIpAddress,
+                        initialWsPort = DemoSoloSingSeed.WebSocketPort,
+                        initialConnectedPhones = listOf(
+                            ConnectedPhone(
+                                clientId = DemoSoloSingSeed.PhoneClientId,
+                                connectionId = DemoSoloSingSeed.PhoneConnectionId,
+                                deviceName = DemoSoloSingSeed.PhoneDeviceName,
+                                httpPort = DemoSoloSingSeed.PhoneHttpPort,
+                                ipAddress = DemoSoloSingSeed.PhoneIpAddress,
+                            ),
+                        ),
+                        manifestResponses = mapOf(
+                            DemoSoloSingSeed.PhoneClientId to DemoSoloSingSeed.manifestJson(),
+                        ),
+                        txtResponses = mapOf(
+                            DemoSoloSingSeed.TxtUrl to DemoSoloSingSeed.StaticSoloChart.encodeToByteArray(),
+                        ),
+                    )
+                    val libraryManager = ManifestLibraryManager(networkController)
+                    val playbackCoordinator = DefaultPlaybackCoordinator(
+                        libraryManager = libraryManager,
+                        networkController = networkController,
+                        usdxParser = DefaultUsdxParser(),
+                        udpPort = DemoSoloSingSeed.UdpPort,
+                        sessionId = DemoSoloSingSeed.SessionId,
+                    )
+                    AppNavHost(
+                        libraryManager = libraryManager,
+                        networkController = networkController,
+                        playbackCoordinator = playbackCoordinator,
+                    )
                 }
             }
         }
@@ -88,24 +132,9 @@ class MainActivity : ComponentActivity() {
         multicastLock = null
     }
 
-    private companion object {
+    @NoCoverageGenerated
+    companion object {
         const val ACCESS_LOCAL_NETWORK_PERMISSION = "android.permission.ACCESS_LOCAL_NETWORK"
         const val MULTICAST_LOCK_TAG = "jmdns_lock"
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(name = "Home", widthDp = 1920, heightDp = 1080)
-@Composable
-fun GreetingPreview() {
-    CouchraokeTheme {
-        Greeting("Android")
     }
 }
