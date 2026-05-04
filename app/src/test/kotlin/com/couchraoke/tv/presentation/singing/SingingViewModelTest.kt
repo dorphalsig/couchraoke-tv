@@ -40,6 +40,22 @@ class SingingViewModelTest {
     }
 
     @Test(timeout = 30_000)
+    fun countdownTickReducesVisibleCountdownNumberAtOneHz() {
+        val coordinator = FakePlaybackCoordinator(
+            PlaybackCoordinatorState(
+                phase = GamePhase.Countdown(plan()),
+                selectedSong = SoloSingFixtures.indexedSong(),
+            ),
+        )
+        val viewModel = SingingViewModel(coordinator = coordinator)
+
+        viewModel.syncFromCoordinator()
+        viewModel.advanceCountdown(1_000)
+
+        assertEquals(2, viewModel.state.value.countdownNumber)
+    }
+
+    @Test(timeout = 30_000)
     fun liveStateBuildsLyricsAndScorePlaceholderFromRenderModel() {
         val coordinator = FakePlaybackCoordinator(
             PlaybackCoordinatorState(
@@ -56,6 +72,31 @@ class SingingViewModelTest {
         assertEquals("Hello", state.currentLyricsLine)
         assertEquals("couchraoke", state.nextLyricsLine)
         assertEquals("00000", state.scoreText)
+        assertEquals(SoloSingFixtures.indexedSong().backgroundUrl, state.backgroundImageUrl)
+        assertTrue(state.laneState?.noteTargets?.isNotEmpty() == true)
+    }
+
+    @Test(timeout = 30_000)
+    fun liveStateForCountdownOffIsImmediatePlaybackState() {
+        val coordinator = FakePlaybackCoordinator(
+            PlaybackCoordinatorState(
+                phase = GamePhase.Live(
+                    plan = plan(
+                        countdownMs = null,
+                        startMode = PlaybackStartMode.Live,
+                    ),
+                    songStartTvMs = 0L,
+                ),
+                selectedSong = SoloSingFixtures.indexedSong(),
+            ),
+        )
+        val viewModel = SingingViewModel(coordinator = coordinator)
+
+        viewModel.syncFromCoordinator()
+
+        val state = viewModel.state.value
+        assertTrue(state.isPlaying)
+        assertEquals(null, state.countdownNumber)
     }
 
     @Test(timeout = 30_000)
@@ -114,6 +155,8 @@ class SingingViewModelTest {
     private fun plan(
         song: IndexedSong = SoloSingFixtures.indexedSong(),
         parsedSong: ParsedSong = SoloSingUsdxFixtures.parsedStaticSoloChart(),
+        countdownMs: Int? = 3_000,
+        startMode: PlaybackStartMode = PlaybackStartMode.Countdown,
     ): PlaybackPlan = PlaybackPlan(
         song = song,
         parsedSong = parsedSong,
@@ -125,8 +168,8 @@ class SingingViewModelTest {
             ),
         ),
         songInstanceSeq = 1L,
-        startMode = PlaybackStartMode.Countdown,
-        countdownMs = 3_000,
+        startMode = startMode,
+        countdownMs = countdownMs,
         stopAtLyricsTimeMs = SoloSingFixtures.StopAtLyricsTimeMs,
         udpPort = SoloSingFixtures.UdpPort,
     )

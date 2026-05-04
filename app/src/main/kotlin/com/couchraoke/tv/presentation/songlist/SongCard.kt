@@ -40,25 +40,29 @@ import com.couchraoke.quality.NoCoverageGenerated
 import com.couchraoke.tv.domain.library.IndexedSong
 import com.couchraoke.tv.ui.theme.BorderFocus
 import com.couchraoke.tv.ui.theme.BorderSubtle
+import com.couchraoke.tv.ui.theme.BorderThin
+import com.couchraoke.tv.ui.theme.FocusBorderInset
+import com.couchraoke.tv.ui.theme.FocusBorderWidth
+import com.couchraoke.tv.ui.theme.RadiusLarge
 import com.couchraoke.tv.ui.theme.SongCardArtistFocused
+import com.couchraoke.tv.ui.theme.SongCardFocusedArtistSlotHeight
+import com.couchraoke.tv.ui.theme.SongCardHeight
+import com.couchraoke.tv.ui.theme.SongCardImageCornerRadius
+import com.couchraoke.tv.ui.theme.SongCardImageHeight
+import com.couchraoke.tv.ui.theme.SongCardMaxVisibleTags
+import com.couchraoke.tv.ui.theme.SongCardPadding
+import com.couchraoke.tv.ui.theme.SongCardTagCornerInset
+import com.couchraoke.tv.ui.theme.SongCardTagGap
 import com.couchraoke.tv.ui.theme.SongCardTitle
+import com.couchraoke.tv.ui.theme.SongCardTitleMaxLines
+import com.couchraoke.tv.ui.theme.SongCardTitleToArtistGap
 import com.couchraoke.tv.ui.theme.SurfaceLevel1
 import com.couchraoke.tv.ui.theme.TagChipLabel
 import com.couchraoke.tv.ui.theme.TextPrimary
 import com.couchraoke.tv.ui.theme.TextSecondary
 
-private val CARD_HEIGHT = 252.dp
-private val CARD_PADDING = 12.dp
-private val IMAGE_HEIGHT = 148.dp
-private val ARTIST_SLOT_HEIGHT = 20.dp
-private val TITLE_ARTIST_GAP = 4.dp
-private val TAG_CORNER_INSET = 8.dp
-private val TAG_GAP = 6.dp
-private val FOCUS_BORDER_WIDTH = 3.dp
-private val FOCUS_BORDER_INSET = 2.dp
-private val BORDER_THIN = 1.dp
-private val CARD_SHAPE = RoundedCornerShape(16.dp)
-private val IMAGE_SHAPE = RoundedCornerShape(8.dp)
+private val CARD_SHAPE = RoundedCornerShape(RadiusLarge)
+private val IMAGE_SHAPE = RoundedCornerShape(SongCardImageCornerRadius)
 private val BORDER_SUBTLE = BorderSubtle.copy(alpha = 0.2f)
 private val SURFACE_MUTED = SurfaceLevel1
 private val FOCUS_PLATE = TextPrimary.copy(alpha = 0.08f)
@@ -81,7 +85,7 @@ internal fun SongCard(
     Surface(
         modifier = Modifier
             .then(cardFocusModifier)
-            .height(CARD_HEIGHT)
+            .height(SongCardHeight)
             .testTag("song-card-${song.songId}")
             .onFocusChanged { focusState ->
                 focused = focusState.isFocused
@@ -92,7 +96,7 @@ internal fun SongCard(
             }
             .focusable(interactionSource = interactionSource)
             .border(cardBorder(focused), CARD_SHAPE)
-            .padding(FOCUS_BORDER_INSET),
+            .padding(FocusBorderInset),
         shape = CARD_SHAPE,
         colors = SurfaceDefaults.colors(containerColor = SURFACE_MUTED),
     ) {
@@ -113,19 +117,19 @@ private fun SongCardBody(
             .fillMaxSize()
             .background(if (focused) FOCUS_PLATE else Color.Transparent)
             .clickable(interactionSource = interactionSource, indication = null, onClick = onSelected)
-            .padding(CARD_PADDING),
+            .padding(SongCardPadding),
     ) {
         SongArtwork(song = song, weakArtwork = weakArtwork)
         Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = song.title,
             modifier = Modifier.testTag("song-card-title-${song.songId}"),
-            maxLines = 2,
+            maxLines = SongCardTitleMaxLines,
             overflow = TextOverflow.Ellipsis,
             style = SongCardTitle,
         )
-        Spacer(modifier = Modifier.height(TITLE_ARTIST_GAP))
-        Box(modifier = Modifier.height(ARTIST_SLOT_HEIGHT)) {
+        Spacer(modifier = Modifier.height(SongCardTitleToArtistGap))
+        Box(modifier = Modifier.height(SongCardFocusedArtistSlotHeight)) {
             if (focused || weakArtwork) ArtistText(song = song, weakArtwork = weakArtwork)
         }
     }
@@ -136,12 +140,12 @@ private fun SongArtwork(song: IndexedSong, weakArtwork: Boolean) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(IMAGE_HEIGHT)
+            .height(SongCardImageHeight)
             .clip(IMAGE_SHAPE)
             .background(SURFACE_MUTED),
     ) {
         CoverImage(song = song, weakArtwork = weakArtwork)
-        Box(modifier = Modifier.align(Alignment.BottomEnd).padding(TAG_CORNER_INSET)) {
+        Box(modifier = Modifier.align(Alignment.BottomEnd).padding(SongCardTagCornerInset)) {
             SongTags(song)
         }
     }
@@ -183,14 +187,14 @@ private fun SongTags(song: IndexedSong) {
         if (song.hasRap) add("R")
         if (song.genre.equals("Instrumental", ignoreCase = true)) add("I")
         if (song.hasVideo) add("V")
-    }.take(3)
-    Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(TAG_GAP)) {
+    }.take(SongCardMaxVisibleTags)
+    Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(SongCardTagGap)) {
         tags.forEach { tag ->
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(999.dp))
                     .background(CHIP_BACKGROUND)
-                    .border(BorderStroke(BORDER_THIN, BORDER_SUBTLE), RoundedCornerShape(999.dp))
+                    .border(BorderStroke(BorderThin, BORDER_SUBTLE), RoundedCornerShape(999.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp),
             ) {
                 Text(text = tag, style = TagChipLabel)
@@ -200,6 +204,6 @@ private fun SongTags(song: IndexedSong) {
 }
 
 private fun cardBorder(focused: Boolean): BorderStroke = BorderStroke(
-    width = if (focused) FOCUS_BORDER_WIDTH else BORDER_THIN,
+    width = if (focused) FocusBorderWidth else BorderThin,
     color = if (focused) BorderFocus else BORDER_SUBTLE,
 )

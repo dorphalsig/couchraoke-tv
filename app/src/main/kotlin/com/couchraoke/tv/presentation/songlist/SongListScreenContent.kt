@@ -43,35 +43,45 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.couchraoke.quality.NoCoverageGenerated
 import com.couchraoke.tv.domain.library.IndexedSong
+import com.couchraoke.tv.ui.theme.AppMarginHorizontal
+import com.couchraoke.tv.ui.theme.AppMarginVertical
 import com.couchraoke.tv.ui.theme.BodySecondary
 import com.couchraoke.tv.ui.theme.BorderFocus
 import com.couchraoke.tv.ui.theme.BorderSubtle
+import com.couchraoke.tv.ui.theme.BorderThin
 import com.couchraoke.tv.ui.theme.ButtonLabel
+import com.couchraoke.tv.ui.theme.FocusBorderWidth
+import com.couchraoke.tv.ui.theme.HeaderHeight
 import com.couchraoke.tv.ui.theme.PanelTitle
 import com.couchraoke.tv.ui.theme.PreviewArtist
 import com.couchraoke.tv.ui.theme.PreviewTitle
+import com.couchraoke.tv.ui.theme.RadiusMedium
+import com.couchraoke.tv.ui.theme.SongListGridColumnGap
+import com.couchraoke.tv.ui.theme.SongListGridRowGap
+import com.couchraoke.tv.ui.theme.SongListHeaderButtonWidth
+import com.couchraoke.tv.ui.theme.SongListHeaderControlGap
+import com.couchraoke.tv.ui.theme.SongListHeaderToBodyGap
+import com.couchraoke.tv.ui.theme.SongListLeftRailFraction
+import com.couchraoke.tv.ui.theme.SongListMetaToPlaylistGap
+import com.couchraoke.tv.ui.theme.SongListPlayMedleyTopGap
+import com.couchraoke.tv.ui.theme.SongListPlaylistRowHeight
+import com.couchraoke.tv.ui.theme.SongListPlaylistVisibleRows
+import com.couchraoke.tv.ui.theme.SongListPreviewAspect
+import com.couchraoke.tv.ui.theme.SongListPreviewToMetaGap
+import com.couchraoke.tv.ui.theme.SongListRailGridGap
+import com.couchraoke.tv.ui.theme.SongListRandomRowGap
+import com.couchraoke.tv.ui.theme.SongListRandomRowHeight
+import com.couchraoke.tv.ui.theme.SongListSearchHeight
+import com.couchraoke.tv.ui.theme.Space12
+import com.couchraoke.tv.ui.theme.Space16
+import com.couchraoke.tv.ui.theme.Space8
 import com.couchraoke.tv.ui.theme.SurfaceLevel1
 import com.couchraoke.tv.ui.theme.SurfaceLevel2
 import com.couchraoke.tv.ui.theme.TextDisabled
 import com.couchraoke.tv.ui.theme.TextPrimary
 import com.couchraoke.tv.ui.theme.TextSecondary
 
-private const val SONG_LIST_PLAYLIST_VISIBLE_ROWS = 5
-private val APP_MARGIN_HORIZONTAL = 48.dp
-private val APP_MARGIN_VERTICAL = 36.dp
-private val HEADER_HEIGHT = 76.dp
-private val RAIL_GRID_GAP = 32.dp
-private val HEADER_TO_BODY_GAP = 24.dp
-private val RANDOM_ROW_HEIGHT = 72.dp
-private val RANDOM_ROW_GAP = 24.dp
-private val GRID_GAP = 24.dp
-private val PREVIEW_META_GAP = 16.dp
-private val META_PLAYLIST_GAP = 24.dp
-private val PLAYLIST_ROW_HEIGHT = 52.dp
-private val PLAY_MEDLEY_TOP_GAP = 16.dp
-private val FOCUS_BORDER_WIDTH = 3.dp
-private val BORDER_THIN = 1.dp
-private val CONTROL_SHAPE = RoundedCornerShape(14.dp)
+private val CONTROL_SHAPE = RoundedCornerShape(RadiusMedium)
 private val SURFACE_MUTED = SurfaceLevel1
 private val SURFACE_SEARCH = SurfaceLevel2
 private val BUTTON_SURFACE = SurfaceLevel1
@@ -89,7 +99,7 @@ internal fun SongListContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = APP_MARGIN_HORIZONTAL, vertical = APP_MARGIN_VERTICAL),
+            .padding(horizontal = AppMarginHorizontal, vertical = AppMarginVertical),
     ) {
         HeaderRow(
             searchQuery = state.searchQuery,
@@ -98,10 +108,10 @@ internal fun SongListContent(
             onJoin = actions.onJoin,
             onSettings = actions.onSettings,
         )
-        Spacer(modifier = Modifier.height(HEADER_TO_BODY_GAP))
+        Spacer(modifier = Modifier.height(SongListHeaderToBodyGap))
         Row(modifier = Modifier.fillMaxSize()) {
             LeftRail(focusedSong = state.focusedSong, playMedleyFocusRequester = focusTargets.playMedley)
-            Spacer(modifier = Modifier.width(RAIL_GRID_GAP))
+            Spacer(modifier = Modifier.width(SongListRailGridGap))
             RightBody(
                 actions = actions,
                 state = state,
@@ -121,21 +131,21 @@ private fun HeaderRow(
     onSettings: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(HEADER_HEIGHT),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.fillMaxWidth().height(HeaderHeight),
+        horizontalArrangement = Arrangement.spacedBy(SongListHeaderControlGap),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SearchField(searchQuery, searchFocusRequester, onSearchOk, Modifier.weight(1f))
         OutlinedButton(
             onClick = onJoin,
-            modifier = Modifier.width(160.dp),
+            modifier = Modifier.width(SongListHeaderButtonWidth),
             colors = outlinedControlColors(),
             border = controlBorder(),
         ) { Text("Join", style = ButtonLabel) }
         // Iteration 3 wires Settings; Iteration 1 intentionally opens no route/menu/screen/submenu.
         OutlinedButton(
             onClick = onSettings,
-            modifier = Modifier.width(160.dp),
+            modifier = Modifier.width(SongListHeaderButtonWidth),
             colors = outlinedControlColors(),
             border = controlBorder(),
         ) { Text("Settings", style = ButtonLabel) }
@@ -153,7 +163,7 @@ private fun SearchField(
     val interactionSource = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
-            .height(64.dp)
+            .height(SongListSearchHeight)
             .focusRequester(focusRequester)
             .onFocusChanged { focused = it.isFocused }
             .focusable(interactionSource = interactionSource)
@@ -161,7 +171,7 @@ private fun SearchField(
             .background(if (focused) SURFACE_SEARCH.copy(alpha = 0.92f) else SURFACE_SEARCH)
             .border(
                 BorderStroke(
-                    width = if (focused) FOCUS_BORDER_WIDTH else BORDER_THIN,
+                    width = if (focused) FocusBorderWidth else BorderThin,
                     color = if (focused) BorderFocus else BorderSubtle.copy(alpha = 0.2f),
                 ),
                 CONTROL_SHAPE,
@@ -192,30 +202,37 @@ private fun outlinedControlColors() = ButtonDefaults.colors(
 
 @Composable
 private fun controlBorder() = ButtonDefaults.border(
-    border = Border(BorderStroke(BORDER_THIN, BorderSubtle.copy(alpha = 0.2f))),
-    focusedBorder = Border(BorderStroke(FOCUS_BORDER_WIDTH, BorderFocus)),
-    pressedBorder = Border(BorderStroke(BORDER_THIN, BorderSubtle.copy(alpha = 0.2f))),
+    border = Border(BorderStroke(BorderThin, BorderSubtle.copy(alpha = 0.2f))),
+    focusedBorder = Border(BorderStroke(FocusBorderWidth, BorderFocus)),
+    pressedBorder = Border(BorderStroke(BorderThin, BorderSubtle.copy(alpha = 0.2f))),
 )
 
 @Composable
 private fun LeftRail(focusedSong: IndexedSong?, playMedleyFocusRequester: FocusRequester) {
-    Column(modifier = Modifier.fillMaxHeight().fillMaxWidth(0.34f)) {
+    Column(modifier = Modifier.fillMaxHeight().fillMaxWidth(SongListLeftRailFraction)) {
         PreviewPane(focusedSong)
-        Spacer(modifier = Modifier.height(META_PLAYLIST_GAP))
+        Spacer(modifier = Modifier.height(SongListMetaToPlaylistGap))
         Text(text = "Medley playlist", style = PanelTitle)
-        Spacer(modifier = Modifier.height(12.dp))
-        repeat(SONG_LIST_PLAYLIST_VISIBLE_ROWS) { index ->
-            Surface(modifier = Modifier.fillMaxWidth().height(PLAYLIST_ROW_HEIGHT), shape = RoundedCornerShape(12.dp)) {
+        Spacer(modifier = Modifier.height(Space12))
+        repeat(SongListPlaylistVisibleRows) { index ->
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(SongListPlaylistRowHeight),
+                shape = RoundedCornerShape(RadiusMedium),
+            ) {
                 Box(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = Space16),
                     contentAlignment = Alignment.CenterStart,
                 ) {
                     Text(text = if (index == 0) "No songs added" else "", style = BodySecondary, color = DISABLED_TEXT)
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Space8))
         }
-        Spacer(modifier = Modifier.height(PLAY_MEDLEY_TOP_GAP))
+        Spacer(modifier = Modifier.height(SongListPlayMedleyTopGap))
         // Iteration 4 wires medley execution; Iteration 1 keeps this action visible-disabled.
         OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.focusRequester(playMedleyFocusRequester)) {
             Text("Play Medley")
@@ -229,15 +246,15 @@ private fun PreviewPane(focusedSong: IndexedSong?) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(16.dp))
+                .aspectRatio(SongListPreviewAspect)
+                .clip(RoundedCornerShape(RadiusMedium))
                 .background(SURFACE_MUTED)
                 .testTag("songlist-preview-pane"),
             contentAlignment = Alignment.Center,
         ) {
             Text(text = "Preview", style = BodySecondary, color = TextSecondary)
         }
-        Spacer(modifier = Modifier.height(PREVIEW_META_GAP))
+        Spacer(modifier = Modifier.height(SongListPreviewToMetaGap))
         Text(
             text = focusedSong?.title ?: "Focused song preview",
             style = PreviewTitle,
@@ -265,7 +282,7 @@ private fun RightBody(
             onRandomDuet = actions.onRandomDuet,
             onRandomMedley = actions.onRandomMedley,
         )
-        Spacer(modifier = Modifier.height(RANDOM_ROW_GAP))
+        Spacer(modifier = Modifier.height(SongListRandomRowGap))
         state.emptyState?.let { EmptyStateCard(it) } ?: SongGrid(
             songs = state.visibleSongs,
             gridColumns = gridColumns,
@@ -285,8 +302,8 @@ private fun RandomActionsRow(
     onRandomMedley: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(RANDOM_ROW_HEIGHT),
-        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        modifier = Modifier.fillMaxWidth().height(SongListRandomRowHeight),
+        horizontalArrangement = Arrangement.spacedBy(SongListGridColumnGap),
     ) {
         Button(
             onClick = onRandomSong,
@@ -330,8 +347,8 @@ private fun SongGrid(
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(gridColumns),
-        horizontalArrangement = Arrangement.spacedBy(GRID_GAP),
-        verticalArrangement = Arrangement.spacedBy(GRID_GAP),
+        horizontalArrangement = Arrangement.spacedBy(SongListGridColumnGap),
+        verticalArrangement = Arrangement.spacedBy(SongListGridRowGap),
     ) {
         itemsIndexed(songs, key = { _, song -> song.songId }) { index, song ->
             SongCard(

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -37,6 +38,10 @@ fun SongListScreen(
     onSongSelected: (IndexedSong) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
+    PreviewDebounceTicker(viewModel)
+    DisposableEffect(viewModel) {
+        onDispose { viewModel.onEvent(SongListEvent.ScreenExit) }
+    }
     SongListScreen(
         state = state,
         modifier = modifier,
@@ -50,6 +55,16 @@ fun SongListScreen(
         onSongFocused = viewModel::onSongFocused,
         onSongSelected = onSongSelected,
     )
+}
+
+@Composable
+private fun PreviewDebounceTicker(viewModel: SongListViewModel) {
+    LaunchedEffect(viewModel) {
+        while (true) {
+            kotlinx.coroutines.delay(50L)
+            viewModel.tick(50L)
+        }
+    }
 }
 
 @NoCoverageGenerated

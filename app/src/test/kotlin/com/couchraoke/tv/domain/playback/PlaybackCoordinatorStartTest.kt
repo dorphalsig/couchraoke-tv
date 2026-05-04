@@ -26,7 +26,10 @@ import com.couchraoke.tv.presentation.playback.PlaybackIntent
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -86,8 +89,14 @@ class PlaybackCoordinatorStartTest {
         coordinator.onPlaybackEvent(PlaybackEvent.Prepared(effectivePlaybackDurationMs = 12_000L))
 
         assertEquals(SoloSingFixtures.PhoneClientId, network.pingedPhoneIds.single())
-        assertEquals(StartMode.Live, network.assignSingerCalls.single().second.startMode)
-        assertNull(network.assignSingerCalls.single().second.countdownMs)
+        val message = network.assignSingerCalls.single().second
+        assertEquals(StartMode.Live, message.startMode)
+        assertNull(message.countdownMs)
+        val json = Json { encodeDefaults = false }
+            .encodeToJsonElement(AssignSingerMessage.serializer(), message)
+            .jsonObject
+        assertFalse(json.containsKey("countdownMs"))
+        assertFalse(json.containsKey("connectionId"))
     }
 
     @Test(timeout = 30_000)

@@ -43,6 +43,7 @@ data class StaticNoteTarget(
     val toneSemitone: Int,
     val lyric: String,
     val noteType: StaticNoteType = StaticNoteType.Regular,
+    val difficultyThicknessSemitones: Int = 1,
 )
 
 enum class StaticNoteType {

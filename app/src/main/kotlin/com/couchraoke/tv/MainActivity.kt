@@ -81,6 +81,7 @@ class MainActivity : ComponentActivity() {
                         libraryManager = libraryManager,
                         networkController = networkController,
                         playbackCoordinator = playbackCoordinator,
+                        onExitApp = ::finish,
                     )
                 }
             }

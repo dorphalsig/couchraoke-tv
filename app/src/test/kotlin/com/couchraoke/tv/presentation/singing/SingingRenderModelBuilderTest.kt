@@ -1,6 +1,7 @@
 package com.couchraoke.tv.presentation.singing
 
 import com.couchraoke.tv.domain.model.PlayerId
+import com.couchraoke.tv.domain.scoring.model.Difficulty
 import com.couchraoke.tv.fixtures.SoloSingFixtures
 import com.couchraoke.tv.fixtures.SoloSingUsdxFixtures
 import org.junit.Assert.assertEquals
@@ -29,6 +30,7 @@ class SingingRenderModelBuilderTest {
             song = SoloSingFixtures.indexedSong(),
             parsedSong = SoloSingUsdxFixtures.parsedStaticSoloChart(),
             playerId = PlayerId.P1,
+            difficulty = Difficulty.Medium,
             lyricsTimeMs = 1_499L,
         )
 
@@ -50,5 +52,20 @@ class SingingRenderModelBuilderTest {
         assertFalse(lane.hasLivePitch)
         assertFalse(lane.hasScoringFeedback)
         assertEquals(0f, model.lyrics.highlightFraction)
+    }
+
+    @Test(timeout = 30_000)
+    fun noteTargetThicknessReflectsSelectedDifficulty() {
+        fun thicknessFor(difficulty: Difficulty) = DefaultSingingRenderModelBuilder().buildAtLyricsTime(
+            song = SoloSingFixtures.indexedSong(),
+            parsedSong = SoloSingUsdxFixtures.parsedStaticSoloChart(),
+            playerId = PlayerId.P1,
+            difficulty = difficulty,
+            lyricsTimeMs = 0L,
+        ).lanes.single().lane.noteTargets.first().difficultyThicknessSemitones
+
+        assertEquals(2, thicknessFor(Difficulty.Easy))
+        assertEquals(1, thicknessFor(Difficulty.Medium))
+        assertEquals(0, thicknessFor(Difficulty.Hard))
     }
 }

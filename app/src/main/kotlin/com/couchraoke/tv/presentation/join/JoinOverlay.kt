@@ -24,20 +24,26 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import com.couchraoke.quality.NoCoverageGenerated
 import com.couchraoke.tv.ui.theme.BorderSubtle
+import com.couchraoke.tv.ui.theme.BorderThin
 import com.couchraoke.tv.ui.theme.DisplayAccentTitle
+import com.couchraoke.tv.ui.theme.JoinCodeTopGap
+import com.couchraoke.tv.ui.theme.JoinQRCodeSize
+import com.couchraoke.tv.ui.theme.JoinQrPanelPadding
+import com.couchraoke.tv.ui.theme.PrimaryModalPadding
+import com.couchraoke.tv.ui.theme.PrimaryModalWidth
+import com.couchraoke.tv.ui.theme.RadiusLarge
 import com.couchraoke.tv.ui.theme.SurfaceLevel2
 import com.couchraoke.tv.ui.theme.TextPrimary
 
-private val ModalShape = RoundedCornerShape(24.dp)
+private val ModalShape = RoundedCornerShape(RadiusLarge)
 private val ModalSurface = SurfaceLevel2
 private val Scrim = Color.Black.copy(alpha = 0.66f)
-private val QrPanelShape = RoundedCornerShape(20.dp)
+private val QrPanelShape = RoundedCornerShape(RadiusLarge)
 private val QrPanelSurface = Color.White
 private val QrPanelBorder = BorderSubtle.copy(alpha = 0.2f)
 
@@ -61,12 +67,12 @@ fun JoinOverlay(
         contentAlignment = Alignment.Center,
     ) {
         Surface(
-            modifier = Modifier.width(960.dp),
+            modifier = Modifier.width(PrimaryModalWidth),
             shape = ModalShape,
             colors = SurfaceDefaults.colors(containerColor = ModalSurface),
         ) {
             Column(
-                modifier = Modifier.padding(32.dp),
+                modifier = Modifier.padding(PrimaryModalPadding),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -75,17 +81,17 @@ fun JoinOverlay(
                         .testTag("join-overlay-qr-panel")
                         .clip(QrPanelShape)
                         .background(QrPanelSurface)
-                        .border(width = 1.dp, color = QrPanelBorder, shape = QrPanelShape)
-                        .padding(20.dp),
+                        .border(width = BorderThin, color = QrPanelBorder, shape = QrPanelShape)
+                        .padding(JoinQrPanelPadding),
                 ) {
                     Image(
                         painter = renderedQr.painter,
                         contentDescription = "Join QR code",
-                        modifier = Modifier.size(400.dp).clearAndSetSemantics { },
+                        modifier = Modifier.size(JoinQRCodeSize).clearAndSetSemantics { },
                         contentScale = ContentScale.Fit,
                     )
                 }
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(JoinCodeTopGap))
                 Text(
                     text = joinCode,
                     style = DisplayAccentTitle,

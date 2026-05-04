@@ -2,6 +2,7 @@ package com.couchraoke.tv.presentation.singing
 
 import com.couchraoke.tv.domain.library.IndexedSong
 import com.couchraoke.tv.domain.model.PlayerId
+import com.couchraoke.tv.domain.scoring.model.Difficulty
 import com.couchraoke.tv.domain.usdx.model.Line
 import com.couchraoke.tv.domain.usdx.model.NoteEvent
 import com.couchraoke.tv.domain.usdx.model.ParsedSong
@@ -9,12 +10,13 @@ import kotlin.math.max
 
 class DefaultSingingRenderModelBuilder : SingingRenderModelBuilder {
     override fun build(song: IndexedSong, parsedSong: ParsedSong, playerId: PlayerId): SingingRenderModel =
-        buildAtLyricsTime(song, parsedSong, playerId, lyricsTimeMs = 0L)
+        buildAtLyricsTime(song, parsedSong, playerId, difficulty = Difficulty.Medium, lyricsTimeMs = 0L)
 
     fun buildAtLyricsTime(
         song: IndexedSong,
         parsedSong: ParsedSong,
         playerId: PlayerId,
+        difficulty: Difficulty,
         lyricsTimeMs: Long,
     ): SingingRenderModel {
         val track = parsedSong.tracks.firstOrNull { it.playerId == playerId } ?: parsedSong.tracks.first()
@@ -23,8 +25,9 @@ class DefaultSingingRenderModelBuilder : SingingRenderModelBuilder {
             .coerceAtLeast(0)
         val currentLine = lines.getOrNull(activeIndex)
         val nextLine = lines.getOrNull(activeIndex + 1)
+        val thicknessSemitones = difficulty.toThicknessSemitones()
         val noteTargets = track.lines.flatMap { line ->
-            line.notes.map { note -> note.toStaticNoteTarget(parsedSong) }
+            line.notes.map { note -> note.toStaticNoteTarget(parsedSong, thicknessSemitones) }
         }
         val stopAtLyricsTimeMs = parsedSong.header.endMs?.toLong()
             ?: noteTargets.maxOfOrNull { it.endTimeMs }
@@ -95,12 +98,20 @@ private fun Line?.highlightAt(parsedSong: ParsedSong, lyricsTimeMs: Long): Float
     }
 }
 
-private fun NoteEvent.toStaticNoteTarget(parsedSong: ParsedSong): StaticNoteTarget = StaticNoteTarget(
-    startTimeMs = startBeatFile.toLyricsTimeMs(parsedSong),
-    endTimeMs = endBeatFileExclusive.toLyricsTimeMs(parsedSong),
-    toneSemitone = toneSemitone,
-    lyric = lyric,
-)
+private fun NoteEvent.toStaticNoteTarget(parsedSong: ParsedSong, thicknessSemitones: Int): StaticNoteTarget =
+    StaticNoteTarget(
+        startTimeMs = startBeatFile.toLyricsTimeMs(parsedSong),
+        endTimeMs = endBeatFileExclusive.toLyricsTimeMs(parsedSong),
+        toneSemitone = toneSemitone,
+        lyric = lyric,
+        difficultyThicknessSemitones = thicknessSemitones,
+    )
+
+internal fun Difficulty.toThicknessSemitones(): Int = when (this) {
+    Difficulty.Easy -> 2
+    Difficulty.Medium -> 1
+    Difficulty.Hard -> 0
+}
 
 private fun Int.toLyricsTimeMs(parsedSong: ParsedSong): Long {
     val beatLengthMs = 60_000.0 / (parsedSong.timing.bpmFile * 4.0)

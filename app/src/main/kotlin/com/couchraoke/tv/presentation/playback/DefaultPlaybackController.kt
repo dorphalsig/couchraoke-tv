@@ -25,7 +25,12 @@ class DefaultPlaybackController(
         }
     }
 
-    fun advanceReadyFallback() {
+    fun tick() {
+        advanceReadyFallback()
+        enforceStopBoundary()
+    }
+
+    private fun advanceReadyFallback() {
         val fallbackStartTvMs = playClockMs ?: return
         if (!readyEmitted && clockMs() - fallbackStartTvMs >= 500L) {
             readyEmitted = true
@@ -33,7 +38,7 @@ class DefaultPlaybackController(
         }
     }
 
-    fun enforceStopBoundary() {
+    private fun enforceStopBoundary() {
         if (preparedStopAtLyricsTimeMs > 0L && audioHandle.timeMs >= preparedStopAtLyricsTimeMs) {
             audioHandle.stop()
             mutableEvents += PlaybackEvent.Ended

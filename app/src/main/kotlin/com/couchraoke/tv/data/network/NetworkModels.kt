@@ -3,6 +3,8 @@ package com.couchraoke.tv.data.network
 import com.couchraoke.tv.domain.library.IndexedSong
 import com.couchraoke.tv.domain.model.PlayerId
 import com.couchraoke.tv.domain.scoring.model.Difficulty
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 data class ConnectedPhone(
     val clientId: String,
@@ -73,13 +75,14 @@ sealed interface NetworkMessage {
     val sessionId: String
 }
 
+@Serializable
 data class AssignSingerMessage(
     override val sessionId: String,
     val songInstanceSeq: Long,
     val playerId: PlayerId,
     val difficulty: Difficulty,
     val startMode: StartMode,
-    val countdownMs: Int?,
+    val countdownMs: Int? = null,
     val stopAtLyricsTimeMs: Long,
     val udpPort: Int,
     val songTitle: String,
@@ -89,6 +92,7 @@ data class AssignSingerMessage(
     override val protocolVersion: Int = 1
 }
 
+@Serializable
 data class PlaybackStateMessage(
     override val sessionId: String,
     val songInstanceSeq: Long,
@@ -104,6 +108,7 @@ data class PlaybackStateMessage(
     override val protocolVersion: Int = 1
 }
 
+@Serializable
 data class ClockAckMessage(
     override val sessionId: String,
     val tvTimeMs: Long,
@@ -121,18 +126,20 @@ data class PongResponse(
     val isValidSample: Boolean,
 )
 
+@Serializable
 enum class StartMode(val wireValue: String) {
-    Countdown("countdown"),
-    Live("live"),
+    @SerialName("countdown") Countdown("countdown"),
+    @SerialName("live") Live("live"),
 }
 
+@Serializable
 enum class PlaybackNetworkState(val wireValue: String) {
-    Open("open"),
-    Countdown("countdown"),
-    Playing("playing"),
-    Paused("paused"),
-    Stopped("stopped"),
-    Error("error"),
+    @SerialName("open") Open("open"),
+    @SerialName("countdown") Countdown("countdown"),
+    @SerialName("playing") Playing("playing"),
+    @SerialName("paused") Paused("paused"),
+    @SerialName("stopped") Stopped("stopped"),
+    @SerialName("error") Error("error"),
 }
 
 fun SongEntry.toIndexedSong(phoneClientId: String): IndexedSong = IndexedSong(

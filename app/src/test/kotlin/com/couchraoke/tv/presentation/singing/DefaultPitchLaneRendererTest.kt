@@ -99,8 +99,63 @@ class DefaultPitchLaneRendererTest {
         ).first()
 
         assertTrue(rect.right - rect.left >= 8f)
-        assertEquals(12f, rect.bottom - rect.top, 0.001f)
         assertTrue(rect.bottom > rect.top)
+    }
+
+    @Test(timeout = 30_000)
+    fun noteWidthIsProportionalToMsDuration() {
+        // Note A: 1000ms, Note B: 2000ms — B should be twice as wide as A.
+        val rects = noteMarkerRects(
+            viewport = Rect(0f, 0f, 400f, 80f),
+            state = LaneRenderState(
+                playerId = PlayerId.P1,
+                noteTargets = listOf(
+                    StaticNoteTarget(startTimeMs = 0L, endTimeMs = 1_000L, toneSemitone = 1, lyric = "a"),
+                    StaticNoteTarget(startTimeMs = 1_000L, endTimeMs = 3_000L, toneSemitone = 4, lyric = "b"),
+                ),
+                currentLyricsTimeMs = 0L,
+            ),
+        )
+
+        val widthA = rects[0].right - rects[0].left
+        val widthB = rects[1].right - rects[1].left
+        assertEquals(2.0f, widthB / widthA, 0.01f)
+    }
+
+    @Test(timeout = 30_000)
+    fun noteHeightScalesWithDifficultyThickness() {
+        // Two notes spanning 3 semitones (toneSpan=3), viewport height 120px → pixelsPerSemitone = 40.
+        // Hard (0): height = 2 * (0 + 0.5) * 40 = 40px
+        // Medium (1): height = 2 * (1 + 0.5) * 40 = 120px
+        // Easy (2): height = 2 * (2 + 0.5) * 40 = 200px
+        fun rectFor(thickness: Int) = noteMarkerRects(
+            viewport = Rect(0f, 0f, 400f, 120f),
+            state = LaneRenderState(
+                playerId = PlayerId.P1,
+                noteTargets = listOf(
+                    StaticNoteTarget(startTimeMs = 0L, endTimeMs = 1_000L, toneSemitone = 0, lyric = "anchor"),
+                    StaticNoteTarget(startTimeMs = 0L, endTimeMs = 1_000L, toneSemitone = 3, lyric = "anchor"),
+                    StaticNoteTarget(
+                        startTimeMs = 100L,
+                        endTimeMs = 900L,
+                        toneSemitone = 1,
+                        lyric = "test",
+                        difficultyThicknessSemitones = thickness,
+                    ),
+                ),
+                currentLyricsTimeMs = 0L,
+            ),
+        ).last()
+
+        val hardHeight = rectFor(0).let { it.bottom - it.top }
+        val mediumHeight = rectFor(1).let { it.bottom - it.top }
+        val easyHeight = rectFor(2).let { it.bottom - it.top }
+
+        assertEquals(40f, hardHeight, 0.01f)
+        assertEquals(120f, mediumHeight, 0.01f)
+        assertEquals(200f, easyHeight, 0.01f)
+        assertTrue(hardHeight < mediumHeight)
+        assertTrue(mediumHeight < easyHeight)
     }
 
     @Test(timeout = 30_000)

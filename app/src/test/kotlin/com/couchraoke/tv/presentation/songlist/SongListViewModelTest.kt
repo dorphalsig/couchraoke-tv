@@ -86,10 +86,10 @@ class SongListViewModelTest {
         val viewModel = SongListViewModel(songs = listOf(song))
 
         viewModel.onSongFocused(song.songId)
-        viewModel.advancePreviewDebounce(499)
+        viewModel.tick(499)
         assertNull(viewModel.state.value.preview)
 
-        viewModel.advancePreviewDebounce(1)
+        viewModel.tick(1)
         assertEquals(song.audioUrl, viewModel.state.value.preview?.audioUrl)
         assertEquals(0L, viewModel.state.value.preview?.startPositionMs)
 
@@ -103,7 +103,7 @@ class SongListViewModelTest {
         val viewModel = SongListViewModel(songs = listOf(song))
 
         viewModel.onSongFocused(song.songId)
-        viewModel.advancePreviewDebounce(500)
+        viewModel.tick(500)
         viewModel.onEvent(SongListEvent.PreviewFailure)
 
         assertEquals(12_000L, viewModel.state.value.preview?.startPositionMs)
@@ -128,12 +128,12 @@ class SongListViewModelTest {
         val viewModel = SongListViewModel(songs = listOf(song))
 
         viewModel.onSongFocused(song.songId)
-        viewModel.advancePreviewDebounce(500)
+        viewModel.tick(500)
         viewModel.onEvent(SongListEvent.GridFocusLost)
         assertNull(viewModel.state.value.preview)
 
         viewModel.onSongFocused(song.songId)
-        viewModel.advancePreviewDebounce(500)
+        viewModel.tick(500)
         viewModel.onEvent(SongListEvent.ScreenExit)
         assertNull(viewModel.state.value.preview)
         assertTrue(viewModel.state.value.previewReleased)

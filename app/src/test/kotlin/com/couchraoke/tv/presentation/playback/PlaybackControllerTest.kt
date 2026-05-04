@@ -40,22 +40,29 @@ class PlaybackControllerTest {
         controller.handle(PlaybackIntent.Prepare("http://phone/audio.mp3", null, null, 0f, 120_000L))
         controller.handle(PlaybackIntent.Play(120_000L))
         now = 5_500L
-        controller.advanceReadyFallback()
+        controller.tick()
 
         assertEquals(PlaybackEvent.Ready(5_000L), controller.events.last())
     }
 
     @Test(timeout = 30_000)
-    fun stopBoundaryStopsAndEmitsEnded() = runBlocking {
+    fun tickEmitsFallbackReadyAndEnforcesStopBoundary() = runBlocking {
         val handle = FakeHandle(timeMs = 0L)
-        val controller = DefaultPlaybackController(audioHandle = handle, clockMs = { 0L })
+        var now = 1_000L
+        val controller = DefaultPlaybackController(audioHandle = handle, clockMs = { now })
 
-        controller.handle(PlaybackIntent.Prepare("http://phone/audio.mp3", null, null, 120f, null))
+        controller.handle(PlaybackIntent.Prepare("http://phone/audio.mp3", null, null, 0f, null))
         controller.handle(PlaybackIntent.Play(120_000L))
-        controller.enforceStopBoundary()
+        now = 1_500L
+        controller.tick()
+        handle.timeMs = 120_000L
+        controller.tick()
 
         assertTrue(handle.stopped)
-        assertEquals(PlaybackEvent.Ended, controller.events.last())
+        assertEquals(
+            listOf(PlaybackEvent.Prepared(180_000L), PlaybackEvent.Ready(1_000L), PlaybackEvent.Ended),
+            controller.events,
+        )
     }
 
     @Test(timeout = 30_000)
@@ -92,14 +99,14 @@ class PlaybackControllerTest {
         var now = 10_000L
         val controller = DefaultPlaybackController(audioHandle = handle, clockMs = { now })
 
-        controller.advanceReadyFallback()
+        controller.tick()
         assertTrue(controller.events.isEmpty())
 
         controller.handle(PlaybackIntent.Prepare("http://phone/audio.mp3", null, null, 0f, 120_000L))
         controller.handle(PlaybackIntent.Play(120_000L))
         handle.emit(LibVlcEvent.Playing)
         now = 11_000L
-        controller.advanceReadyFallback()
+        controller.tick()
 
         assertEquals(2, controller.events.size)
         assertEquals(PlaybackEvent.Ready(10_000L), controller.events.last())
@@ -131,11 +138,11 @@ class PlaybackControllerTest {
         val handle = FakeHandle(timeMs = 5_000L)
         val controller = DefaultPlaybackController(audioHandle = handle, clockMs = { 0L })
 
-        controller.enforceStopBoundary()
+        controller.tick()
         assertFalse(handle.stopped)
 
         controller.handle(PlaybackIntent.Prepare("http://phone/audio.mp3", null, null, 0f, 120_000L))
-        controller.enforceStopBoundary()
+        controller.tick()
         assertFalse(handle.stopped)
     }
 

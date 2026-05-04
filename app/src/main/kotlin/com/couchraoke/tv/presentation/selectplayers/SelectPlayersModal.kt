@@ -10,13 +10,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Surface
@@ -30,15 +30,23 @@ import com.couchraoke.tv.ui.theme.ButtonLabel
 import com.couchraoke.tv.ui.theme.CouchraokeTheme
 import com.couchraoke.tv.ui.theme.FieldLabel
 import com.couchraoke.tv.ui.theme.PanelTitle
+import com.couchraoke.tv.ui.theme.PrimaryModalPadding
+import com.couchraoke.tv.ui.theme.PrimaryModalWidth
+import com.couchraoke.tv.ui.theme.RadiusLarge
+import com.couchraoke.tv.ui.theme.RadiusMedium
 import com.couchraoke.tv.ui.theme.SectionTitle
+import com.couchraoke.tv.ui.theme.SelectPlayersActionButtonWidth
+import com.couchraoke.tv.ui.theme.Space12
+import com.couchraoke.tv.ui.theme.Space24
+import com.couchraoke.tv.ui.theme.Space8
 import com.couchraoke.tv.ui.theme.SurfaceLevel1
 import com.couchraoke.tv.ui.theme.SurfaceLevel2
 import com.couchraoke.tv.ui.theme.TextDisabled
 import com.couchraoke.tv.ui.theme.TextPrimary
 import com.couchraoke.tv.ui.theme.TextSecondary
 
-private val ModalShape = RoundedCornerShape(24.dp)
-private val SectionShape = RoundedCornerShape(16.dp)
+private val ModalShape = RoundedCornerShape(RadiusLarge)
+private val SectionShape = RoundedCornerShape(RadiusMedium)
 private val ModalSurface = SurfaceLevel2
 private val SectionSurface = SurfaceLevel1
 private val DisabledText = TextDisabled
@@ -57,17 +65,17 @@ fun SelectPlayersModal(
         contentAlignment = Alignment.Center,
     ) {
         Surface(
-            modifier = Modifier.fillMaxWidth(0.6f),
+            modifier = Modifier.width(PrimaryModalWidth),
             shape = ModalShape,
             colors = SurfaceDefaults.colors(containerColor = ModalSurface),
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(32.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
+                    .padding(PrimaryModalPadding),
+                verticalArrangement = Arrangement.spacedBy(Space24),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Space8)) {
                     Text(
                         text = state.title,
                         style = SectionTitle,
@@ -97,15 +105,35 @@ fun SelectPlayersModal(
                     showDifficulty = state.showPlayerTwoDifficulty,
                 )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Button(onClick = onStart, enabled = state.canStart) {
-                        Text("Start", style = ButtonLabel)
-                    }
-                    OutlinedButton(onClick = onCancel) {
-                        Text("Cancel", style = ButtonLabel)
-                    }
-                }
+                SelectPlayersActions(
+                    canStart = state.canStart,
+                    onStart = onStart,
+                    onCancel = onCancel,
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun SelectPlayersActions(
+    canStart: Boolean,
+    onStart: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Space24)) {
+        Button(
+            onClick = onStart,
+            enabled = canStart,
+            modifier = Modifier.width(SelectPlayersActionButtonWidth),
+        ) {
+            Text("Start", style = ButtonLabel)
+        }
+        OutlinedButton(
+            onClick = onCancel,
+            modifier = Modifier.width(SelectPlayersActionButtonWidth),
+        ) {
+            Text("Cancel", style = ButtonLabel)
         }
     }
 }
@@ -123,8 +151,8 @@ private fun PlayerBlock(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(Space24),
+            verticalArrangement = Arrangement.spacedBy(Space12),
         ) {
             Text(
                 text = if (required) "$title (required)" else title,
@@ -146,7 +174,7 @@ private fun LabeledValue(
     value: String,
     enabled: Boolean,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Space12), verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = "$label:",
             style = FieldLabel,

@@ -64,7 +64,7 @@ class SongListViewModel(
         stopPreview(clearPendingFocusedSong = false)
     }
 
-    fun advancePreviewDebounce(ms: Long) {
+    fun tick(ms: Long) {
         pendingPreviewElapsedMs += ms
         if (pendingPreviewElapsedMs >= 500L) {
             val song = allSongs.firstOrNull { it.songId == pendingFocusedSongId } ?: return

@@ -4,6 +4,9 @@ import com.couchraoke.tv.domain.model.PlayerId
 import com.couchraoke.tv.domain.playback.GamePhase
 import com.couchraoke.tv.domain.playback.PlaybackCoordinator
 import com.couchraoke.tv.domain.playback.PlaybackModal
+import com.couchraoke.tv.domain.scoring.model.Difficulty
+import com.couchraoke.tv.presentation.singing.SingingBackground.Static
+import com.couchraoke.tv.presentation.singing.SingingBackground.Video
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -11,21 +14,28 @@ class SingingViewModel(
     private val coordinator: PlaybackCoordinator,
 ) {
     private val mutableState = MutableStateFlow(SingingUiState())
+    private var countdownRemainingMs: Int? = null
     val state: StateFlow<SingingUiState> = mutableState
 
     fun syncFromCoordinator() {
         val coordinatorState = coordinator.state.value
         mutableState.value = when (val phase = coordinatorState.phase) {
-            is GamePhase.Countdown -> buildState(
-                title = phase.plan.song.title,
-                artist = phase.plan.song.artist,
-                countdownNumber = (phase.plan.countdownMs ?: 0) / 1_000,
-            )
+            is GamePhase.Countdown -> {
+                countdownRemainingMs = phase.plan.countdownMs ?: 0
+                buildState(
+                    title = phase.plan.song.title,
+                    artist = phase.plan.song.artist,
+                    countdownNumber = countdownNumber(countdownRemainingMs ?: 0),
+                )
+            }
             is GamePhase.Live -> {
-                val renderModel = DefaultSingingRenderModelBuilder().build(
+                val singer = phase.plan.assignedSingers.firstOrNull()
+                val renderModel = DefaultSingingRenderModelBuilder().buildAtLyricsTime(
                     song = phase.plan.song,
                     parsedSong = phase.plan.parsedSong,
-                    playerId = phase.plan.assignedSingers.firstOrNull()?.playerId ?: PlayerId.P1,
+                    playerId = singer?.playerId ?: PlayerId.P1,
+                    difficulty = singer?.difficulty ?: Difficulty.Medium,
+                    lyricsTimeMs = 0L,
                 )
                 buildState(
                     isPlaying = true,
@@ -36,6 +46,8 @@ class SingingViewModel(
                     elapsedTimeText = renderModel.elapsedTimeText,
                     scoreText = renderModel.lanes.firstOrNull()?.scoreText ?: "00000",
                     badgeText = renderModel.lanes.firstOrNull()?.badgeText ?: "P1",
+                    laneState = renderModel.lanes.firstOrNull()?.lane,
+                    backgroundImageUrl = renderModel.background.fallbackImageUrl(),
                 )
             }
             GamePhase.Open -> buildState(returnToSongList = true)
@@ -50,9 +62,18 @@ class SingingViewModel(
         }.copy(pauseOverlay = coordinatorState.modal == PlaybackModal.Pause)
     }
 
+    fun advanceCountdown(elapsedMs: Int) {
+        val current = countdownRemainingMs ?: return
+        val next = (current - elapsedMs).coerceAtLeast(0)
+        countdownRemainingMs = next
+        mutableState.value = state.value.copy(countdownNumber = countdownNumber(next))
+    }
+
     fun onBack() {
         mutableState.value = state.value.copy(pauseOverlay = true)
     }
+
+    private fun countdownNumber(remainingMs: Int): Int = (remainingMs + 999) / 1_000
 
     private fun buildState(
         isPlaying: Boolean = false,
@@ -67,6 +88,8 @@ class SingingViewModel(
         elapsedTimeText: String = "00:00",
         scoreText: String = "00000",
         badgeText: String = "P1",
+        laneState: LaneRenderState? = null,
+        backgroundImageUrl: String? = null,
     ) = SingingUiState(
         isPlaying = isPlaying,
         countdownNumber = countdownNumber,
@@ -80,7 +103,14 @@ class SingingViewModel(
         elapsedTimeText = elapsedTimeText,
         scoreText = scoreText,
         badgeText = badgeText,
+        laneState = laneState,
+        backgroundImageUrl = backgroundImageUrl,
     )
+}
+
+private fun SingingBackground.fallbackImageUrl(): String? = when (this) {
+    is Static -> imageUrl
+    is Video -> fallbackImageUrl
 }
 
 data class SingingUiState(
@@ -96,4 +126,6 @@ data class SingingUiState(
     val elapsedTimeText: String = "00:00",
     val scoreText: String = "00000",
     val badgeText: String = "P1",
+    val laneState: LaneRenderState? = null,
+    val backgroundImageUrl: String? = null,
 )

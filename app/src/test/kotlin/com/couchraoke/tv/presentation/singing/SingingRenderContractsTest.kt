@@ -91,6 +91,9 @@ class SingingRenderContractsTest {
 
         assertEquals(SoloSingFixtures.indexedSong().backgroundUrl, background.fallbackImageUrl)
         assertEquals(SoloSingFixtures.indexedSong().videoUrl, background.videoUrl)
-        assertTrue(staticBackground is SingingBackground.Static)
+        assertEquals(
+            SoloSingFixtures.indexedSong().backgroundUrl,
+            (staticBackground as SingingBackground.Static).imageUrl,
+        )
     }
 }

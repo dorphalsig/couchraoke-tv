@@ -62,16 +62,18 @@ internal fun noteMarkerRects(viewport: Rect, state: LaneRenderState): List<Rect>
     val durationSpan = (maxEnd - minStart).toFloat()
     val toneSpan = (maxTone - minTone).toFloat()
 
+    val dpPerSemitone = viewport.height / toneSpan
     return state.noteTargets.map { note ->
         val left = viewport.left + viewport.width * ((note.startTimeMs - minStart).toFloat() / durationSpan)
         val right = viewport.left + viewport.width * ((note.endTimeMs - minStart).toFloat() / durationSpan)
         val toneFraction = (note.toneSemitone - minTone).toFloat() / toneSpan
         val centerY = viewport.bottom - (viewport.height * toneFraction)
+        val halfHeight = (note.difficultyThicknessSemitones + 0.5f) * dpPerSemitone
         Rect(
             left = left,
-            top = centerY - 6f,
+            top = centerY - halfHeight,
             right = right.coerceAtLeast(left + 8f),
-            bottom = centerY + 6f,
+            bottom = centerY + halfHeight,
         )
     }
 }
