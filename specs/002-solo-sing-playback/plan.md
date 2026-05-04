@@ -12,14 +12,16 @@ Deliver Iteration 1 solo-sing playback for the TV host app: one phone can join o
 **Language/Version**: Kotlin 2.2.10, Java 11  
 **Primary Dependencies**: AndroidX Core/AppCompat, Jetpack Compose + Compose for TV, Lifecycle Runtime, Kotlin Coroutines, Kotlinx Serialization JSON, Ktor server/websockets/client, jmDNS, LibVLC, Coil, QRose (`io.github.alexzhirkevich:qrose:1.1.2`), JUnit 4, quality-conventions `testBranch`
 **Storage**: DataStore preferences only if needed for existing settings defaults; no persistence for remote song assets; manifest/chart/audio/video assets are streamed from phone-provided LAN URLs  
-**Testing**: JVM unit tests, Robolectric/Compose UI tests or Roborazzi screenshots where available, direct Ktor WebSocket/HTTP tests, focused fake playback-handle tests, scoped `:app:testBranch` validation  
+**Testing**: JVM unit tests, Robolectric/Compose UI tests or Roborazzi screenshots where available, direct Ktor WebSocket/HTTP tests, focused fake playback-handle tests, scoped `:app:testBranch` validation; emulator/device checks only for Android TV runtime behavior that cannot be meaningfully covered at lower cost  
 **Target Platform**: Android TV 11-14, min API 30, single `:app` Android module  
 **Project Type**: Android TV mobile app with TV-hosted game/session authority  
 **Performance Goals**: Song List scroll remains responsive for ≥1000 songs; lyrics highlight remains spatially stable during active singing; LAN manifest fetch target <2s; WebSocket message latency target <50ms; no disk writes during playback  
 **Constraints**:
 - TV remains authoritative host for session state, song lifecycle, playback state, and score placeholders.
 - LAN-only operation; no cloud dependencies or external network requirements.
+- Phone-hosted `http://` manifest and media URLs require Android cleartext LAN HTTP configuration in the TV app.
 - Remote song assets remain streamed from phone URLs; TV MUST NOT persist remote audio/video/chart assets.
+- The TV relies on phone-served media URLs supporting HTTP `Range` requests with `206 Partial Content`, `Content-Range`, `Accept-Ranges: bytes`, and `Content-Length`; `/manifest.json` fetches must observe the latest phone scan rather than cached data.
 - Pitch transport remains fixed-size UDP by contract, but UDP pitch-frame ingestion and live-pitch drawing are out of Iteration 1 implementation scope.
 - Results screen, real scoring, note finalization, line bonus, live pitch cursor, hit/miss feedback, duet execution, and medley execution are out of Iteration 1 scope.
 - Shared UI may show duet/medley controls, but they remain disabled in Iteration 1 with code comments naming the intended wiring iteration: Iteration 3 for duet/two-player behavior and Iteration 4 for medley behavior.
@@ -63,7 +65,7 @@ Deliver Iteration 1 solo-sing playback for the TV host app: one phone can join o
 6. `com.couchraoke.tv.data.network.NetworkController#fetchTxt(url: String): Result<ByteArray>`
    - Producer: Ktor HTTP client adapter.
    - Consumers: LibraryManager and PlaybackCoordinator.
-   - Data contract: `SongEntry` mirrors `/manifest.json`; `fetchTxt` returns raw USDX bytes.
+   - Data contract: `SongEntry` mirrors `/manifest.json`; `fetchTxt` returns raw USDX bytes. LAN HTTP is cleartext. The TV expects phone media responses to support HTTP range semantics for LibVLC seeking (`206 Partial Content`, `Content-Range`, `Accept-Ranges: bytes`, `Content-Length`) and expects manifest refreshes to bypass stale cache data.
 7. `com.couchraoke.tv.data.network.NetworkController#sendAssignSinger(phoneId: String, message: AssignSingerMessage): Unit`
 8. `com.couchraoke.tv.data.network.NetworkController#broadcastPlaybackState(message: PlaybackStateMessage): Unit`
 9. `com.couchraoke.tv.data.network.NetworkController#sendSessionState(phoneId: String): Unit`
@@ -80,6 +82,7 @@ Deliver Iteration 1 solo-sing playback for the TV host app: one phone can join o
    - Existing contract reused.
    - Producer: library aggregation from phone manifests.
    - Consumers: SongListViewModel, SelectPlayers, PlaybackCoordinator.
+   - Iteration 1 contract: on connection, fetch manifest before songs become visible; refresh replaces that phone's prior entries; disconnect removes that phone's songs immediately; reconnect during countdown/live/paused marks the catalog stale and defers refresh until the session returns Open.
 14. `com.couchraoke.tv.domain.usdx.UsdxParser#parse(songId: String, txtBytes: ByteArray): Result<ParsedSong>`
    - Existing contract reused.
    - Producer: parser domain.
@@ -137,11 +140,11 @@ Deliver Iteration 1 solo-sing playback for the TV host app: one phone can join o
 40. `com.couchraoke.tv.presentation.singing.SingingRenderModelBuilder#build(song: IndexedSong, parsedSong: ParsedSong, playerId: PlayerId): SingingRenderModel`
    - Producer: presentation/domain adapter for singing UI.
    - Consumer: SingingViewModel and pitch-lane renderer.
-   - Data contract: immutable title/artist, lyrics sentences, static note targets for P1, playback timing metadata, optional background/video assets.
+   - Data contract: immutable title/artist, lyrics sentences, static note targets for P1, static instrumental/rest gap ranges, playback timing metadata, optional background/video assets. Static note and lyric timing use the parsed song's lyrics-time axis: file beats are used as-authored, `BPM_internal = BPM_file * 4`, note activity uses `[startBeat, endBeat)`, lyrics highlighting uses `micDelayMs=0`, and lane geometry uses `HorizontalTimeMapping`/`VerticalPitchMapping`; difficulty must not change lane height or coordinate-system bounds, but selected difficulty does control static note target vertical thickness using Easy = ±2 semitones, Medium = ±1 semitone, and Hard = ±0 semitones.
 41. `com.couchraoke.tv.presentation.singing.PitchLaneRenderer#drawPitchLane(canvas: Canvas, viewport: Rect, state: LaneRenderState): Unit`
    - Producer: renderer.
    - Consumer: Singing screen surface.
-   - Iteration 1 data contract: `LaneRenderState` contains static note targets and current lyrics-time position only; no live pitch, no hit/miss feedback.
+   - Iteration 1 data contract: `LaneRenderState` contains static note targets, selected difficulty for static target thickness, static instrumental/rest gap ranges derived from no-scorable-note regions longer than 2 seconds, and current lyrics-time position only; no live pitch and no hit/miss feedback until live pitch/scoring work is wired.
 
 ## Project Structure
 
@@ -196,11 +199,11 @@ app/
 
 ## Phase 0: Research & Decision Consolidation
 
-1. Resolve Iteration 1 scope boundaries against `tv_app.md`: static note lanes only, no live pitch, no scoring, no Results, disabled duet/medley controls.
+1. Resolve Iteration 1 scope boundaries within this feature slice: static note lanes only, no live pitch, no scoring, no Results, disabled duet/medley controls.
 2. Add QRose 1.1.2 through `gradle/libs.versions.toml` and `app/build.gradle.kts` for actual QR rendering; use only the QR artifact (`io.github.alexzhirkevich:qrose`) and do not add `qrose-oned`; document the exact QRose usage contract (basic Compose usage `Image(painter = rememberQrCodePainter(payload), ...)`, explicit Join-overlay painter options, black-on-white colors, `QrErrorCorrectionLevel.Medium`, direct painter rendering, and implementation-controlled `scale` for visual padding) and verify short/full WebSocket endpoint payloads against the centered 400dp quiet-zone requirements.
-3. Lock the minimal network/session behavior: mDNS advertisement, token-gated WebSocket handshake, manifest fetch, selected-singer assign/playbackState, and clock-sync gate.
+3. Lock the minimal network/session behavior: mDNS advertisement, token-gated WebSocket handshake, cleartext LAN HTTP manifest/media fetches, phone media range-response assumptions, active-song reconnect catalog-stale behavior, selected-singer assign/playbackState, and clock-sync gate.
 4. Lock the playback behavior: UI emits Prepared from the authoritative audio handle duration and Ready from first audio `Playing` or 500 ms fallback, captures `songStartTvMs` from audio only, enforces `stopAtLyricsTimeMs`, handles audio focus, treats video as decorative, and carries LibVLC warning/error diagnostics into audio error payloads.
-5. Lock the UI behavior and screenshot states: Song List, LibVLC-backed preview playback, Join overlay with actual QR, Select Players non-duet/no-phone, Singing single-singer/countdown/pause/confirm/error, disabled/no-op scoped affordances with comments naming their target iteration, and best-effort full-screen video background fallback.
+5. Lock the UI behavior and screenshot states: Song List, LibVLC-backed preview playback, Join overlay with actual QR, Select Players non-duet/no-phone, Singing single-singer/countdown/pause/confirm/error, static note/lyrics timing conventions, disabled/no-op scoped affordances with comments naming their target iteration, and best-effort full-screen video background fallback.
 6. Lock the visual compositing stack: optional full-screen video/background `SurfaceView` behind a separate pitch-lane rendering `SurfaceView`, with Compose metadata, score, lyrics, countdown, and overlays above both surfaces. Full-screen video uses `SurfaceView.setZOrderMediaOverlay(true)` and never `TextureView`; pitch-lane drawing remains SurfaceView-backed and renderer-owned.
 7. Lock optional-video runtime guardrails: no hardware-specific sign-off gate in this Iteration 1 feature slice, but load-time video admission must disable video when resolution is >720p and hardware decoder support cannot be confirmed, and active singing must expose a gameplay-degradation report path that disables decorative video and falls back to static background without testing dropped decorative-video frames.
 
@@ -208,10 +211,10 @@ app/
 
 1. Create `research.md` with the decisions above, alternatives considered, and source-alignment rationale.
 2. Create `data-model.md` for connected phones, session state, manifest entries, indexed songs, song start selection, game phase, playback events/intents, singing render model, lane render state, and modal states.
-3. Create `contracts/network-protocol.md` for WebSocket, mDNS, HTTP manifest/txt, assignSinger, playbackState, sessionState, and explicit Iteration 1 UDP non-scope.
+3. Create `contracts/network-protocol.md` for WebSocket, mDNS, cleartext HTTP manifest/txt/media assumptions, reconnect catalog-stale behavior, assignSinger, playbackState, sessionState, and explicit Iteration 1 UDP non-scope.
 4. Create `contracts/playback-coordinator.md` for coordinator, FSM subset, start/pause/resume/restart/quit/song-end, and clock-sync gate.
 5. Create `contracts/playback-ui.md` for playback intents/events, LibVLC handle seam, Song List preview playback seam, audio focus, stop boundary, prepared duration source, Ready timing, video fallback, degradation guardrails, and error diagnostics.
-6. Create `contracts/singing-rendering.md` for static note lane rendering, lyrics paging, score placeholder, SurfaceView/Compose compositing, and excluded live-pitch/scoring behavior.
+6. Create `contracts/singing-rendering.md` for static note lane rendering, lyrics paging, parsed-chart timing conventions, score placeholder, SurfaceView/Compose compositing, and excluded live-pitch/scoring behavior.
 7. Create `quickstart.md` with implementation order, validation commands, UI verification checklist, and known OOS issues.
 8. Run `.specify/scripts/bash/update-agent-context.sh claude` after artifacts are written.
 9. Re-check constitution compliance after design artifacts are complete.
@@ -250,7 +253,7 @@ timeout 10m ./gradlew :app:testBranch \
   --test com.couchraoke.tv.presentation.singing.SingingViewModelTest
 ```
 
-Task-level gates may narrow selectors to the exact files changed, but must not omit source/test counterparts for changed behavior. UI tasks must also compare rendered previews/screenshots against spec wireframes before completion claims.
+Task-level gates may narrow selectors to the exact files changed, but must not omit source/test counterparts for changed behavior. Prefer JVM, Robolectric, direct Ktor/WebSocket/HTTP, fake playback-handle, and component contract tests for task gates. UI tasks should compare rendered previews/screenshots against spec wireframes before completion claims where that is available at reasonable complexity. Emulator/device validation is reserved for Android TV runtime behavior that cannot be meaningfully validated through JVM, Robolectric, or direct component/contract tests.
 
 ## Post-Design Constitution Re-Check
 
@@ -261,11 +264,8 @@ Task-level gates may narrow selectors to the exact files changed, but must not o
 - **Workflow Units**: Maintained as one feature with bounded design outputs and future task list.
 - **Validation Gate**: Scoped `testBranch` and UI verification requirements are defined.
 
-## Out-of-Scope Issues Noted
+## Out-of-Scope Decisions
 
-1. `tv_app.md` §4.1 defines the full future FSM route through Results, but §7.3 Iteration 1 DOD and §7.4 allocation make Results an Iteration 2 concern.
-   - Suggested fix: implement an Iteration 1 song-end transition that returns to Song List, and add the `Stopped → Results` route when the Iteration 2 Results task lands.
-2. `tv_app.md` §2.6.16 minimum content mentions live score and pitch cursor, but §7.4 explicitly assigns pitch frames, live cursor, live score, and Results to Iteration 2.
-   - Suggested fix: in Iteration 1, render static note targets and a constant `00000` score only; add comments at visible scoring/live-pitch placeholders that Iteration 2 wires live pitch, scoring, and Results.
-3. Shared Song List wireframe includes duet/medley affordances while Iteration 1 is solo-sing only.
-   - Suggested fix: render those controls disabled/no-op in Iteration 1 with code comments naming their target iteration; enable duet/two-player behavior in Iteration 3 and medley playlist/execution/prebuffer/crossfade behavior in Iteration 4.
+1. The full future FSM route through Results is out of Iteration 1. Implement an Iteration 1 song-end transition that returns to Song List, and add the `Stopped → Results` route when the Iteration 2 Results task lands.
+2. Live score, live pitch cursor, score calculation, and sentence rating are out of Iteration 1. Render static note targets and a constant `00000` score only; add comments at visible scoring/live-pitch placeholders that Iteration 2 wires live pitch, scoring, and Results.
+3. Shared Song List affordances for duet and medley stay visible but disabled/no-op in Iteration 1. Enable duet/two-player behavior in Iteration 3 and medley playlist/execution/prebuffer/crossfade behavior in Iteration 4.

@@ -1,62 +1,35 @@
-# Couchraoke TV: Agent Runtime Policy
-Mandatory runtime policy for all LLM agents in this repository.
----
-## §1 Startup
-MUST read the following before any work — in this order:
-```
-Read .specify/memory/constitution.md
-Read CLAUDE.md  ← this file
-Load skill `orchestration`
-```
-All three are mandatory. Treat them as invariants for the session.
----
+# CouchRaoke TV: Agent Runtime Policy
+Mandatory for all agents in this repo.
 
-## §2 Scope & Edit Boundaries
-- MUST NOT edit files outside the task's explicit scope
-- MAY also read or edit any file **in this repository** that directly references,
-  or is directly referenced by, a scoped file — including its dependencies,
-  callers, data types, and test counterparts
-- MUST NOT navigate into third-party library source; use Context7 for their APIs
-- MUST NOT make out-of-scope changes, even if beneficial
-- MUST report detected OOS issues with a concise suggested fix — MUST NOT fix them
-- MUST NOT edit anything under quality-conventions/ without explicit previous consent by the user
----
+## Startup
+Before any work, read in order:
+1. `.specify/memory/constitution.md`
+2. `CLAUDE.md`
+Then load `orchestration`.
 
-## §3 Skills
-Three skills govern specific workflows in this repository. They auto-load based on context.
-**If a skill has not auto-loaded when you need it, read it explicitly before proceeding.**
-| Skill | Read when you are about to... | Explicit load |
-|---|---|---|
-| `navigation` | navigate code, look up a symbol, discover files, decide how much to read | `Read $HOME/.claude/skills/navigation/SKILL.md` |
-| `gradle-validation` | run any Gradle command, execute tests, check snapshots, claim completion | `Read $HOME/.claude/skills/gradle-validation/SKILL.md` |
-| `implementation` | start implementing, writing code | `Read $HOME/.claude/skills/implementation/SKILL.md` |
-| `orchestration` | manage tasks, make delegation decisions, manage worktrees/branches | `Read $HOME/.claude/skills/orchestration/SKILL.md` |
----
+## Skill loading
+Load the governing skill before acting:
+| Action | Skill |
+|---|---|
+| manage tasks, phases, delegation, branches, worktrees | `orchestration` |
+| edit code or tests | `implementation` |
+| navigate files, symbols, references, call paths | `navigation` |
+| run Gradle, tests, screenshots, or completion validation | `gradle-validation` |
+If multiple apply, load all.
 
-## §4 Error Protocol
-MUST NOT make blind changes after any failure. The `gradle-validation` skill is the
-authoritative source for the full error protocol. In all cases:
-- Read the failure output first
-- Navigate to the reported problem location before touching anything
-- Perform Root-Cause Analysis, follow the execution chain 1 step away. DO NOT go in libraries or native code.
-- Still failing after three full cycles → STOP and warn the user
----
-
-## §5 Invariants
-These apply at all times, no skill exempts them:
-- MUST operate only within the task's declared scope and constraints
-- MUST preserve TV host authority, LAN-only assumptions, streaming-only remote song assets,
-  and fixed-size UDP pitch transport when touching those flows
-- MUST keep business logic out of UI, ViewModels as the single source of UI state,
-  and Android framework types in platform-facing layers
-- MUST plan dependency additions, removals, and version changes in advance and route them through
-  `gradle/libs.versions.toml`
-- MUST define material producer or consumer contracts during planning as FQCN + method +
-  signature, plus any required data contract
-- MUST use scoped `testBranch` as the authoritative task gate for completion
-- MUST NOT report task completion unless all required artifacts are present, fresh, and passing
-- MUST notify OOS problems — MUST NOT fix them
-
+## Invariants
+- Stay within declared task scope.
+- Do not edit out-of-scope issues; report them only.
+- Do not edit `quality-conventions/` without explicit approval.
+- Do not navigate into third-party source; use docs/search tools.
+- Route dependency changes through `gradle/libs.versions.toml`.
+- Keep business logic out of UI.
+- Use ViewModels as the UI state source.
+- Do not claim completion unless required validation is fresh and green.
+- Use `context7` to obtain up to date API info. If there are no results use `tavily search`
+- Use `tavily search` to search the web, for example when you find an error and need to find how to solve it
+- Use `Brave Search`as a backup of `tavily search`
+- Loaded skill workflows are mandatory and override task-level autonomy wording, unless the user's is more restrictive, or the user explicitly states that the instruction overrides the workflows
 
 ## Active Technologies
 - Kotlin 2.2.10, Java 11 + AndroidX Core/AppCompat, Jetpack Compose + Compose for TV, Lifecycle Runtime, Kotlin Coroutines, Kotlinx Serialization JSON, JUnit 4, quality-conventions `testBranch` (001-tv-host-foundation)
