@@ -30,6 +30,7 @@ data class PlaybackPlan(
     val countdownMs: Int?,
     val stopAtLyricsTimeMs: Long,
     val udpPort: Int,
+    val nextRevision: Long = 1L,
 )
 
 enum class PlaybackStartMode {

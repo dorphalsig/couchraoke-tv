@@ -14,6 +14,8 @@ class SelectPlayersViewModel(
     countdownEnabled: Boolean = true,
     countdownSeconds: Int = 3,
 ) {
+    private var pendingRecoveryRequest: SelectPlayersRecoveryRequest? = null
+
     private val playerOne = PlayerSelectionState(
         playerId = PlayerId.P1,
         selectedPhoneId = connectedPhones.firstOrNull()?.clientId,
@@ -36,6 +38,11 @@ class SelectPlayersViewModel(
             canStart = playerOne.selectedPhoneId != null,
             countdownEnabled = countdownEnabled,
             countdownSeconds = countdownSeconds,
+            noPhoneRecovery = if (connectedPhones.isEmpty()) {
+                SelectPlayersNoPhoneRecovery()
+            } else {
+                null
+            },
         )
     )
 
@@ -53,6 +60,18 @@ class SelectPlayersViewModel(
             countdownSeconds = current.countdownSeconds,
         )
     }
+
+    fun openJoinQr() {
+        if (state.value.noPhoneRecovery != null) {
+            pendingRecoveryRequest = SelectPlayersRecoveryRequest.OpenJoinQrOverlay
+        }
+    }
+
+    fun consumeRecoveryRequest(): SelectPlayersRecoveryRequest? {
+        val request = pendingRecoveryRequest
+        pendingRecoveryRequest = null
+        return request
+    }
 }
 
 data class SelectPlayersState(
@@ -64,6 +83,7 @@ data class SelectPlayersState(
     val canStart: Boolean,
     val countdownEnabled: Boolean,
     val countdownSeconds: Int,
+    val noPhoneRecovery: SelectPlayersNoPhoneRecovery? = null,
 )
 
 data class PlayerSelectionState(
@@ -72,3 +92,15 @@ data class PlayerSelectionState(
     val difficulty: Difficulty,
     val enabled: Boolean,
 )
+
+data class SelectPlayersNoPhoneRecovery(
+    val title: String = "No phones connected",
+    val body: String = "Open Join and scan the QR code with the phone app.",
+    val primaryActionLabel: String = "Open Join QR",
+) {
+    val actionLabels: List<String> = listOf(primaryActionLabel)
+}
+
+sealed interface SelectPlayersRecoveryRequest {
+    data object OpenJoinQrOverlay : SelectPlayersRecoveryRequest
+}

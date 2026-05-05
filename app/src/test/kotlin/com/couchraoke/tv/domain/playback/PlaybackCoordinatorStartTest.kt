@@ -179,9 +179,7 @@ class PlaybackCoordinatorStartTest {
             ),
         )
 
-        val phase = coordinator.state.value.phase as GamePhase.Error
-        assertEquals("ERROR", phase.title)
-        assertEquals(listOf("This song can't be played."), phase.bodyLines)
+        assertEquals(GamePhase.Open, coordinator.state.value.phase)
         assertEquals(PlaybackModal.Error(listOf("This song can't be played.")), coordinator.state.value.modal)
     }
 
@@ -261,26 +259,7 @@ class PlaybackCoordinatorStartTest {
     }
 
     @Test(timeout = 30_000)
-    fun pauseResumeAndRestartRemainNoOpsInThisSlice() = runBlocking {
-        val song = SoloSingFixtures.indexedSong()
-        val coordinator = DefaultPlaybackCoordinator(
-            libraryManager = FakeLibraryManager(song),
-            networkController = FakeNetworkController(),
-            usdxParser = FakeUsdxParser(),
-            udpPort = SoloSingFixtures.UdpPort,
-        )
-        coordinator.startSong(SoloSingFixtures.songStartSelection().toSelection())
-        val before = coordinator.state.value
-
-        coordinator.pause()
-        coordinator.resume()
-        coordinator.restart()
-
-        assertEquals(before, coordinator.state.value)
-    }
-
-    @Test(timeout = 30_000)
-    fun startSongThrowsWhenSongIsMissing() = runBlocking {
+    fun startSongMissingSongShowsErrorModal() = runBlocking {
         val coordinator = DefaultPlaybackCoordinator(
             libraryManager = MissingSongLibraryManager(),
             networkController = FakeNetworkController(),
@@ -288,16 +267,22 @@ class PlaybackCoordinatorStartTest {
             udpPort = SoloSingFixtures.UdpPort,
         )
 
-        try {
-            coordinator.startSong(SoloSingFixtures.songStartSelection().toSelection())
-            throw AssertionError("Expected missing song failure")
-        } catch (expected: IllegalArgumentException) {
-            assertTrue(expected.message?.contains("Required value was null") == true)
-        }
+        coordinator.startSong(SoloSingFixtures.songStartSelection().toSelection())
+
+        assertEquals(GamePhase.Open, coordinator.state.value.phase)
+        assertEquals(
+            PlaybackModal.Error(
+                listOf(
+                    "This song can't be played.",
+                    "Check Settings > Song Library — the song's phone may be disconnected.",
+                ),
+            ),
+            coordinator.state.value.modal,
+        )
     }
 
     @Test(timeout = 30_000)
-    fun startSongThrowsWhenTxtFetchFails() = runBlocking {
+    fun startSongTxtFetchFailureShowsErrorModal() = runBlocking {
         val song = SoloSingFixtures.indexedSong()
         val coordinator = DefaultPlaybackCoordinator(
             libraryManager = FakeLibraryManager(song),
@@ -306,16 +291,22 @@ class PlaybackCoordinatorStartTest {
             udpPort = SoloSingFixtures.UdpPort,
         )
 
-        try {
-            coordinator.startSong(SoloSingFixtures.songStartSelection().toSelection())
-            throw AssertionError("Expected txt fetch failure")
-        } catch (expected: IllegalStateException) {
-            assertEquals("txt failed", expected.message)
-        }
+        coordinator.startSong(SoloSingFixtures.songStartSelection().toSelection())
+
+        assertEquals(GamePhase.Open, coordinator.state.value.phase)
+        assertEquals(
+            PlaybackModal.Error(
+                listOf(
+                    "This song can't be played.",
+                    "Check Settings > Song Library — the song's phone may be disconnected.",
+                ),
+            ),
+            coordinator.state.value.modal,
+        )
     }
 
     @Test(timeout = 30_000)
-    fun startSongThrowsWhenParsingFails() = runBlocking {
+    fun startSongParsingFailureShowsErrorModal() = runBlocking {
         val song = SoloSingFixtures.indexedSong()
         val coordinator = DefaultPlaybackCoordinator(
             libraryManager = FakeLibraryManager(song),
@@ -324,12 +315,18 @@ class PlaybackCoordinatorStartTest {
             udpPort = SoloSingFixtures.UdpPort,
         )
 
-        try {
-            coordinator.startSong(SoloSingFixtures.songStartSelection().toSelection())
-            throw AssertionError("Expected parse failure")
-        } catch (expected: IllegalStateException) {
-            assertEquals("parse failed", expected.message)
-        }
+        coordinator.startSong(SoloSingFixtures.songStartSelection().toSelection())
+
+        assertEquals(GamePhase.Open, coordinator.state.value.phase)
+        assertEquals(
+            PlaybackModal.Error(
+                listOf(
+                    "This song can't be played.",
+                    "Check Settings > Song Library — the song's phone may be disconnected.",
+                ),
+            ),
+            coordinator.state.value.modal,
+        )
     }
 
     private fun com.couchraoke.tv.fixtures.SongStartSelectionFixture.toSelection(): SongStartSelection =

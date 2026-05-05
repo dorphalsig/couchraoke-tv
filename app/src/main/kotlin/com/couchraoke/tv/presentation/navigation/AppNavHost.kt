@@ -18,9 +18,11 @@ import com.couchraoke.tv.domain.playback.DefaultPlaybackCoordinator
 import com.couchraoke.tv.presentation.playback.DefaultPlaybackController
 import com.couchraoke.tv.presentation.playback.VlcLibVlcPlayerHandle
 import com.couchraoke.tv.presentation.selectplayers.SelectPlayersModal
+import com.couchraoke.tv.presentation.selectplayers.SelectPlayersRecoveryRequest
 import com.couchraoke.tv.presentation.selectplayers.SelectPlayersViewModel
 import com.couchraoke.tv.presentation.singing.SingingScreen
 import com.couchraoke.tv.presentation.singing.SingingViewModel
+import com.couchraoke.tv.presentation.songlist.SongListEvent
 import com.couchraoke.tv.presentation.songlist.SongListScreen
 import com.couchraoke.tv.presentation.songlist.SongListViewModel
 
@@ -36,6 +38,7 @@ fun AppNavHost(
     val navState = rememberNavState(route)
     val singingViewModel = remember(playbackCoordinator) { SingingViewModel(playbackCoordinator) }
     val singingState by singingViewModel.state.collectAsState()
+    val playbackState by playbackCoordinator.state.collectAsState()
     var songListViewModel by remember { mutableStateOf<SongListViewModel?>(null) }
 
     LaunchedEffect(Unit) {
@@ -53,20 +56,21 @@ fun AppNavHost(
         onStarted = { navState.currentRoute = AppRoute.Singing },
         onFinished = { navState.pendingStartSong = null },
     )
-
-    val routeActions = RouteActions(
-        onViewModelReady = { songListViewModel = it },
-        onSongSelected = { navState.selectedSong = it },
-        onSongCancelled = { navState.selectedSong = null },
-        onSongStarted = {
-            navState.pendingStartSong = it
+    PlaybackRecoveryRouting(
+        playbackState = playbackState,
+        onDisconnectedRecovery = { song ->
+            navState.currentRoute = AppRoute.SongList
+            navState.selectedSong = song
+        },
+        onErrorRecovery = {
+            navState.currentRoute = AppRoute.SongList
             navState.selectedSong = null
         },
-        onReturnToSongList = {
-            navState.currentRoute = AppRoute.SongList
-            singingViewModel.syncFromCoordinator()
-        },
-        onResultsShown = { navState.currentRoute = AppRoute.SongList },
+    )
+
+    val routeActions = navState.routeActions(
+        singingViewModel = singingViewModel,
+        onViewModelReady = { songListViewModel = it },
     )
     RouteBackHandler(
         currentRoute = navState.currentRoute,
@@ -86,6 +90,7 @@ fun AppNavHost(
             selectedSong = navState.selectedSong,
         ),
         singingState = singingState,
+        singingViewModel = singingViewModel,
         actions = routeActions,
     )
     // Iteration 3 wires Settings; Iteration 1 intentionally has no Settings route/menu/screen/submenu.
@@ -159,6 +164,24 @@ private class NavState(
     private var selectedSongValue = selectedSong
     private var pendingStartSongValue = pendingStartSong
     private var currentRouteValue = currentRoute
+
+    fun routeActions(
+        singingViewModel: SingingViewModel,
+        onViewModelReady: (SongListViewModel) -> Unit,
+    ): RouteActions = RouteActions(
+        onViewModelReady = onViewModelReady,
+        onSongSelected = { selectedSong = it },
+        onSongCancelled = { selectedSong = null },
+        onSongStarted = {
+            pendingStartSong = it
+            selectedSong = null
+        },
+        onReturnToSongList = {
+            currentRoute = AppRoute.SongList
+            singingViewModel.syncFromCoordinator()
+        },
+        onResultsShown = { currentRoute = AppRoute.SongList },
+    )
 }
 
 private data class RouteActions(
@@ -192,6 +215,7 @@ private fun CurrentRoute(
     currentRoute: AppRoute,
     songListState: SongListRouteState,
     singingState: com.couchraoke.tv.presentation.singing.SingingUiState,
+    singingViewModel: SingingViewModel,
     actions: RouteActions,
 ) {
     when (currentRoute) {
@@ -204,6 +228,7 @@ private fun CurrentRoute(
         )
         AppRoute.Singing -> SingingRoute(
             state = singingState,
+            singingViewModel = singingViewModel,
             onReturnToSongList = actions.onReturnToSongList,
         )
         AppRoute.Results -> actions.onResultsShown()
@@ -239,6 +264,7 @@ private fun PlaybackControllerEffects(
     val playbackController = remember {
         DefaultPlaybackController(
             audioHandle = VlcLibVlcPlayerHandle(),
+            videoHandle = VlcLibVlcPlayerHandle(),
             clockMs = { System.nanoTime() / 1_000_000 },
         )
     }
@@ -293,6 +319,13 @@ private fun SongListRoute(
             state = selectState,
             onStart = { onSongStarted(song) },
             onCancel = onSongCancelled,
+            onOpenJoinQr = {
+                selectPlayersViewModel.openJoinQr()
+                when (selectPlayersViewModel.consumeRecoveryRequest()) {
+                    SelectPlayersRecoveryRequest.OpenJoinQrOverlay -> songListViewModel.onEvent(SongListEvent.Join)
+                    null -> Unit
+                }
+            },
         )
     }
 }
@@ -300,9 +333,20 @@ private fun SongListRoute(
 @Composable
 private fun SingingRoute(
     state: com.couchraoke.tv.presentation.singing.SingingUiState,
+    singingViewModel: SingingViewModel,
     onReturnToSongList: () -> Unit,
 ) {
-    SingingScreen(state = state)
+    SingingScreen(
+        state = state,
+        overlayActions = com.couchraoke.tv.presentation.singing.SingingOverlayActions(
+            onResume = singingViewModel::onResume,
+            onRestartRequested = singingViewModel::onRestartRequested,
+            onRestartConfirmed = singingViewModel::onRestartConfirmed,
+            onQuitRequested = singingViewModel::onQuitRequested,
+            onQuitConfirmed = singingViewModel::onQuitConfirmed,
+            onCancel = singingViewModel::onBack,
+        ),
+    )
     if (state.returnToSongList) {
         onReturnToSongList()
     }

@@ -68,7 +68,10 @@ import com.couchraoke.tv.ui.theme.Timer
 import com.couchraoke.tv.ui.theme.TopMetadataMinimal
 
 @Composable
-fun SingingScreen(state: SingingUiState) {
+fun SingingScreen(
+    state: SingingUiState,
+    overlayActions: SingingOverlayActions = SingingOverlayActions(),
+) {
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(R.drawable.singing),
@@ -93,6 +96,7 @@ fun SingingScreen(state: SingingUiState) {
         SingingMetadata(state = state, modifier = Modifier.align(Alignment.TopCenter))
         SingingLyrics(state = state, modifier = Modifier.align(Alignment.BottomCenter))
         SingingCountdown(state = state, modifier = Modifier.align(Alignment.Center))
+        SingingOverlays(state = state, actions = overlayActions)
     }
 }
 

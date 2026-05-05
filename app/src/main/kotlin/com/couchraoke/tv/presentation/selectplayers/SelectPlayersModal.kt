@@ -25,6 +25,7 @@ import androidx.tv.material3.Text
 import com.couchraoke.quality.NoCoverageGenerated
 import com.couchraoke.tv.domain.model.PlayerId
 import com.couchraoke.tv.domain.scoring.model.Difficulty
+import com.couchraoke.tv.presentation.common.InterruptionShell
 import com.couchraoke.tv.ui.theme.BodySecondary
 import com.couchraoke.tv.ui.theme.ButtonLabel
 import com.couchraoke.tv.ui.theme.CouchraokeTheme
@@ -57,7 +58,19 @@ fun SelectPlayersModal(
     onStart: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenJoinQr: () -> Unit = {},
 ) {
+    val noPhoneRecovery = state.noPhoneRecovery
+    if (noPhoneRecovery != null) {
+        SelectPlayersNoPhoneShell(
+            recovery = noPhoneRecovery,
+            onOpenJoinQr = onOpenJoinQr,
+            onCancel = onCancel,
+            modifier = modifier,
+        )
+        return
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -75,42 +88,67 @@ fun SelectPlayersModal(
                     .padding(PrimaryModalPadding),
                 verticalArrangement = Arrangement.spacedBy(Space24),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(Space8)) {
-                    Text(
-                        text = state.title,
-                        style = SectionTitle,
-                        color = TextPrimary,
-                    )
-                    Text(
-                        text = state.subtitle,
-                        style = BodySecondary,
-                        color = TextSecondary,
-                    )
-                }
-
-                PlayerBlock(
-                    title = "Player 1",
-                    phoneText = state.playerOne.selectedPhoneId ?: "(none)",
-                    difficultyText = state.playerOne.difficulty.displayName(),
-                    required = true,
-                    enabled = state.playerOne.enabled,
-                    showDifficulty = true,
-                )
-                PlayerBlock(
-                    title = "Player 2",
-                    phoneText = state.playerTwo.selectedPhoneId ?: "(none)",
-                    difficultyText = state.playerTwo.difficulty.displayName(),
-                    required = false,
-                    enabled = false,
-                    showDifficulty = state.showPlayerTwoDifficulty,
-                )
-
-                SelectPlayersActions(
-                    canStart = state.canStart,
+                SelectPlayersHeader(state)
+                SelectPlayersBody(
+                    state = state,
                     onStart = onStart,
                     onCancel = onCancel,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun SelectPlayersHeader(state: SelectPlayersState) {
+    Column(verticalArrangement = Arrangement.spacedBy(Space8)) {
+        Text(text = state.title, style = SectionTitle, color = TextPrimary)
+        Text(text = state.subtitle, style = BodySecondary, color = TextSecondary)
+    }
+}
+
+@Composable
+private fun SelectPlayersBody(
+    state: SelectPlayersState,
+    onStart: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    PlayerBlock(
+        title = "Player 1",
+        phoneText = state.playerOne.selectedPhoneId ?: "(none)",
+        difficultyText = state.playerOne.difficulty.displayName(),
+        required = true,
+        enabled = state.playerOne.enabled,
+        showDifficulty = true,
+    )
+    PlayerBlock(
+        title = "Player 2",
+        phoneText = state.playerTwo.selectedPhoneId ?: "(none)",
+        difficultyText = state.playerTwo.difficulty.displayName(),
+        required = false,
+        enabled = false,
+        showDifficulty = state.showPlayerTwoDifficulty,
+    )
+    SelectPlayersActions(canStart = state.canStart, onStart = onStart, onCancel = onCancel)
+}
+
+@Composable
+private fun SelectPlayersNoPhoneShell(
+    recovery: SelectPlayersNoPhoneRecovery,
+    onOpenJoinQr: () -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    InterruptionShell(
+        title = recovery.title,
+        bodyLines = listOf(recovery.body),
+        modifier = modifier,
+    ) {
+        Button(onClick = onOpenJoinQr, modifier = Modifier.width(SelectPlayersActionButtonWidth)) {
+            Text(recovery.primaryActionLabel, style = ButtonLabel)
+        }
+        OutlinedButton(onClick = onCancel, modifier = Modifier.width(SelectPlayersActionButtonWidth)) {
+            Text("Cancel", style = ButtonLabel)
         }
     }
 }
@@ -192,6 +230,38 @@ private fun Difficulty.displayName(): String = when (this) {
     Difficulty.Easy -> "Easy"
     Difficulty.Medium -> "Medium"
     Difficulty.Hard -> "Hard"
+}
+
+@Preview(name = "Select Players No Phones", widthDp = 1920, heightDp = 1080)
+@Composable
+fun SelectPlayersNoPhonesModalPreview() {
+    CouchraokeTheme {
+        SelectPlayersModal(
+            state = SelectPlayersState(
+                title = "SELECT PLAYERS",
+                subtitle = "Demo Artist — Demo Song",
+                playerOne = PlayerSelectionState(
+                    playerId = PlayerId.P1,
+                    selectedPhoneId = null,
+                    difficulty = Difficulty.Medium,
+                    enabled = true,
+                ),
+                playerTwo = PlayerSelectionState(
+                    playerId = PlayerId.P2,
+                    selectedPhoneId = null,
+                    difficulty = Difficulty.Medium,
+                    enabled = false,
+                ),
+                showPlayerTwoDifficulty = false,
+                canStart = false,
+                countdownEnabled = true,
+                countdownSeconds = 3,
+                noPhoneRecovery = SelectPlayersNoPhoneRecovery(),
+            ),
+            onStart = {},
+            onCancel = {},
+        )
+    }
 }
 
 @Preview(name = "Select Players", widthDp = 1920, heightDp = 1080)
