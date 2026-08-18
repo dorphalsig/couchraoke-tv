@@ -28,11 +28,20 @@ class QualityConventionsPlugin : Plugin<Project> {
         project.plugins.apply("jacoco")
         project.plugins.apply("io.github.takahirom.roborazzi")
 
+        configureTestJvm(project)
         configureDetekt(project)
         configureJacoco(project, extension)
         configureTestBranch(project, extension)
         configureRoborazzi(project)
     }
+
+    // Compose preview rendering under Robolectric exceeds Gradle's 512m default test heap.
+    private fun configureTestJvm(project: Project) {
+        project.tasks.withType<Test>().configureEach {
+            maxHeapSize = "4g"
+        }
+    }
+
     private fun configureRoborazzi(project: Project) {
         project.extensions.configure<RoborazziExtension>("roborazzi") {
             generateComposePreviewRobolectricTests {
