@@ -1,25 +1,28 @@
 <!--
 Sync Impact Report
-- Version change: unversioned template -> 1.0.0
+- Version change: 1.0.0 -> 2.0.0 (MAJOR: Principle IV redefined)
 - Modified principles:
-  - Template principle slot 1 -> I. Host Role & Authority
-  - Template principle slot 2 -> II. Clean Architecture Boundaries
-  - Template principle slot 3 -> III. Approved Dependency Source
-  - Template principle slot 4 -> IV. Testing & Honest Quality Gates
-  - Template principle slot 5 -> V. Contract-First Planning
-- Added sections:
-  - Workflow Units
-  - Delivery & Compliance Workflow
-- Removed sections:
-  - None
+  - I. Host Role & Authority -> pinned the UDP pitch frame at 20 bytes, `<IqIBBH`, little-endian.
+    Previously said only "fixed-size", which let a 16-byte layout appear in mockphone's readme.
+  - IV. Testing & Honest Quality Gates -> `testBranch` is no longer the single source of truth.
+    Adopts the plan.md §2 gate vocabulary (U/S/L/D) and requires at least one L or D gate per
+    slice. Screenshot gates must verify against a committed baseline, not record. A skipped test
+    inside a gate is a failure.
+- Modified sections:
+  - Delivery & Compliance Workflow -> validation runs the slice's declared gates, not `testBranch`
+    alone.
+  - Governance -> compliance review checks gate expectations rather than `testBranch` expectations.
+- Rationale for the MAJOR bump: three implementations passed every gate while the app played no
+  video, left the lyrics frozen, and rendered at twice the target size. Principle IV as written
+  made that outcome compliant.
 - Templates requiring updates:
+  - ⚠ dev skills/gradle-validation/SKILL.md (encodes the withdrawn single-gate rule)
+  - ⚠ dev skills/orchestration/SKILL.md (re-runs the same gate as "independent verification")
   - ✅ .specify/templates/plan-template.md
   - ✅ .specify/templates/spec-template.md
   - ✅ .specify/templates/tasks-template.md
-  - ⚠ .specify/templates/commands/*.md (directory not present)
-  - ✅ CLAUDE.md (verified aligned; no edit required)
 - Follow-up TODOs:
-  - None
+  - Fix mockphone/readme.md: documents 16-byte frames; the code implements 20.
 -->
 # Couchraoke Constitution
 
@@ -30,8 +33,10 @@ Sync Impact Report
 The Android TV app MUST remain the authoritative Host and game engine. It MUST own the shared
 session, game flow, and scoring outcomes. Couchraoke is a LAN-only ecosystem. The TV app MUST NOT
 persist remote song assets; companion devices MUST stream those assets on demand. Pitch transport
-between devices MUST use fixed-size UDP frames. Companion devices are subordinate clients and MUST
-not redefine or override host-managed session state.
+between devices MUST use fixed-size 20-byte UDP frames, little-endian, packed as `<IqIBBH`
+(`seq` uint32, `tvTimeMs` int64, `songInstanceSeq` uint32, `playerId` uint8, `midiNote` uint8,
+`connectionId` uint16). Companion devices are subordinate clients and MUST not redefine or override
+host-managed session state.
 
 Rationale: a single authoritative host prevents split-brain game state, keeps scoring
 deterministic, and preserves the network and media assumptions the product is built on.
@@ -59,15 +64,27 @@ across modules and automation.
 
 ### IV. Testing & Honest Quality Gates
 
-`testBranch` MUST be the authoritative task gate and the single source of truth for task
-completion. A task is not complete until its scoped `testBranch` passes fresh. Failing checks MUST
-NOT be bypassed through skipped tests, disabled rules, unjustified suppressions, or equivalent
-workarounds. Any skip, suppression, or similar exception MUST be explicitly justified in the
-current task context, including why the exception is necessary and why it does not invalidate
+A task is not complete until its scoped validation passes fresh. Validation MUST use the gate
+vocabulary defined in `plan.md` §2: **U** (JVM unit test), **S** (screenshot verified against a
+committed baseline), **L** (loopback against the real `mockphone` process over `127.0.0.1`), and
+**D** (device).
+
+`testBranch` MUST pass, but it MUST NOT be the only gate. It runs entirely in the JVM and therefore
+cannot observe a native decoder, a real socket, or a real clock. Every slice MUST carry at least one
+L or D gate. A slice proved only by U and S is not proved.
+
+Screenshot gates MUST verify against a committed baseline. Record-only mode never fails and MUST NOT
+be accepted as evidence. A gate MUST NOT be satisfied by a skipped test; `assumeTrue` and equivalent
+runtime skips inside a gate are failures, not passes.
+
+Failing checks MUST NOT be bypassed through skipped tests, disabled rules, unjustified suppressions,
+or equivalent workarounds. Any skip, suppression, or similar exception MUST be explicitly justified
+in the current task context, including why the exception is necessary and why it does not invalidate
 confidence in the outcome.
 
-Rationale: green results are only meaningful when they represent genuine compliance with the agreed
-scope and quality standards.
+Rationale: three prior implementations passed every gate while the app played no video, left the
+lyrics frozen, and rendered at twice the target size. Green results mean something only when the
+gate can observe the thing it claims to prove.
 
 ### V. Contract-First Planning
 
@@ -97,8 +114,8 @@ packages reviewable.
   and any material producer/consumer contracts before implementation starts.
 - Implementation MUST stay within the declared scope and preserve Domain, Data, Presentation, and
   DI boundaries.
-- Validation MUST use the scoped `testBranch` as the completion gate, and the validation evidence
-  MUST be fresh when work is reported complete.
+- Validation MUST run every gate the slice declares, including at least one L or D gate, and the
+  validation evidence MUST be fresh when work is reported complete.
 - Out-of-scope issues MAY be reported with a concise suggested fix, but they MUST NOT be addressed
   as part of the current task unless the scope is amended first.
 
@@ -119,6 +136,6 @@ Amendments MUST:
 
 Compliance review MUST occur during planning, implementation review, and pre-completion validation.
 Each review MUST confirm that host authority, architecture boundaries, dependency governance,
-contracts, and `testBranch` expectations remain satisfied.
+contracts, and gate expectations remain satisfied.
 
-**Version**: 1.0.0 | **Ratified**: 2026-04-12 | **Last Amended**: 2026-04-26
+**Version**: 2.0.0 | **Ratified**: 2026-04-12 | **Last Amended**: 2026-08-18
