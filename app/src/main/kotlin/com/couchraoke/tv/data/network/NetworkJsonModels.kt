@@ -3,8 +3,9 @@ package com.couchraoke.tv.data.network
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 
-private val networkJson = Json { ignoreUnknownKeys = true }
+private val networkJson = Json { ignoreUnknownKeys = false }
 
 @Serializable
 private data class ManifestJson(
@@ -20,16 +21,16 @@ private data class SongEntryJson(
     val album: String? = null,
     val year: Int? = null,
     val genre: String? = null,
-    val isDuet: Boolean = false,
-    val hasRap: Boolean = false,
-    val hasVideo: Boolean = false,
-    val hasInstrumental: Boolean = false,
-    val canMedley: Boolean = false,
+    val isDuet: Boolean? = null,
+    val hasRap: Boolean? = null,
+    val hasVideo: Boolean? = null,
+    val hasInstrumental: Boolean? = null,
+    val canMedley: Boolean? = null,
     val medleySource: String? = null,
     val medleyStartBeat: Int? = null,
     val medleyEndBeat: Int? = null,
-    val startSec: Float = 0f,
-    val previewStartSec: Float = 0f,
+    val startSec: Float? = null,
+    val previewStartSec: Float? = null,
     @SerialName("txtUrl") val txtUrl: String,
     @SerialName("audioUrl") val audioUrl: String,
     @SerialName("videoUrl") val videoUrl: String? = null,
@@ -37,10 +38,21 @@ private data class SongEntryJson(
     @SerialName("backgroundUrl") val backgroundUrl: String? = null,
 )
 
-fun parseManifestJson(json: String): List<SongEntry> = networkJson
-    .decodeFromString<ManifestJson>(json)
-    .songs
-    .map { entry ->
+fun parseManifestJson(json: String): List<SongEntry> {
+    val element = networkJson.parseToJsonElement(json)
+    val entries = if (element is JsonArray) {
+        networkJson.decodeFromString<List<SongEntryJson>>(json)
+    } else {
+        networkJson.decodeFromString<ManifestJson>(json).songs
+    }
+    return entries.mapNotNull { entry ->
+        val isDuet = entry.isDuet ?: return@mapNotNull null
+        val hasRap = entry.hasRap ?: return@mapNotNull null
+        val hasVideo = entry.hasVideo ?: return@mapNotNull null
+        val hasInstrumental = entry.hasInstrumental ?: return@mapNotNull null
+        val canMedley = entry.canMedley ?: return@mapNotNull null
+        val startSec = entry.startSec ?: return@mapNotNull null
+        val previewStartSec = entry.previewStartSec ?: return@mapNotNull null
         SongEntry(
             relativeTxtPath = entry.relativeTxtPath,
             modifiedTimeMs = entry.modifiedTimeMs,
@@ -49,16 +61,16 @@ fun parseManifestJson(json: String): List<SongEntry> = networkJson
             album = entry.album,
             year = entry.year,
             genre = entry.genre,
-            isDuet = entry.isDuet,
-            hasRap = entry.hasRap,
-            hasVideo = entry.hasVideo,
-            hasInstrumental = entry.hasInstrumental,
-            canMedley = entry.canMedley,
+            isDuet = isDuet,
+            hasRap = hasRap,
+            hasVideo = hasVideo,
+            hasInstrumental = hasInstrumental,
+            canMedley = canMedley,
             medleySource = entry.medleySource,
             medleyStartBeat = entry.medleyStartBeat,
             medleyEndBeat = entry.medleyEndBeat,
-            startSec = entry.startSec,
-            previewStartSec = entry.previewStartSec,
+            startSec = startSec,
+            previewStartSec = previewStartSec,
             txtUrl = entry.txtUrl,
             audioUrl = entry.audioUrl,
             videoUrl = entry.videoUrl,
@@ -66,3 +78,4 @@ fun parseManifestJson(json: String): List<SongEntry> = networkJson
             backgroundUrl = entry.backgroundUrl,
         )
     }
+}

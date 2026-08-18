@@ -4,7 +4,7 @@ package com.couchraoke.tv.presentation.selectplayers
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +26,7 @@ import com.couchraoke.quality.NoCoverageGenerated
 import com.couchraoke.tv.domain.model.PlayerId
 import com.couchraoke.tv.domain.scoring.model.Difficulty
 import com.couchraoke.tv.presentation.common.InterruptionShell
+import com.couchraoke.tv.presentation.previews.PreviewSoloSingSample
 import com.couchraoke.tv.ui.theme.BodySecondary
 import com.couchraoke.tv.ui.theme.ButtonLabel
 import com.couchraoke.tv.ui.theme.CouchraokeTheme
@@ -42,9 +43,12 @@ import com.couchraoke.tv.ui.theme.Space24
 import com.couchraoke.tv.ui.theme.Space8
 import com.couchraoke.tv.ui.theme.SurfaceLevel1
 import com.couchraoke.tv.ui.theme.SurfaceLevel2
+import com.couchraoke.tv.ui.theme.TV_PREVIEW_HEIGHT_DP
+import com.couchraoke.tv.ui.theme.TV_PREVIEW_WIDTH_DP
 import com.couchraoke.tv.ui.theme.TextDisabled
 import com.couchraoke.tv.ui.theme.TextPrimary
 import com.couchraoke.tv.ui.theme.TextSecondary
+import com.couchraoke.tv.ui.theme.constrainedTvSurfaceWidth
 
 private val ModalShape = RoundedCornerShape(RadiusLarge)
 private val SectionShape = RoundedCornerShape(RadiusMedium)
@@ -71,14 +75,14 @@ fun SelectPlayersModal(
         return
     }
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.66f)),
         contentAlignment = Alignment.Center,
     ) {
         Surface(
-            modifier = Modifier.width(PrimaryModalWidth),
+            modifier = Modifier.width(constrainedTvSurfaceWidth(PrimaryModalWidth, maxWidth)),
             shape = ModalShape,
             colors = SurfaceDefaults.colors(containerColor = ModalSurface),
         ) {
@@ -232,14 +236,14 @@ private fun Difficulty.displayName(): String = when (this) {
     Difficulty.Hard -> "Hard"
 }
 
-@Preview(name = "Select Players No Phones", widthDp = 1920, heightDp = 1080)
+@Preview(name = "Select Players No Phones", widthDp = TV_PREVIEW_WIDTH_DP, heightDp = TV_PREVIEW_HEIGHT_DP)
 @Composable
 fun SelectPlayersNoPhonesModalPreview() {
     CouchraokeTheme {
         SelectPlayersModal(
             state = SelectPlayersState(
                 title = "SELECT PLAYERS",
-                subtitle = "Demo Artist — Demo Song",
+                subtitle = "${PreviewSoloSingSample.SongArtist} — ${PreviewSoloSingSample.SongTitle}",
                 playerOne = PlayerSelectionState(
                     playerId = PlayerId.P1,
                     selectedPhoneId = null,
@@ -264,17 +268,17 @@ fun SelectPlayersNoPhonesModalPreview() {
     }
 }
 
-@Preview(name = "Select Players", widthDp = 1920, heightDp = 1080)
+@Preview(name = "Select Players", widthDp = TV_PREVIEW_WIDTH_DP, heightDp = TV_PREVIEW_HEIGHT_DP)
 @Composable
 fun SelectPlayersModalPreview() {
     CouchraokeTheme {
         SelectPlayersModal(
             state = SelectPlayersState(
                 title = "SELECT PLAYERS",
-                subtitle = "Demo Artist — Demo Song",
+                subtitle = "${PreviewSoloSingSample.SongArtist} — ${PreviewSoloSingSample.SongTitle}",
                 playerOne = PlayerSelectionState(
                     playerId = PlayerId.P1,
-                    selectedPhoneId = "Living Room Phone",
+                    selectedPhoneId = PreviewSoloSingSample.PhoneDeviceName,
                     difficulty = Difficulty.Medium,
                     enabled = true,
                 ),

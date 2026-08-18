@@ -19,6 +19,7 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
     }
 
@@ -35,7 +36,7 @@ android {
         abi {
             isEnable = true
             reset()
-            include("arm64-v8a")
+            include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
             isUniversalApk = false
         }
     }
@@ -85,6 +86,7 @@ dependencies {
     testImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.test.runner)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

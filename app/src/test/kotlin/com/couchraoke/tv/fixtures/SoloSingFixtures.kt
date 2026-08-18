@@ -16,7 +16,11 @@ object SoloSingFixtures {
     const val PhoneDeviceName: String = "Living Room Phone"
     const val PhoneIpAddress: String = "192.168.1.23"
     const val PhoneHttpPort: Int = 43210
-    const val SongId: String = "phone-client-001:solo/demo-song.txt:1700000000000"
+    const val LoopbackHost: String = "127.0.0.1"
+    const val ReconnectedPhoneConnectionId: UShort = 9u
+    const val ReconnectedPhoneDeviceName: String = "Reconnected Phone"
+    const val ReconnectedPhoneHttpPort: Int = PhoneHttpPort + 1
+    const val SongId: String = "phone-client-001::solo/demo-song.txt"
     const val RelativeTxtPath: String = "solo/demo-song.txt"
     const val ModifiedTimeMs: Long = 1_700_000_000_000L
     const val SongTitle: String = "Demo Song"
@@ -27,9 +31,39 @@ object SoloSingFixtures {
     const val StartSec: Float = 1.5f
     const val PreviewStartSec: Float = 12.0f
     const val StopAtLyricsTimeMs: Long = 18_000L
+    const val ShortPreparedDurationMs: Long = 12_000L
+    const val PreparedDurationMs: Long = 120_000L
+    const val PreparedStateDurationMs: Long = 10_000L
+    const val ReportedPlaybackDurationMs: Long = 123_000L
+    const val FallbackPlaybackDurationMs: Long = 180_000L
+    const val ReadySongStartTvMs: Long = 123_456L
+    const val PlaybackClockMs: Long = 1_000L
+    const val PlaybackReadyClockMs: Long = 10_000L
+    const val PlaybackFallbackStartMs: Long = 5_000L
+    const val PlaybackFallbackReadyMs: Long = 5_500L
+    const val SeekPositionMs: Long = 42_000L
+    const val RestartSeekPositionMs: Long = 1_500L
+    const val AuthoritativeAudioTimeMs: Long = 1_250L
+    const val InitialVideoTimeMs: Long = 100L
+    const val SyncedVideoTimeMs: Long = 5_350L
+    const val ClockAckTvTimeMs: Long = 1_000L
+    const val ClockAckPhoneTimeMs: Long = 456L
+    const val ClockAckRoundTripMs: Long = 20L
+    const val PongPhoneTimeMs: Long = 1L
+    const val PongTvReceiveTimeMs: Long = 2L
+    const val LatestLibVlcWarning: String = "latest libvlc warning"
+    const val LastWarningLine: String = "last warning"
+    const val VideoFailureMessage: String = "video failed"
     const val SongInstanceSeq: Long = 1L
     val DefaultPlayerId: PlayerId = PlayerId.P1
     val DefaultDifficulty: Difficulty = Difficulty.Medium
+
+    const val PlaybackAudioUrl: String = "http://phone/audio.mp3"
+    const val PlaybackVideoUrl: String = "http://phone/video.mp4"
+    const val PlaybackAviVideoUrl: String = "http://phone/video.avi"
+    const val NextPreviewAudioUrl: String = "next.mp3"
+
+    fun longWarning(length: Int = 140): String = "w".repeat(length)
 
     fun connectedPhone(
         clientId: String = PhoneClientId,
@@ -129,6 +163,7 @@ object SoloSingFixtures {
         isDuet = entry.isDuet,
         hasRap = entry.hasRap,
         hasVideo = entry.hasVideo,
+        hasInstrumental = entry.hasInstrumental,
         canMedley = entry.canMedley,
         medleySource = entry.medleySource,
         medleyStartBeat = entry.medleyStartBeat,
@@ -214,7 +249,11 @@ object SoloSingFixtures {
     ): String = "ws://$host:$port/?token=$token"
 
     fun manifestJson(entry: SongEntryFixture = songEntry()): String = """
-        {"songs":[{"relativeTxtPath":"${entry.relativeTxtPath}","modifiedTimeMs":${entry.modifiedTimeMs},"title":"${entry.title}","artist":"${entry.artist}","album":"${entry.album}","year":${entry.year},"genre":"${entry.genre}","isDuet":${entry.isDuet},"hasRap":${entry.hasRap},"hasVideo":${entry.hasVideo},"hasInstrumental":${entry.hasInstrumental},"canMedley":${entry.canMedley},"startSec":${entry.startSec},"previewStartSec":${entry.previewStartSec},"txtUrl":"${entry.txtUrl}","audioUrl":"${entry.audioUrl}","videoUrl":"${entry.videoUrl}","coverUrl":"${entry.coverUrl}","backgroundUrl":"${entry.backgroundUrl}"}]}
+        {"songs":[${manifestSongJson(entry)}]}
+    """.trimIndent()
+
+    fun manifestSongJson(entry: SongEntryFixture = songEntry()): String = """
+        {"relativeTxtPath":"${entry.relativeTxtPath}","modifiedTimeMs":${entry.modifiedTimeMs},"title":"${entry.title}","artist":"${entry.artist}","album":"${entry.album}","year":${entry.year},"genre":"${entry.genre}","isDuet":${entry.isDuet},"hasRap":${entry.hasRap},"hasVideo":${entry.hasVideo},"hasInstrumental":${entry.hasInstrumental},"canMedley":${entry.canMedley},"startSec":${entry.startSec},"previewStartSec":${entry.previewStartSec},"txtUrl":"${entry.txtUrl}","audioUrl":"${entry.audioUrl}","videoUrl":"${entry.videoUrl}","coverUrl":"${entry.coverUrl}","backgroundUrl":"${entry.backgroundUrl}"}
     """.trimIndent()
 
     fun assetUrl(path: String, host: String = PhoneIpAddress, port: Int = PhoneHttpPort): String {

@@ -26,9 +26,11 @@ val ScreenTitle = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.S
 val SectionTitle = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 32.sp)
 val PanelTitle = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 28.sp)
 val SongCardTitle = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Medium, fontSize = 24.sp)
+val SongCardCompactTitleTextSize = 18.sp
+val SongCardCompactTitle = SongCardTitle.copy(fontSize = SongCardCompactTitleTextSize)
 val SongCardArtistFocused = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Normal, fontSize = 18.sp)
-val PreviewTitle = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold, fontSize = 32.sp)
-val PreviewArtist = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Normal, fontSize = 24.sp)
+val PreviewTitle = TextStyle(fontFamily = AldoTheApache, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+val PreviewArtist = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Normal, fontSize = 15.sp)
 val TagChipLabel = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Medium, fontSize = 16.sp)
 val BodyPrimary = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Normal, fontSize = 24.sp)
 val BodySecondary = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Normal, fontSize = 20.sp)

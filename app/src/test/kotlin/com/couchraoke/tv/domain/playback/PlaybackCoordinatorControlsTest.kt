@@ -7,6 +7,7 @@ import com.couchraoke.tv.data.network.NetworkController
 import com.couchraoke.tv.data.network.PhoneEvent
 import com.couchraoke.tv.data.network.PlaybackNetworkState
 import com.couchraoke.tv.data.network.PlaybackStateMessage
+import com.couchraoke.tv.data.network.PlaybackStateReason
 import com.couchraoke.tv.data.network.PongResponse
 import com.couchraoke.tv.data.network.SongEntry
 import com.couchraoke.tv.domain.library.IndexedSong
@@ -41,7 +42,7 @@ class PlaybackCoordinatorControlsTest {
         assertTrue(harness.coordinator.intents.value.last() is PlaybackIntent.Pause)
         val paused = harness.network.playbackStateCalls.last()
         assertEquals(PlaybackNetworkState.Paused, paused.state)
-        assertEquals("user_pause", paused.reason)
+        assertEquals(PlaybackStateReason.UserPause, paused.reason)
         assertEquals(harness.plan.stopAtLyricsTimeMs, paused.stopAtLyricsTimeMs)
         assertTrue(paused.revision > harness.network.playbackStateCalls.first().revision)
     }
@@ -54,11 +55,10 @@ class PlaybackCoordinatorControlsTest {
         harness.coordinator.resume()
 
         assertTrue(harness.coordinator.state.value.phase is GamePhase.Live)
-        val play = harness.coordinator.intents.value.last() as PlaybackIntent.Play
-        assertEquals(harness.plan.stopAtLyricsTimeMs, play.stopAtLyricsTimeMs)
+        assertEquals(PlaybackIntent.Play, harness.coordinator.intents.value.last())
         val playing = harness.network.playbackStateCalls.last()
         assertEquals(PlaybackNetworkState.Playing, playing.state)
-        assertEquals("resume", playing.reason)
+        assertEquals(PlaybackStateReason.Unspecified, playing.reason)
         assertTrue(playing.revision > harness.network.playbackStateCalls.first().revision)
     }
 
@@ -71,7 +71,9 @@ class PlaybackCoordinatorControlsTest {
 
         val prepare = harness.coordinator.intents.value.last() as PlaybackIntent.Prepare
         assertEquals(1.5f, prepare.seekToSec)
-        harness.coordinator.onPlaybackEvent(PlaybackEvent.Prepared(effectivePlaybackDurationMs = 18_000L))
+        harness.coordinator.onPlaybackEvent(
+            PlaybackEvent.Prepared(effectivePlaybackDurationMs = SoloSingFixtures.StopAtLyricsTimeMs),
+        )
 
         val restartPlan = (harness.coordinator.state.value.phase as GamePhase.Live).plan
         assertEquals(harness.plan.songInstanceSeq + 1L, restartPlan.songInstanceSeq)
@@ -84,7 +86,7 @@ class PlaybackCoordinatorControlsTest {
         assertTrue(playIndex > prepareIndex)
         val restartState = harness.network.playbackStateCalls.last()
         assertEquals(PlaybackNetworkState.Playing, restartState.state)
-        assertEquals("song_start", restartState.reason)
+        assertEquals(PlaybackStateReason.Unspecified, restartState.reason)
         assertEquals(restartPlan.songInstanceSeq, restartState.songInstanceSeq)
         assertEquals(1L, restartState.revision)
         assertEquals(1, harness.scoringEngine.resetCalls)
@@ -101,7 +103,7 @@ class PlaybackCoordinatorControlsTest {
         assertTrue(harness.coordinator.intents.value.last() is PlaybackIntent.Stop)
         val stopped = harness.network.playbackStateCalls.last()
         assertEquals(PlaybackNetworkState.Stopped, stopped.state)
-        assertEquals("user_quit", stopped.reason)
+        assertEquals(PlaybackStateReason.UserQuit, stopped.reason)
         assertTrue(stopped.revision > harness.network.playbackStateCalls.first().revision)
         assertEquals(listOf(SoloSingFixtures.PhoneClientId), harness.network.sessionStatePhoneIds)
         assertEquals(1, harness.scoringEngine.resetCalls)
@@ -116,11 +118,16 @@ class PlaybackCoordinatorControlsTest {
             networkController = network,
             usdxParser = FakeUsdxParser(),
             udpPort = SoloSingFixtures.UdpPort,
+            sessionId = SoloSingFixtures.SessionId,
             scoringEngine = scoringEngine,
         )
         coordinator.startSong(SoloSingFixtures.songStartSelection(countdownEnabled = false).toSelection())
-        coordinator.onPlaybackEvent(PlaybackEvent.Prepared(effectivePlaybackDurationMs = 18_000L))
-        coordinator.onPlaybackEvent(PlaybackEvent.Ready(songStartTvMs = 123_456L))
+        coordinator.onPlaybackEvent(
+            PlaybackEvent.Prepared(effectivePlaybackDurationMs = SoloSingFixtures.StopAtLyricsTimeMs),
+        )
+        coordinator.onPlaybackEvent(
+            PlaybackEvent.Ready(songStartTvMs = SoloSingFixtures.ReadySongStartTvMs),
+        )
         return Harness(
             coordinator = coordinator,
             network = network,
@@ -148,6 +155,10 @@ class PlaybackCoordinatorControlsTest {
 
     private class FakeLibraryManager(private val song: IndexedSong) : LibraryManager {
         override val songs = MutableStateFlow(listOf(song))
+        override suspend fun onPhoneConnected(phone: com.couchraoke.tv.data.network.ConnectedPhone) = Unit
+        override fun onPhoneDisconnected(clientId: String) = Unit
+        override suspend fun refreshPhone(clientId: String) = Unit
+        override suspend fun refreshAll() = Unit
         override fun getSong(songId: String): IndexedSong? = song.takeIf { it.songId == songId }
     }
 
@@ -173,7 +184,15 @@ class PlaybackCoordinatorControlsTest {
 
     private class FakeNetworkController : NetworkController {
         override val connectedPhones = MutableStateFlow(
-            listOf(ConnectedPhone(SoloSingFixtures.PhoneClientId, 7u, "P1", 1, "127.0.0.1")),
+            listOf(
+                ConnectedPhone(
+                    SoloSingFixtures.PhoneClientId,
+                    SoloSingFixtures.PhoneConnectionId,
+                    SoloSingFixtures.PhoneDeviceName,
+                    SoloSingFixtures.PhoneHttpPort,
+                    SoloSingFixtures.LoopbackHost,
+                ),
+            ),
         )
         override val phoneEvents = MutableSharedFlow<PhoneEvent>()
         val assignSingerCalls = mutableListOf<Pair<String, AssignSingerMessage>>()
@@ -198,7 +217,13 @@ class PlaybackCoordinatorControlsTest {
             sessionStatePhoneIds += phoneId
         }
         override suspend fun sendPing(phoneId: String): PongResponse =
-            PongResponse(phoneId, phoneTimeMs = 1L, tvReceiveTimeMs = 2L, isValidSample = true)
+            PongResponse(
+                phoneId = phoneId,
+                pingId = "ping-1",
+                phoneTimeMs = SoloSingFixtures.PongPhoneTimeMs,
+                tvReceiveTimeMs = SoloSingFixtures.PongTvReceiveTimeMs,
+                isValidSample = true,
+            )
         override suspend fun sendClockAck(phoneId: String, ack: ClockAckMessage) = Unit
     }
 }

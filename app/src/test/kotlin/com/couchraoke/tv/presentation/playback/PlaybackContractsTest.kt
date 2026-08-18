@@ -1,28 +1,29 @@
 package com.couchraoke.tv.presentation.playback
 
 import com.couchraoke.tv.fixtures.SoloSingFixtures
+import kotlinx.coroutines.flow.MutableSharedFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlaybackContractsTest {
     @Test(timeout = 30_000)
-    fun prepareIntentCarriesStreamingAudioVideoSeekAndChartBoundary() {
+    fun prepareIntentCarriesOnlyDocumentedStreamingMediaAndSeekFields() {
         val intent = PlaybackIntent.Prepare(
-            audioUrl = SoloSingFixtures.assetUrl("/songs/solo/demo-song.mp3"),
-            videoUrl = SoloSingFixtures.assetUrl("/songs/solo/demo-song.mp4"),
+            audioUrl = SoloSingFixtures.PlaybackAudioUrl,
+            videoUrl = SoloSingFixtures.PlaybackVideoUrl,
             videoGapSec = 0.25f,
             seekToSec = SoloSingFixtures.StartSec,
-            chartEndLyricsTimeMs = SoloSingFixtures.StopAtLyricsTimeMs,
         )
-        val play = PlaybackIntent.Play(stopAtLyricsTimeMs = SoloSingFixtures.StopAtLyricsTimeMs)
+        val play = PlaybackIntent.Play
 
+        assertEquals(SoloSingFixtures.PlaybackAudioUrl, intent.audioUrl)
+        assertEquals(SoloSingFixtures.PlaybackVideoUrl, intent.videoUrl)
+        assertEquals(0.25f, intent.videoGapSec)
         assertEquals(SoloSingFixtures.StartSec, intent.seekToSec)
-        assertEquals(SoloSingFixtures.StopAtLyricsTimeMs, intent.chartEndLyricsTimeMs)
-        assertEquals(SoloSingFixtures.StopAtLyricsTimeMs, play.stopAtLyricsTimeMs)
+        assertFalse(intent.toString().contains("chartEndLyricsTimeMs"))
         assertFalse(intent.isIteration1NoOp())
         assertFalse(play.isIteration1NoOp())
     }
@@ -54,7 +55,7 @@ class PlaybackContractsTest {
         assertTrue(handleIteration1NoOp(fadeOut))
         assertTrue(handleIteration1NoOp(crossfade))
         assertEquals("audio-a", prebuffer.audioUrl)
-        assertNull(prebuffer.videoUrl)
+        assertEquals(null, prebuffer.videoUrl)
         assertEquals(0.5f, prebuffer.videoGapSec)
         assertEquals(1.25f, prebuffer.seekToSec)
         assertEquals(0.5f, fadeOut.durationSec)
@@ -85,7 +86,6 @@ class PlaybackContractsTest {
             videoUrl = "video-a",
             videoGapSec = 0.25f,
             seekToSec = 1f,
-            chartEndLyricsTimeMs = 20_000L,
         )
         val seek = PlaybackIntent.Seek(positionMs = 4_000L)
         val preview = PreviewPlaybackState(
@@ -101,7 +101,8 @@ class PlaybackContractsTest {
         )
 
         assertEquals("audio-b", prepare.copy(audioUrl = "audio-b").audioUrl)
-        assertEquals(null, prepare.copy(videoUrl = null, chartEndLyricsTimeMs = null).chartEndLyricsTimeMs)
+        assertEquals(null, prepare.copy(videoUrl = null).videoUrl)
+        assertEquals(PlaybackIntent.Play, PlaybackIntent.Play)
         assertEquals(4_000L, seek.positionMs)
         assertEquals(6_000L, seek.copy(positionMs = 6_000L).positionMs)
         assertEquals(500L, preview.debounceMs)
@@ -114,48 +115,30 @@ class PlaybackContractsTest {
     }
 
     @Test(timeout = 30_000)
-    fun libVlcSeamKeepsAudioHandleAuthoritativeForTime() {
+    fun libVlcSeamExposesSpecEventStreamAndPlaybackOperations() {
         val handle = FakeLibVlcPlayerHandle(timeMs = 1_500L, durationMs = 18_000L)
-        val events = mutableListOf<LibVlcEvent>()
-        handle.setEventListener(events::add)
 
-        handle.prepare("http://phone/song.mp3")
-        handle.play()
-        handle.release()
-
-        assertEquals(1_500L, handle.timeMs)
-        assertEquals(18_000L, handle.durationMs)
-        assertTrue(handle.released)
-        assertEquals(listOf(LibVlcEvent.Prepared, LibVlcEvent.Playing), events)
-    }
-
-    @Test(timeout = 30_000)
-    fun vlcHandleAdapterExposesPreparePlayPauseStopSeekAndReleaseEvents() {
-        val handle = VlcLibVlcPlayerHandle()
-        val events = mutableListOf<LibVlcEvent>()
-        handle.setEventListener(events::add)
-
-        handle.prepare("http://phone/song.mp3")
-        handle.seekTo(42_000L)
+        handle.prepare("http://phone/song.mp3", seekToSec = 2.5f)
         handle.play()
         handle.pause()
         handle.stop()
+        handle.seekTo(4_000L)
+        handle.setVolume(75)
         handle.release()
-        handle.play()
 
-        assertEquals(42_000L, handle.timeMs)
-        assertEquals(0L, handle.durationMs)
-        assertEquals(
-            listOf(LibVlcEvent.Prepared, LibVlcEvent.Playing, LibVlcEvent.Paused, LibVlcEvent.Stopped),
-            events,
-        )
+        assertEquals(4_000L, handle.timeMs)
+        assertEquals(18_000L, handle.durationMs)
+        assertEquals("http://phone/song.mp3", handle.preparedUrl)
+        assertEquals(2.5f, handle.preparedSeekSec)
+        assertEquals(75, handle.volumePercent)
+        assertTrue(handle.released)
     }
 
     @Test(timeout = 30_000)
     fun songPreviewContractUsesDebouncedScreenScopedAudioPreviewState() {
         val state = PreviewPlaybackState(
             songId = SoloSingFixtures.SongId,
-            audioUrl = SoloSingFixtures.assetUrl("/songs/solo/demo-song.mp3"),
+            audioUrl = SoloSingFixtures.PlaybackAudioUrl,
             startPositionMs = previewStartPositionMs(SoloSingFixtures.PreviewStartSec),
         )
 
@@ -169,27 +152,31 @@ class PlaybackContractsTest {
     private class FakeLibVlcPlayerHandle(
         override var timeMs: Long,
         override val durationMs: Long?,
-    ) : LibVlcPlayerHandle {
-        private var listener: (LibVlcEvent) -> Unit = {}
+    ) : LibVlcPlayerHandle, PreparedDurationProvider {
+        override val events = MutableSharedFlow<LibVlcEvent>(extraBufferCapacity = 8)
+        var preparedUrl: String? = null
+        var preparedSeekSec: Float? = null
+        var volumePercent: Int? = null
+        var released = false
 
-        override fun setEventListener(listener: (LibVlcEvent) -> Unit) {
-            this.listener = listener
-        }
-
-        override fun prepare(url: String) {
-            listener(LibVlcEvent.Prepared)
+        override fun prepare(mediaUrl: String, seekToSec: Float) {
+            preparedUrl = mediaUrl
+            preparedSeekSec = seekToSec
         }
 
         override fun play() {
-            listener(LibVlcEvent.Playing)
+            events.tryEmit(LibVlcEvent.Playing)
         }
 
         override fun pause() = Unit
         override fun stop() = Unit
-        var released = false
 
         override fun seekTo(positionMs: Long) {
             timeMs = positionMs
+        }
+
+        override fun setVolume(percent: Int) {
+            volumePercent = percent
         }
 
         override fun release() {

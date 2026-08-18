@@ -5,6 +5,7 @@ package com.couchraoke.tv.presentation.common
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -34,6 +35,7 @@ import com.couchraoke.tv.ui.theme.SurfaceLevel0
 import com.couchraoke.tv.ui.theme.SurfaceLevel2
 import com.couchraoke.tv.ui.theme.TextPrimary
 import com.couchraoke.tv.ui.theme.TextSecondary
+import com.couchraoke.tv.ui.theme.constrainedTvSurfaceWidth
 
 @Composable
 fun InterruptionShell(
@@ -53,7 +55,7 @@ fun InterruptionShell(
                 background(Modifier.fillMaxSize())
             }
         }
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .focusProperties { canFocus = false }
@@ -63,7 +65,7 @@ fun InterruptionShell(
         ) {
             Column(
                 modifier = Modifier
-                    .width(InterruptionModalWidth)
+                    .width(constrainedTvSurfaceWidth(InterruptionModalWidth, maxWidth))
                     .clip(RoundedCornerShape(RadiusLarge))
                     .background(SurfaceLevel2)
                     .padding(PrimaryModalPadding)

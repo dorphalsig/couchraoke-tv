@@ -18,17 +18,27 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.couchraoke.quality.NoCoverageGenerated
-import com.couchraoke.tv.DemoSoloSingSeed
 import com.couchraoke.tv.R
 import com.couchraoke.tv.domain.library.IndexedSong
 import com.couchraoke.tv.presentation.join.JoinOverlay
+import com.couchraoke.tv.presentation.previews.previewSongListState
 import com.couchraoke.tv.ui.theme.CouchraokeTheme
+import com.couchraoke.tv.ui.theme.SongListCompactGridColumns
+import com.couchraoke.tv.ui.theme.SongListCompactMaxWidth
+import com.couchraoke.tv.ui.theme.SongListGridColumnsWide
+import com.couchraoke.tv.ui.theme.TV_PREVIEW_HEIGHT_DP
+import com.couchraoke.tv.ui.theme.TV_PREVIEW_WIDTH_DP
 
-private const val GRID_COLUMNS_1080 = 3
-private const val GRID_COLUMNS_4K = 4
-private val FOUR_K_WIDTH = 3000.dp
+internal fun isCompactSongListLayout(maxWidth: Dp): Boolean = maxWidth < SongListCompactMaxWidth
+
+internal fun songListGridColumns(maxWidth: Dp): Int = if (isCompactSongListLayout(maxWidth)) {
+    SongListCompactGridColumns
+} else {
+    SongListGridColumnsWide
+}
 
 @NoCoverageGenerated
 @Composable
@@ -84,7 +94,9 @@ fun SongListScreen(
 ) {
     val focusTargets = rememberFocusTargets()
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val gridColumns = if (maxWidth >= FOUR_K_WIDTH) GRID_COLUMNS_4K else GRID_COLUMNS_1080
+        val compactLayout = isCompactSongListLayout(maxWidth)
+        val gridColumns = songListGridColumns(maxWidth)
+        val layoutMetrics = if (compactLayout) CompactSongListLayoutMetrics else StandardSongListLayoutMetrics
         Box(modifier = Modifier.fillMaxSize()) {
             Image(
                 painter = painterResource(R.drawable.songlist),
@@ -109,6 +121,7 @@ fun SongListScreen(
             state = state,
             focusTargets = focusTargets,
             gridColumns = gridColumns,
+            layoutMetrics = layoutMetrics,
         )
         state.joinOverlay?.let { join ->
             JoinOverlay(
@@ -143,7 +156,7 @@ private fun rememberFocusTargets(): SongListFocusTargets = remember {
 }
 
 @NoCoverageGenerated
-@Preview(name = "Song List", widthDp = 1920, heightDp = 1080)
+@Preview(name = "Song List", widthDp = TV_PREVIEW_WIDTH_DP, heightDp = TV_PREVIEW_HEIGHT_DP)
 @Composable
 fun SongListScreenPreview() {
     CouchraokeTheme {
@@ -152,71 +165,6 @@ fun SongListScreenPreview() {
         )
     }
 }
-
-internal fun previewSongListState(): SongListState {
-    val songs = listOf(
-        previewSong(
-            songId = "song-1",
-            title = "Demo Song",
-            artist = "Demo Artist",
-            coverUrl = null,
-        ),
-        previewSong(
-            songId = "song-2",
-            title = "Duet Demo",
-            artist = "Second Artist",
-            coverUrl = "cover",
-            isDuet = true,
-        ),
-        previewSong(
-            songId = "song-3",
-            title = "Rap Medley",
-            artist = "Third Artist",
-            hasRap = true,
-            canMedley = true,
-        ),
-    )
-    return SongListState(
-        visibleSongs = songs,
-        focusedSong = songs.first(),
-        randomDuetEnabled = false,
-        randomMedleyEnabled = false,
-    )
-}
-
-private fun previewSong(
-    songId: String,
-    title: String,
-    artist: String,
-    coverUrl: String? = null,
-    isDuet: Boolean = false,
-    hasRap: Boolean = false,
-    canMedley: Boolean = false,
-): IndexedSong = IndexedSong(
-    songId = songId,
-    phoneClientId = DemoSoloSingSeed.PhoneClientId,
-    relativeTxtPath = DemoSoloSingSeed.RelativeTxtPath,
-    modifiedTimeMs = DemoSoloSingSeed.ModifiedTimeMs,
-    title = title,
-    artist = artist,
-    album = DemoSoloSingSeed.SongAlbum,
-    year = DemoSoloSingSeed.SongYear,
-    genre = DemoSoloSingSeed.SongGenre,
-    txtUrl = DemoSoloSingSeed.TxtUrl,
-    audioUrl = DemoSoloSingSeed.AudioUrl,
-    videoUrl = DemoSoloSingSeed.VideoUrl,
-    coverUrl = coverUrl,
-    backgroundUrl = null,
-    isDuet = isDuet,
-    hasRap = hasRap,
-    hasVideo = true,
-    canMedley = canMedley,
-    medleySource = null,
-    medleyStartBeat = null,
-    medleyEndBeat = null,
-    startSec = DemoSoloSingSeed.StartSec,
-    previewStartSec = DemoSoloSingSeed.PreviewStartSec,
-)
 
 internal data class SongListFocusTargets(
     val search: FocusRequester,

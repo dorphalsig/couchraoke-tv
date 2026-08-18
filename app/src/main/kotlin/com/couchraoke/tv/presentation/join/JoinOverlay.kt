@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.tooling.preview.Preview
@@ -28,17 +30,21 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import com.couchraoke.quality.NoCoverageGenerated
+import com.couchraoke.tv.presentation.previews.PreviewSoloSingSample
 import com.couchraoke.tv.ui.theme.BorderSubtle
 import com.couchraoke.tv.ui.theme.BorderThin
 import com.couchraoke.tv.ui.theme.DisplayAccentTitle
 import com.couchraoke.tv.ui.theme.JoinCodeTopGap
-import com.couchraoke.tv.ui.theme.JoinQRCodeSize
 import com.couchraoke.tv.ui.theme.JoinQrPanelPadding
 import com.couchraoke.tv.ui.theme.PrimaryModalPadding
 import com.couchraoke.tv.ui.theme.PrimaryModalWidth
 import com.couchraoke.tv.ui.theme.RadiusLarge
 import com.couchraoke.tv.ui.theme.SurfaceLevel2
+import com.couchraoke.tv.ui.theme.TV_PREVIEW_HEIGHT_DP
+import com.couchraoke.tv.ui.theme.TV_PREVIEW_WIDTH_DP
 import com.couchraoke.tv.ui.theme.TextPrimary
+import com.couchraoke.tv.ui.theme.constrainedTvQrSize
+import com.couchraoke.tv.ui.theme.constrainedTvSurfaceWidth
 
 private val ModalShape = RoundedCornerShape(RadiusLarge)
 private val ModalSurface = SurfaceLevel2
@@ -57,17 +63,23 @@ fun JoinOverlay(
 ) {
     BackHandler(onBack = onDismiss)
 
-    val renderedQr = remember(qrPayload) { QrCodeRenderer.render(qrPayload, sizePx = 400) }
-
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(Scrim)
             .testTag("join-overlay-scrim"),
         contentAlignment = Alignment.Center,
     ) {
+        val modalWidth = constrainedTvSurfaceWidth(PrimaryModalWidth, maxWidth)
+        val qrSize = constrainedTvQrSize(maxWidth, maxHeight)
+        val density = LocalDensity.current
+        val qrSizePx = with(density) { qrSize.roundToPx() }
+        val renderedQr = remember(qrPayload, qrSizePx) {
+            QrCodeRenderer.render(qrPayload, sizePx = qrSizePx)
+        }
+
         Surface(
-            modifier = Modifier.width(PrimaryModalWidth),
+            modifier = Modifier.width(modalWidth),
             shape = ModalShape,
             colors = SurfaceDefaults.colors(containerColor = ModalSurface),
         ) {
@@ -87,7 +99,7 @@ fun JoinOverlay(
                     Image(
                         painter = renderedQr.painter,
                         contentDescription = "Join QR code",
-                        modifier = Modifier.size(JoinQRCodeSize).clearAndSetSemantics { },
+                        modifier = Modifier.size(qrSize).clearAndSetSemantics { },
                         contentScale = ContentScale.Fit,
                     )
                 }
@@ -103,11 +115,13 @@ fun JoinOverlay(
 }
 
 @NoCoverageGenerated
-@Preview(name = "Join Overlay", widthDp = 1920, heightDp = 1080)
+@Preview(name = "Join Overlay", widthDp = TV_PREVIEW_WIDTH_DP, heightDp = TV_PREVIEW_HEIGHT_DP)
 @Composable
 fun JoinOverlayPreview() {
+    val qrPayload = "ws://${PreviewSoloSingSample.TvIpAddress}:${PreviewSoloSingSample.WebSocketPort}" +
+        "/?token=${PreviewSoloSingSample.SessionToken}"
     JoinOverlay(
-        qrPayload = "ws://192.168.1.10:8080/?token=ABCDEFGH",
-        joinCode = "ABCDEFGH",
+        qrPayload = qrPayload,
+        joinCode = PreviewSoloSingSample.JoinCode,
     )
 }

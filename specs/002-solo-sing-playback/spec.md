@@ -98,7 +98,7 @@ As a host, I can see consistent blocking interruption UI when a song cannot star
 - **FR-001**: The feature MUST deliver the Iteration 1 goal: `browse library → select song → play audio with lyrics` for a single phone and one player.
 - **FR-002**: The TV MUST remain the authoritative host for session state, session token, phone roster, song lifecycle, selected singer assignment, playback state, and song-end routing. Phones provide manifest/chart/audio/video assets and receive host-authored session/playback messages.
 - **FR-003**: The app MUST discover the phone via mDNS, complete a token-gated WebSocket handshake, fetch the phone manifest over cleartext LAN HTTP, and display valid songs from that manifest in Song List. The TV app MUST include Android cleartext LAN HTTP configuration so phone-hosted `http://` manifest and media URLs can be fetched on supported Android TV versions.
-- **FR-004**: The TV MUST advertise `_karaoke._tcp` over mDNS for the active session using a unique instance name, the WebSocket server port, `v=1`, and TXT `code=<JOIN_CODE>` where the code is uppercase and normalized without hyphens. The TV MUST acquire a multicast lock before jmDNS use and release it when the network controller stops.
+- **FR-004**: The TV MUST advertise `_karaoke._tcp.local.` over mDNS for the active session using a unique instance name, the WebSocket server port, `v=1`, and TXT `code=<JOIN_CODE>` where the code is uppercase and normalized without hyphens. The TV MUST acquire a multicast lock before jmDNS use and release it when the network controller stops.
 - **FR-005**: The WebSocket endpoint MUST be `ws://<tv-ip>:<wsPort>/?token=<sessionToken>`. The token MUST have at least 32 bits of entropy, SHOULD have 64+ bits, MUST be regenerated for each session, and MUST be the same value represented by the displayed join code, QR payload token query parameter, and mDNS TXT code. Missing or incorrect token MUST return `error(code="invalid_token")` and close the connection.
 - **FR-006**: The WebSocket `hello` handshake MUST require `protocolVersion=1`, `clientId`, `deviceName`, and `httpPort`; protocol mismatches MUST return `error(code="protocol_mismatch")` and close the connection. Unknown message types after handshake MUST be ignored with a warning; unexpected message types during handshake are fatal and close the connection.
 - **FR-007**: A successful phone handshake MUST assign a new unique `connectionId` (`uint16`) and return it only in the initial `sessionState` response. Reconnects within the same TV session use the same `clientId`, receive a new `connectionId`, reclaim their roster identity, and must not rely on an old socket registry entry.
@@ -109,12 +109,12 @@ As a host, I can see consistent blocking interruption UI when a song cannot star
 - **FR-012**: Manifest entries MUST be rejected if required fields are missing or invalid. Required fields are `relativeTxtPath`, `modifiedTimeMs`, `title`, `artist`, `isDuet`, `hasRap`, `hasVideo`, `hasInstrumental`, `canMedley`, `startSec`, `previewStartSec`, `txtUrl`, and `audioUrl`. `txtUrl` and `audioUrl` must be non-null; `hasVideo` must equal whether `videoUrl` is non-null; `instrumentalUrl` and `vocalsUrl` MUST NOT appear in TV-facing manifest data. The TV relies on phone-served media URLs supporting HTTP `Range` requests with `206 Partial Content`, `Content-Range`, `Accept-Ranges: bytes`, and `Content-Length`; `/manifest.json` MUST be fetched as non-cached data so library refreshes observe the phone's latest scan.
 - **FR-013**: `songId` MUST equal `phoneClientId + "::" + relativeTxtPath`. `relativeTxtPath` MUST use `/`, MUST NOT start with `/`, MUST NOT contain `.` or `..` path segments, and MUST preserve case. `previewStartSec` uses the manifest value and falls back to `0.0` only when absent or non-positive in Iteration 1.
 - **FR-014**: Song List MUST use a two-column layout: left rail with preview pane, Medley playlist, and Play Medley; right body with Search field, Random actions row, and song grid.
-- **FR-015**: Song List header MUST contain Search, Join, and Settings, with Search visually strongest and Join/Settings equal secondary controls.
+- **FR-015**: Song List header MUST contain Search, Join, and a Settings gear icon, with Search visually strongest and Settings presented as a compact icon affordance rather than a text button.
 - **FR-016**: Search MUST perform case-insensitive substring matching across artist, album, and title with 150 ms debounce, and OK on Search MUST invoke a presentation/platform-facing Android TV text input launcher while keeping the ViewModel free of Android framework types. If the system text dialog is not practical on target TV, the Search field MAY rely on native IME focus behavior; the feature MUST NOT add a custom in-app keyboard in Iteration 1.
 - **FR-017**: OK on a song tile MUST open Select Players. Duet and medley controls from shared screens MUST remain visible but disabled in Iteration 1; duet/medley execution, long-press Add to Medley, medley row reorder/delete, Random Duet execution, Random Medley execution, and Play Medley execution are out of scope and MUST be inert/non-focusable where disabled.
 - **FR-018**: The Random actions row MUST show Random Song, Random Duet, and Random Medley with equal visual weight. Random Song MAY select a random valid song from the filtered set and open Select Players. Random Duet and Random Medley MUST be visible but disabled/no-op in Iteration 1.
-- **FR-019**: The left rail preview pane MUST be 16:9, display-only, and non-focusable. Focused-song preview metadata MUST show full title and artist without truncating the preview metadata block. The Medley playlist area and Play Medley control remain visible but disabled/inert in Iteration 1.
-- **FR-020**: Song cards MUST show cover image, title up to two lines, and up to three on-image lower-right tag chips in default state. Focused state additionally shows one artist line in a reserved artist slot without reflow. If artwork is missing, placeholder, or unusable, the card MUST keep title primary, keep tag chips visible, and show artist in default state.
+- **FR-019**: The left rail preview pane MUST be 16:9 in both standard and compact layouts, display-only, and non-focusable. Focused-song preview metadata MUST show full title and artist without truncating the preview metadata block. The Medley playlist area and Play Medley control remain visible but disabled/inert in Iteration 1.
+- **FR-020**: Song cards MUST show cover image, title, and up to three on-image lower-right tag chips in default state. Standard cards show title up to two lines; compact cards show title on one line. Focused state additionally shows one artist line in a reserved artist slot without reflow. Song List MUST target three columns when viewport width is below `SongListCompactMaxWidth` (1200dp), four columns otherwise, with visible row count as a consequence of available height. If artwork is missing, placeholder, or unusable, the card MUST keep title primary, keep tag chips visible, and show artist in default state.
 - **FR-021**: Song card tag chips MUST use priority `D`, `M`, `R`, `I`, `V` when more than three apply, so `V` is first omitted. Tags mean duet, medley, rap, instrumental, and video respectively.
 - **FR-022**: Song List preview playback MUST be screen-scoped and LibVLC-backed for codec consistency with Singing playback. It MUST start only after focus remains on the same song tile for 500 ms, prepare the manifest `audioUrl`, seek to `previewStartSec` when `previewStartSec > 0.0`, otherwise seek to 0 seconds, play until stopped with no fixed 10-second cap, stop immediately when focus changes, focus leaves the grid, an overlay/modal/settings/singing opens, or Song List exits, suppress HTTP/playback failures silently, and use only TV/system media volume in Iteration 1.
 - **FR-023**: Join button MUST open the Join overlay, and the QR code MUST be rendered as an actual QR using `QRose` (`io.github.alexzhirkevich:qrose`). Do not add `qrose-oned` for this feature. The QR code MUST encode the full WebSocket endpoint URL including the `token` query parameter; it MUST NOT encode an NSD/mDNS identifier. The implementation contract is mandatory: the basic Compose usage is `Image(painter = rememberQrCodePainter(payload), contentDescription = ...)`, and the Join overlay MUST use a QRose painter with explicit options: `colors { dark = QrBrush.solid(Color.Black); light = QrBrush.solid(Color.White) }`, `errorCorrectionLevel = QrErrorCorrectionLevel.Medium`, and `scale = qrContentScale`. The renderer MUST validate both short payloads and full endpoint payloads for centered/scaled output within the 400dp QR box: the rendered QR metadata MUST fit within the requested square size, preserve at least a 4-module quiet zone, and center the QR content with opposite-side padding differing by no more than 1 pixel. PNG byte export is not required.
@@ -219,6 +219,12 @@ Visual priorities, in order:
 
 The app uses flat rendering only. Runtime blur, bloom, glow, frosted glass, shader-heavy full-screen effects, gameplay particles, and background animation that repaints large parts of the screen during active singing are forbidden.
 
+### Compose for TV and Responsive Sizing
+
+Use Compose for TV Material imports (`androidx.tv.material3.*`) for Material components: surfaces, text, buttons, cards, themes, and related defaults. Keep standard Compose foundation, runtime, UI, layout, graphics, preview, focus, and modifier APIs for non-Material primitives; do not replace them solely because the target is Android TV.
+
+Treat the dp tokens below as 16:9 TV design targets, not as guaranteed fit on every runtime viewport. Constrain large surfaces against runtime constraints (`BoxWithConstraints`, `LocalConfiguration`, or equivalent): modal widths, QR size, lane heights, and action rows MUST fit after TV-safe margins, using `min(token, available - margins)` or bounded fractions where needed. Do not globally scale the UI or treat dp as broken.
+
 ### Spacing, Radius, Border, and Layout Tokens
 
 | Token | Value |
@@ -238,9 +244,15 @@ The app uses flat rendering only. Runtime blur, bloom, glow, frosted glass, shad
 | UnfocusedBorderOpacity | 20% |
 | FocusInDuration | 150ms |
 | FocusOutDuration | 100ms |
+| TvPreviewWidth | 960dp |
+| TvPreviewHeight | 540dp |
+| JoinQrMaxViewportHeightFraction | 0.55 |
 | AppMarginHorizontal | 48dp |
 | AppMarginVertical | 36dp |
 | HeaderHeight | 76dp |
+| SongListCompactMarginHorizontal | 24dp |
+| SongListCompactMarginVertical | 20dp |
+| SongListCompactHeaderHeight | 56dp |
 | StandardButtonHeight | 72dp |
 | StandardRowHeight | 76dp |
 | DenseRowHeight | 56dp |
@@ -256,7 +268,7 @@ The app uses flat rendering only. Runtime blur, bloom, glow, frosted glass, shad
 
 Two faces are allowed:
 
-- **Display face**: decorative squared face for hero numerals and hero titles only.
+- **Display face**: decorative squared face for hero numerals, hero titles, and the focused-song preview title.
 - **Operational sans**: high-legibility sans-serif for all other text.
 
 | Token | Value |
@@ -268,9 +280,10 @@ Two faces are allowed:
 | SectionTitle | 32sp |
 | PanelTitle | 28sp |
 | SongCardTitle | 24sp |
+| SongCardCompactTitleTextSize | 18sp |
 | SongCardArtistFocused | 18sp |
-| PreviewTitle | 32sp |
-| PreviewArtist | 24sp |
+| PreviewTitle | 22sp |
+| PreviewArtist | 15sp |
 | TagChipLabel | 16sp |
 | BodyPrimary | 24sp |
 | BodySecondary | 20sp |
@@ -336,29 +349,64 @@ Player accent colors MUST NOT be used for generic focus border, general app chro
 | SongListLeftRailFraction | 0.34 |
 | SongListGridFraction | 0.66 |
 | SongListRailGridGap | 32dp |
+| SongListCompactRailGridGap | 20dp |
+| SongListHeaderControlGap | 16dp |
+| SongListCompactHeaderControlGap | 12dp |
+| SongListHeaderButtonWidth | 160dp |
+| SongListCompactHeaderButtonWidth | 128dp |
+| SongListSearchHeight | 64dp |
+| SongListCompactSearchHeight | 52dp |
 | SongListHeaderToBodyGap | 24dp |
+| SongListCompactHeaderToBodyGap | 12dp |
 | SongListRandomRowHeight | 72dp |
+| SongListCompactRandomRowHeight | 52dp |
 | SongListRandomRowGap | 24dp |
-| SongListGridColumns1080 | 3 |
-| SongListGridColumns4K | 4 |
+| SongListCompactRandomRowGap | 12dp |
+| SongListGridColumnsWide | 4 |
+| SongListCompactMaxWidth | 1200dp |
+| SongListCompactGridColumns | 3 |
 | SongListGridColumnGap | 24dp |
 | SongListGridRowGap | 24dp |
+| SongListCompactGridColumnGap | 16dp |
+| SongListCompactGridRowGap | 16dp |
 | SongListPreviewAspect | 16:9 |
+| SongListCompactPreviewAspect | 16:9 |
 | SongListPreviewToMetaGap | 16dp |
+| SongListCompactPreviewToMetaGap | 6dp |
 | SongListMetaToPlaylistGap | 24dp |
+| SongListCompactMetaToPlaylistGap | 8dp |
 | SongListPlaylistRowHeight | 52dp |
+| SongListCompactPlaylistRowHeight | 36dp |
 | SongListPlaylistVisibleRows | 5 |
+| SongListCompactPlaylistVisibleRows | 3 |
 | SongListPlayMedleyTopGap | 16dp |
+| SongListCompactPlayMedleyTopGap | 8dp |
 | SongCardHeight | 252dp |
 | SongCardPadding | 12dp |
 | SongCardImageHeight | 148dp |
+| SongCardImageToTitleGap | 12dp |
+| SongCardCompactHeight | 140dp |
+| SongCardCompactPadding | 8dp |
+| SongCardCompactImageSize | 72dp |
+| SongCardCompactImageHeight | 72dp |
+| SongCardCompactImageToTitleGap | 4dp |
 | SongCardImageCornerRadius | 8dp |
 | SongCardTitleMaxLines | 2 |
+| SongCardCompactTitleTextSize | 18sp |
+| SongCardCompactTitleMaxLines | 1 |
 | SongCardFocusedArtistSlotHeight | 20dp |
 | SongCardTitleToArtistGap | 4dp |
 | SongCardTagCornerInset | 8dp |
 | SongCardTagGap | 6dp |
 | SongCardMaxVisibleTags | 3 |
+
+Compact Song List constraint priority:
+
+1. Safe margins and header controls are always preserved.
+2. Card internal structure is never violated: 72dp square image, 18sp one-line title, and 20dp artist slot remain reserved.
+3. Left rail content must not clip: collapse medley rows before reducing preview size if rail content would exceed body height.
+4. Column count follows the card-width rule: use 3 columns below 1200dp and 4 columns otherwise.
+5. Visible row count is a consequence of remaining grid height; do not adjust card height to hit a row target.
 
 ### Select Players and Join Tokens
 
@@ -405,10 +453,10 @@ A build conforms to this visual system when all visible Iteration 1 UI uses the 
 
 ```wireframe
 +------------------------------------------------------------------------------------------------------+
-|  Search: [________________________________________________________]     [ JOIN ]   [ ⚙ SETTINGS ]   |
+|  Search: [________________________________________________________]     [ JOIN ]   [ ⚙ ]            |
 |                                                                                                      |
 |  +--------------------------------------+   [ Random Song ] [ Random Duet ] [ Random Medley ]       |
-|  | PREVIEW PANE (16:9)                  |                                                           |
+|  | PREVIEW PANE (16:9 standard/compact) |                                                           |
 |  | (display-only; non-focusable)        |   +-----------------------------------------------------+ |
 |  |                                      |   | SONG GRID                                           | |
 |  +--------------------------------------+   |  +---------+  +---------+  +---------+              | |
@@ -416,7 +464,7 @@ A build conforms to this visual system when all visible Iteration 1 UI uses the 
 |  | Artist                               |   |  |     [D] |  |   [R][V]|  |  [D][M] |              | |
 |  +--------------------------------------+   |  +---------+  +---------+  +---------+              | |
 |  | MEDLEY PLAYLIST                      |   |  Title        Title        Title                    | |
-|  | (5 visible rows; scrolls)            |   |  Artist                                             | |
+|  | (5 rows standard; 3 rows compact)    |   |  Artist                                             | |
 |  |  +-------------------------------+   |   |  (only focused card shows artist line)              | |
 |  |  | <artist>  <song>              |   |   |                                                     | |
 |  |  | <artist>  <song>              |   |   |  +---------+  +---------+  +---------+              | |

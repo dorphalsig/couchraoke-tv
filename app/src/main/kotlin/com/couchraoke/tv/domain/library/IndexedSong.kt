@@ -18,6 +18,7 @@ data class IndexedSong(
     val isDuet: Boolean,
     val hasRap: Boolean,
     val hasVideo: Boolean,
+    val hasInstrumental: Boolean,
     val canMedley: Boolean,
     val medleySource: String?,
     val medleyStartBeat: Int?,

@@ -2,6 +2,7 @@
 
 package com.couchraoke.tv.presentation.navigation
 
+import android.view.SurfaceHolder
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -10,13 +11,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import com.couchraoke.quality.NoCoverageGenerated
 import com.couchraoke.tv.data.library.ManifestLibraryManager
-import com.couchraoke.tv.data.network.KtorNetworkController
+import com.couchraoke.tv.data.network.NetworkController
+import com.couchraoke.tv.data.network.SessionState
 import com.couchraoke.tv.domain.library.IndexedSong
 import com.couchraoke.tv.domain.playback.DefaultPlaybackCoordinator
 import com.couchraoke.tv.presentation.playback.DefaultPlaybackController
-import com.couchraoke.tv.presentation.playback.VlcLibVlcPlayerHandle
 import com.couchraoke.tv.presentation.selectplayers.SelectPlayersModal
 import com.couchraoke.tv.presentation.selectplayers.SelectPlayersRecoveryRequest
 import com.couchraoke.tv.presentation.selectplayers.SelectPlayersViewModel
@@ -25,29 +27,28 @@ import com.couchraoke.tv.presentation.singing.SingingViewModel
 import com.couchraoke.tv.presentation.songlist.SongListEvent
 import com.couchraoke.tv.presentation.songlist.SongListScreen
 import com.couchraoke.tv.presentation.songlist.SongListViewModel
+import kotlinx.coroutines.flow.StateFlow
 
 @Composable
 fun AppNavHost(
     libraryManager: ManifestLibraryManager,
-    networkController: KtorNetworkController,
+    networkController: NetworkController,
+    sessionState: StateFlow<SessionState>,
+    joinEndpointUrl: String,
     playbackCoordinator: DefaultPlaybackCoordinator,
     route: AppRoute = AppRoute.SongList,
     onExitApp: () -> Unit = {},
 ) {
-    val routeInputs = rememberRouteInputs(libraryManager, networkController)
+    val routeInputs = rememberRouteInputs(libraryManager, networkController, sessionState, joinEndpointUrl)
     val navState = rememberNavState(route)
     val singingViewModel = remember(playbackCoordinator) { SingingViewModel(playbackCoordinator) }
     val singingState by singingViewModel.state.collectAsState()
     val playbackState by playbackCoordinator.state.collectAsState()
+    val playbackController = rememberPlaybackController(LocalContext.current, playbackCoordinator, singingViewModel)
     var songListViewModel by remember { mutableStateOf<SongListViewModel?>(null) }
 
-    LaunchedEffect(Unit) {
-        libraryManager.refreshFromConnectedPhones()
-    }
-    PlaybackControllerEffects(
-        currentRoute = navState.currentRoute,
-        playbackCoordinator = playbackCoordinator,
-    )
+    PlaybackControllerEffects(navState.currentRoute, playbackCoordinator, networkController, playbackController)
+    SingingCoordinatorSyncEffect(playbackState = playbackState, singingViewModel = singingViewModel)
     StartPendingSongEffect(
         pendingStartSong = navState.pendingStartSong,
         connectedPhones = routeInputs.connectedPhones,
@@ -92,6 +93,7 @@ fun AppNavHost(
         singingState = singingState,
         singingViewModel = singingViewModel,
         actions = routeActions,
+        onVideoSurfaceAvailable = playbackController::setVideoSurface,
     )
     // Iteration 3 wires Settings; Iteration 1 intentionally has no Settings route/menu/screen/submenu.
 }
@@ -99,16 +101,18 @@ fun AppNavHost(
 @Composable
 private fun rememberRouteInputs(
     libraryManager: ManifestLibraryManager,
-    networkController: KtorNetworkController,
+    networkController: NetworkController,
+    sessionStateFlow: StateFlow<SessionState>,
+    joinEndpointUrl: String,
 ): RouteInputs {
     val songs by libraryManager.songs.collectAsState()
     val connectedPhones by networkController.connectedPhones.collectAsState()
-    val sessionState by networkController.sessionState.collectAsState()
+    val sessionState by sessionStateFlow.collectAsState()
     return RouteInputs(
         songs = songs,
         connectedPhones = connectedPhones,
         sessionState = sessionState,
-        joinEndpointUrl = networkController.joinEndpointUrl,
+        joinEndpointUrl = joinEndpointUrl,
     )
 }
 
@@ -217,6 +221,7 @@ private fun CurrentRoute(
     singingState: com.couchraoke.tv.presentation.singing.SingingUiState,
     singingViewModel: SingingViewModel,
     actions: RouteActions,
+    onVideoSurfaceAvailable: (SurfaceHolder?) -> Unit,
 ) {
     when (currentRoute) {
         AppRoute.SongList -> SongListRoute(
@@ -230,6 +235,7 @@ private fun CurrentRoute(
             state = singingState,
             singingViewModel = singingViewModel,
             onReturnToSongList = actions.onReturnToSongList,
+            onVideoSurfaceAvailable = onVideoSurfaceAvailable,
         )
         AppRoute.Results -> actions.onResultsShown()
     }
@@ -260,13 +266,11 @@ private fun StartPendingSongEffect(
 private fun PlaybackControllerEffects(
     currentRoute: AppRoute,
     playbackCoordinator: DefaultPlaybackCoordinator,
+    networkController: NetworkController,
+    playbackController: DefaultPlaybackController,
 ) {
-    val playbackController = remember {
-        DefaultPlaybackController(
-            audioHandle = VlcLibVlcPlayerHandle(),
-            videoHandle = VlcLibVlcPlayerHandle(),
-            clockMs = { System.nanoTime() / 1_000_000 },
-        )
+    LaunchedEffect(networkController, playbackCoordinator) {
+        networkController.phoneEvents.collect(playbackCoordinator::onPhoneEvent)
     }
     val playbackIntents by playbackCoordinator.intents.collectAsState()
     var handledPlaybackIntentCount by remember { mutableStateOf(0) }
@@ -335,6 +339,7 @@ private fun SingingRoute(
     state: com.couchraoke.tv.presentation.singing.SingingUiState,
     singingViewModel: SingingViewModel,
     onReturnToSongList: () -> Unit,
+    onVideoSurfaceAvailable: (SurfaceHolder?) -> Unit,
 ) {
     SingingScreen(
         state = state,
@@ -346,6 +351,7 @@ private fun SingingRoute(
             onQuitConfirmed = singingViewModel::onQuitConfirmed,
             onCancel = singingViewModel::onBack,
         ),
+        onVideoSurfaceAvailable = onVideoSurfaceAvailable,
     )
     if (state.returnToSongList) {
         onReturnToSongList()

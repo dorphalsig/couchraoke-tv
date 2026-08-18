@@ -2,6 +2,7 @@
 
 package com.couchraoke.tv.presentation.singing
 
+import android.view.SurfaceHolder
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +34,7 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.couchraoke.quality.NoCoverageGenerated
 import com.couchraoke.tv.R
+import com.couchraoke.tv.presentation.previews.PreviewSoloSingSample
 import com.couchraoke.tv.ui.theme.CouchraokeTheme
 import com.couchraoke.tv.ui.theme.DisplayHeroNumber
 import com.couchraoke.tv.ui.theme.LiveScore
@@ -56,21 +58,21 @@ import com.couchraoke.tv.ui.theme.SingingScoreBoxRightInset
 import com.couchraoke.tv.ui.theme.SingingScoreBoxToRatingGap
 import com.couchraoke.tv.ui.theme.SingingScoreBoxWidth
 import com.couchraoke.tv.ui.theme.SingingSingleLaneHeight
-import com.couchraoke.tv.ui.theme.SingingTopIntroStripHeight
-import com.couchraoke.tv.ui.theme.SingingTopMinimalStripHeight
 import com.couchraoke.tv.ui.theme.SurfaceLaneBand
 import com.couchraoke.tv.ui.theme.SurfaceLevel1
 import com.couchraoke.tv.ui.theme.SurfaceLevel2
 import com.couchraoke.tv.ui.theme.SurfaceLyricsBand
+import com.couchraoke.tv.ui.theme.TV_PREVIEW_HEIGHT_DP
+import com.couchraoke.tv.ui.theme.TV_PREVIEW_WIDTH_DP
 import com.couchraoke.tv.ui.theme.TextPrimary
 import com.couchraoke.tv.ui.theme.TextSecondary
 import com.couchraoke.tv.ui.theme.Timer
-import com.couchraoke.tv.ui.theme.TopMetadataMinimal
 
 @Composable
 fun SingingScreen(
     state: SingingUiState,
     overlayActions: SingingOverlayActions = SingingOverlayActions(),
+    onVideoSurfaceAvailable: (SurfaceHolder?) -> Unit = {},
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
@@ -87,10 +89,25 @@ fun SingingScreen(
                 contentScale = ContentScale.Crop,
             )
         }
-        AndroidView(
-            modifier = Modifier.fillMaxSize().testTag("singing-video-surface"),
-            factory = { context -> android.view.SurfaceView(context).apply { setZOrderMediaOverlay(true) } },
-        )
+        if (state.videoUrl != null) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize().testTag("singing-video-surface"),
+                factory = { context ->
+                    createSingingVideoSurface(context).also { surfaceView ->
+                        surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
+                            override fun surfaceCreated(holder: SurfaceHolder) = onVideoSurfaceAvailable(holder)
+                            override fun surfaceDestroyed(holder: SurfaceHolder) = onVideoSurfaceAvailable(null)
+                            override fun surfaceChanged(
+                                holder: SurfaceHolder,
+                                format: Int,
+                                width: Int,
+                                height: Int,
+                            ) = Unit
+                        })
+                    }
+                },
+            )
+        }
         PitchLaneSurface(state = state.laneState)
         SingingBody(state = state)
         SingingMetadata(state = state, modifier = Modifier.align(Alignment.TopCenter))
@@ -104,11 +121,7 @@ fun SingingScreen(
 private fun PitchLaneSurface(state: LaneRenderState?) {
     AndroidView(
         modifier = Modifier.fillMaxSize().testTag("singing-pitch-lane-surface"),
-        factory = { context ->
-            android.view.SurfaceView(context).apply {
-                setZOrderMediaOverlay(true)
-            }
-        },
+        factory = ::createPitchLaneSurface,
         update = { surfaceView ->
             val laneState = state ?: return@AndroidView
             surfaceView.post {
@@ -142,9 +155,7 @@ private fun SingingBody(state: SingingUiState) {
         modifier = Modifier.fillMaxSize(),
     ) {
         Spacer(
-            modifier = Modifier.height(
-                if (state.isPlaying) SingingTopMinimalStripHeight else SingingTopIntroStripHeight,
-            ),
+            modifier = Modifier.height(metadataStripHeight(state.isPlaying)),
         )
         Box(
             modifier = Modifier
@@ -236,17 +247,18 @@ private fun SingingMetadata(state: SingingUiState, modifier: Modifier = Modifier
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(if (state.isPlaying) SingingTopMinimalStripHeight else SingingTopIntroStripHeight)
+            .height(metadataStripHeight(state.isPlaying))
             .background(SurfaceLevel2)
             .padding(horizontal = LyricsBandPaddingHorizontal),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        val metadataStyle = metadataTitleStyle(state.isPlaying)
         state.title?.let {
-            Text(text = it, style = TopMetadataMinimal, color = TextPrimary)
+            Text(text = it, style = metadataStyle, color = TextPrimary)
         }
         state.artist?.let {
             Spacer(modifier = Modifier.width(LyricsBandLineGap))
-            Text(text = it, style = TopMetadataMinimal, color = TextSecondary)
+            Text(text = it, style = metadataStyle, color = TextSecondary)
         }
     }
 }
@@ -262,12 +274,14 @@ private fun SingingLyrics(state: SingingUiState, modifier: Modifier = Modifier) 
     ) {
         Text(
             text = state.currentLyricsLine.orEmpty(),
+            modifier = Modifier.testTag("singing-lyrics-line"),
             style = LyricsCurrent,
             color = TextPrimary,
         )
         Spacer(modifier = Modifier.height(LyricsBandLineGap))
         Text(
             text = state.nextLyricsLine.orEmpty(),
+            modifier = Modifier.testTag("singing-lyrics-line"),
             style = LyricsNext,
             color = TextSecondary,
         )
@@ -301,15 +315,15 @@ private fun SingingCountdown(state: SingingUiState, modifier: Modifier = Modifie
 }
 
 @NoCoverageGenerated
-@Preview(name = "Singing Single Singer", widthDp = 1920, heightDp = 1080)
+@Preview(name = "Singing Single Singer", widthDp = TV_PREVIEW_WIDTH_DP, heightDp = TV_PREVIEW_HEIGHT_DP)
 @Composable
 fun SingingScreenPreview() {
     CouchraokeTheme {
         SingingScreen(
             state = SingingUiState(
                 isPlaying = true,
-                title = "Demo Song",
-                artist = "Demo Artist",
+                title = PreviewSoloSingSample.SongTitle,
+                artist = PreviewSoloSingSample.SongArtist,
                 currentLyricsLine = "Hello",
                 nextLyricsLine = "couchraoke",
                 elapsedTimeText = "00:35",

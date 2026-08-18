@@ -1,10 +1,12 @@
 package com.couchraoke.tv.domain.playback
 
 import com.couchraoke.tv.data.network.AssignSingerMessage
+import com.couchraoke.tv.data.network.ClockAckMessage
 import com.couchraoke.tv.data.network.NetworkController
 import com.couchraoke.tv.data.network.PhoneEvent
 import com.couchraoke.tv.data.network.PlaybackNetworkState
 import com.couchraoke.tv.data.network.PlaybackStateMessage
+import com.couchraoke.tv.data.network.PlaybackStateReason
 import com.couchraoke.tv.data.network.StartMode
 import com.couchraoke.tv.domain.library.LibraryManager
 import com.couchraoke.tv.domain.model.PlayerId
@@ -26,8 +28,8 @@ class DefaultPlaybackCoordinator(
     private val networkController: NetworkController,
     private val usdxParser: UsdxParser,
     private val udpPort: Int,
+    private val sessionId: String,
     private val scoringEngine: ScoringEngine = Iteration1ScoringNoOp,
-    private val sessionId: String = "tv-session-001",
 ) : PlaybackCoordinator {
     private val mutableState = MutableStateFlow(PlaybackCoordinatorState())
     private val mutableIntents = MutableStateFlow<List<PlaybackIntent>>(emptyList())
@@ -71,9 +73,8 @@ class DefaultPlaybackCoordinator(
                         PlaybackIntent.Prepare(
                             audioUrl = song.audioUrl,
                             videoUrl = song.videoUrl,
-                            videoGapSec = null,
+                            videoGapSec = parsedSong.header.videoGapSec,
                             seekToSec = song.startSec,
-                            chartEndLyricsTimeMs = chartEndLyricsTimeMs,
                         ),
                     )
                 },
@@ -89,7 +90,7 @@ class DefaultPlaybackCoordinator(
             networkController = networkController,
             sessionId = sessionId,
             state = PlaybackNetworkState.Paused,
-            reason = "user_pause",
+            reason = PlaybackStateReason.UserPause,
         ).also { activePlan = it }
         mutableState.value = PlaybackCoordinatorState(
             phase = GamePhase.Paused(pausedPlan, positionMs = 0L),
@@ -104,9 +105,9 @@ class DefaultPlaybackCoordinator(
             networkController = networkController,
             sessionId = sessionId,
             state = PlaybackNetworkState.Playing,
-            reason = "resume",
+            reason = PlaybackStateReason.Unspecified,
         ).also { activePlan = it }
-        mutableIntents.value = mutableIntents.value + PlaybackIntent.Play(resumedPlan.stopAtLyricsTimeMs)
+        mutableIntents.value = mutableIntents.value + PlaybackIntent.Play
         mutableState.value = PlaybackCoordinatorState(
             phase = GamePhase.Live(resumedPlan, songStartTvMs = 0L),
             selectedSong = resumedPlan.song,
@@ -138,9 +139,8 @@ class DefaultPlaybackCoordinator(
         mutableIntents.value = mutableIntents.value + PlaybackIntent.Prepare(
             audioUrl = restarted.song.audioUrl,
             videoUrl = restarted.song.videoUrl,
-            videoGapSec = null,
+            videoGapSec = restarted.parsedSong.header.videoGapSec,
             seekToSec = restarted.song.startSec,
-            chartEndLyricsTimeMs = restarted.stopAtLyricsTimeMs,
         )
         mutableState.value = PlaybackCoordinatorState(
             phase = GamePhase.Preparing(
@@ -168,7 +168,7 @@ class DefaultPlaybackCoordinator(
                 networkController = networkController,
                 sessionId = sessionId,
                 state = PlaybackNetworkState.Stopped,
-                reason = "user_quit",
+                reason = PlaybackStateReason.UserQuit,
             )
             stoppedPlan.assignedSingers.forEach { networkController.sendSessionState(it.phoneId) }
         }
@@ -187,14 +187,16 @@ class DefaultPlaybackCoordinator(
         when (event) {
             is PlaybackEvent.Ready -> {
                 val plan = activePlan ?: return
-                // Iteration 2 wires ScoringEngine.setSongStart() and ScoringEngine.start() here.
+                scoringEngine.setSongStart(event.songStartTvMs)
                 mutableState.value = PlaybackCoordinatorState(
                     phase = GamePhase.Live(plan, event.songStartTvMs),
                     selectedSong = plan.song,
                 )
             }
             PlaybackEvent.Ended -> {
+                activePlan?.stopForOpenSession(networkController, sessionId, PlaybackStateReason.SongEnd)
                 activePlan = null
+                pendingStart = null
                 // Iteration 2 wires Results; Iteration 1 returns to Song List.
                 mutableState.value = PlaybackCoordinatorState(phase = GamePhase.Open)
             }
@@ -208,10 +210,10 @@ class DefaultPlaybackCoordinator(
         val assignedSinger = plan?.assignedSingers?.firstOrNull { it.phoneId == event.clientId }
         if (plan != null && assignedSinger != null && event.wasAssignedSinger) {
             if (mutableState.value.phase is GamePhase.Countdown) {
+                mutableIntents.value = mutableIntents.value + PlaybackIntent.Stop
+                plan.stopForOpenSession(networkController, sessionId, PlaybackStateReason.SingerDisconnected)
                 activePlan = null
                 pendingStart = null
-                mutableIntents.value = mutableIntents.value + PlaybackIntent.Stop
-                networkController.sendSessionState(event.clientId)
                 mutableState.value = PlaybackCoordinatorState(
                     phase = GamePhase.Open,
                     selectedSong = plan.song,
@@ -224,10 +226,10 @@ class DefaultPlaybackCoordinator(
 
     private suspend fun recoverWithError(song: com.couchraoke.tv.domain.library.IndexedSong?, bodyLines: List<String>) {
         val plan = activePlan
+        mutableIntents.value = mutableIntents.value + PlaybackIntent.Stop
+        plan?.stopForOpenSession(networkController, sessionId, PlaybackStateReason.Unspecified)
         activePlan = null
         pendingStart = null
-        mutableIntents.value = mutableIntents.value + PlaybackIntent.Stop
-        plan?.assignedSingers?.forEach { networkController.sendSessionState(it.phoneId) }
         mutableState.value = PlaybackCoordinatorState(
             phase = GamePhase.Open,
             selectedSong = song,
@@ -255,14 +257,32 @@ class DefaultPlaybackCoordinator(
             udpPort = udpPort,
         )
         pendingStart = null
+        val clockSample = networkController.sendPing(start.selection.playerPhoneId)
+        if (!clockSample.isUsableClockSample(start.selection.playerPhoneId)) {
+            activePlan = null
+            mutableState.value = PlaybackCoordinatorState(
+                phase = GamePhase.Open,
+                selectedSong = start.song,
+                modal = PlaybackModal.Error(
+                    listOf("Network too unstable for accurate sync. Check WiFi connection and try again."),
+                ),
+            )
+            return
+        }
+        networkController.sendClockAck(
+            start.selection.playerPhoneId,
+            ClockAckMessage(
+                pingId = clockSample.pingId,
+                tTvRecvMs = clockSample.tvReceiveTimeMs,
+            ),
+        )
         activePlan = plan
-        networkController.sendPing(start.selection.playerPhoneId)
         networkController.sendAssignSinger(start.selection.playerPhoneId, plan.toAssignSingerMessage(sessionId))
         val broadcastPlan = plan.broadcastPlaybackState(
             networkController = networkController,
             sessionId = sessionId,
         ).also { activePlan = it }
-        mutableIntents.value = mutableIntents.value + PlaybackIntent.Play(stopAtLyricsTimeMs)
+        mutableIntents.value = mutableIntents.value + PlaybackIntent.Play
         val phase = if (start.selection.countdownEnabled) {
             GamePhase.Countdown(broadcastPlan)
         } else {
@@ -294,6 +314,20 @@ private fun PlaybackPlan.toAssignSingerMessage(sessionId: String): AssignSingerM
     songArtist = song.artist,
 )
 
+private suspend fun PlaybackPlan.stopForOpenSession(
+    networkController: NetworkController,
+    sessionId: String,
+    reason: PlaybackStateReason,
+) {
+    val stoppedPlan = broadcastPlaybackState(
+        networkController = networkController,
+        sessionId = sessionId,
+        state = PlaybackNetworkState.Stopped,
+        reason = reason,
+    )
+    stoppedPlan.assignedSingers.forEach { networkController.sendSessionState(it.phoneId) }
+}
+
 private suspend fun PlaybackPlan.broadcastPlaybackState(
     networkController: NetworkController,
     sessionId: String,
@@ -302,7 +336,7 @@ private suspend fun PlaybackPlan.broadcastPlaybackState(
     } else {
         PlaybackNetworkState.Playing
     },
-    reason: String = "song_start",
+    reason: PlaybackStateReason = PlaybackStateReason.Unspecified,
 ): PlaybackPlan {
     networkController.broadcastPlaybackState(
         PlaybackStateMessage(
@@ -333,6 +367,9 @@ private fun playbackErrorBody(cause: PlaybackErrorCause): List<String> = buildLi
     }
     if (!detail.isNullOrBlank()) add(detail)
 }
+
+private fun com.couchraoke.tv.data.network.PongResponse.isUsableClockSample(expectedPhoneId: String): Boolean =
+    isValidSample && phoneId == expectedPhoneId && pingId.isNotBlank()
 
 private data class PendingPlaybackStart(
     val song: com.couchraoke.tv.domain.library.IndexedSong,

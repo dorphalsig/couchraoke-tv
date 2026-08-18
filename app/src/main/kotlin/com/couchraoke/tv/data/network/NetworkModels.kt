@@ -88,6 +88,10 @@ data class AssignSingerMessage(
     val songTitle: String,
     val songArtist: String,
 ) : NetworkMessage {
+    init {
+        require(songInstanceSeq in UInt32Range)
+    }
+
     override val type: String = "assignSinger"
     override val protocolVersion: Int = 1
 }
@@ -101,49 +105,96 @@ data class PlaybackStateMessage(
     val lyricsTimeMs: Long,
     val stopAtLyricsTimeMs: Long,
     val countdownRemainingMs: Int? = null,
-    val reason: String,
+    val reason: PlaybackStateReason,
     val tsTvMs: Long? = null,
 ) : NetworkMessage {
+    init {
+        require(songInstanceSeq in UInt32Range)
+    }
+
     override val type: String = "playbackState"
     override val protocolVersion: Int = 1
 }
 
 @Serializable
 data class ClockAckMessage(
-    override val sessionId: String,
-    val tvTimeMs: Long,
-    val phoneTimeMs: Long,
-    val roundTripMs: Long,
-) : NetworkMessage {
-    override val type: String = "clockAck"
-    override val protocolVersion: Int = 1
+    val pingId: String,
+    val tTvRecvMs: Long,
+    val tsTvMs: Long? = null,
+) {
+    val type: String = "clockAck"
+    val protocolVersion: Int = 1
 }
 
 data class PongResponse(
     val phoneId: String,
-    val phoneTimeMs: Long,
+    val pingId: String = "",
+    val tTvSendMs: Long = 0L,
+    val tPhoneRecvMs: Long = 0L,
+    val tPhoneSendMs: Long = 0L,
+    val phoneTimeMs: Long = tPhoneSendMs,
     val tvReceiveTimeMs: Long,
     val isValidSample: Boolean,
 )
 
 @Serializable
 enum class StartMode(val wireValue: String) {
-    @SerialName("countdown") Countdown("countdown"),
-    @SerialName("live") Live("live"),
+    @SerialName("countdown")
+    Countdown("countdown"),
+
+    @SerialName("live")
+    Live("live"),
 }
 
 @Serializable
 enum class PlaybackNetworkState(val wireValue: String) {
-    @SerialName("open") Open("open"),
-    @SerialName("countdown") Countdown("countdown"),
-    @SerialName("playing") Playing("playing"),
-    @SerialName("paused") Paused("paused"),
-    @SerialName("stopped") Stopped("stopped"),
-    @SerialName("error") Error("error"),
+    @SerialName("countdown")
+    Countdown("countdown"),
+
+    @SerialName("playing")
+    Playing("playing"),
+
+    @SerialName("paused")
+    Paused("paused"),
+
+    @SerialName("stopped")
+    Stopped("stopped"),
 }
 
+@Serializable
+enum class PlaybackStateReason(val wireValue: String) {
+    @SerialName("")
+    Unspecified(""),
+
+    @SerialName("user_pause")
+    UserPause("user_pause"),
+
+    @SerialName("singer_disconnected")
+    SingerDisconnected("singer_disconnected"),
+
+    @SerialName("song_end")
+    SongEnd("song_end"),
+
+    @SerialName("user_quit")
+    UserQuit("user_quit"),
+
+    @SerialName("restart")
+    Restart("restart"),
+
+    @SerialName("segment_transition")
+    SegmentTransition("segment_transition"),
+
+    @SerialName("medley_source")
+    MedleySource("medley_source"),
+
+    @SerialName("medley_end")
+    MedleyEnd("medley_end"),
+}
+
+private val UInt32Range = 0L..UInt.MAX_VALUE.toLong()
+
 fun SongEntry.toIndexedSong(phoneClientId: String): IndexedSong = IndexedSong(
-    songId = "$phoneClientId:$relativeTxtPath:$modifiedTimeMs",
+    songId = "$phoneClientId::$relativeTxtPath",
     phoneClientId = phoneClientId,
     relativeTxtPath = relativeTxtPath,
     modifiedTimeMs = modifiedTimeMs,
@@ -160,6 +211,7 @@ fun SongEntry.toIndexedSong(phoneClientId: String): IndexedSong = IndexedSong(
     isDuet = isDuet,
     hasRap = hasRap,
     hasVideo = hasVideo,
+    hasInstrumental = hasInstrumental,
     canMedley = canMedley,
     medleySource = medleySource,
     medleyStartBeat = medleyStartBeat,

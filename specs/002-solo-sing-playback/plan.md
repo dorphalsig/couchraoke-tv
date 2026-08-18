@@ -7,6 +7,17 @@
 
 Deliver Iteration 1 solo-sing playback for the TV host app: one phone can join over LAN, the TV aggregates that phone's manifest into Song List, the host selects one non-duet song and one singer, the TV fetches and parses the song file, prepares streamed audio/video playback, displays sentence-paged lyrics plus static note lanes from the parsed song file, and returns to Song List on end, Back/Quit, or playback failure. The plan intentionally keeps live pitch from UDP frames, scoring, duet execution, medley execution, and Results out of scope for this iteration.
 
+## Audit Addendum: Runtime Stub Remediation
+
+A post-completion audit found that the checked-off implementation still contains runtime fakes and hardcoded demo data. Completion for this iteration therefore requires the remediation tasks added in `tasks.md` Phase 7 before the feature can be considered genuinely complete.
+
+- `app/src/main/kotlin/com/couchraoke/tv/data/network/KtorNetworkController.kt` is currently an in-memory fake despite its production name. It does not use Ktor or jmDNS, stores connected phones in local flows/lists, exposes synthetic mDNS state, fetches manifests/TXT from injected maps, leaves outbound session/playback sends as no-ops, and returns fixed fake ping timing.
+- `app/src/main/kotlin/com/couchraoke/tv/MainActivity.kt` wires `DemoSoloSingSeed` into production startup, including seeded phone, manifest, TXT, session token, host, and UDP/WebSocket values.
+- `app/src/main/kotlin/com/couchraoke/tv/DemoSoloSingSeed.kt` is production-source demo data. Runtime app code must not depend on it; deterministic sample data belongs in test fixtures and preview-only sample data belongs under preview helpers.
+- `app/src/main/kotlin/com/couchraoke/tv/presentation/navigation/AppNavHost.kt` is coupled to concrete `KtorNetworkController` state and performs one-shot catalog refresh. Runtime wiring must consume interface/session-state seams and forward `phoneEvents` to the playback coordinator.
+- The required Ktor, jmDNS, Android LAN permissions, multicast permission, cleartext network security, and catalog dependencies already exist. Remediation should implement the planned real LAN adapter rather than add dependencies or preserve fake runtime behavior.
+- Iteration 1 still keeps live scoring, pitch ingestion, Results, duet execution, and medley execution out of scope. The scoring no-op is acceptable for those future behaviors, but `PlaybackEvent.Ready` must call `ScoringEngine.setSongStart(songStartTvMs)` so the scoring seam is actually gated at Ready.
+
 ## Technical Context
 
 **Language/Version**: Kotlin 2.2.10, Java 11  
@@ -221,7 +232,7 @@ app/
 
 ## Validation Gate
 
-Feature completion must use fresh scoped `testBranch` validation for the production and test classes touched by each task. The full-feature gate should include the Iteration 1 classes introduced or modified, with representative selectors like:
+Feature completion must use fresh scoped `testBranch` validation for the production and test classes touched by each task. Runtime integration tasks must also pass the anti-stub audit gate added in `tasks.md` Phase 7: production runtime code must not contain demo fixtures, fake transports, map/list-backed runtime network behavior, no-op required contract methods, fixed fake timing, or preview/test sample data outside fixture boundaries. The full-feature gate should include the Iteration 1 classes introduced or modified, with representative selectors like:
 
 ```bash
 timeout 10m ./gradlew :app:testBranch \

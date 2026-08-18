@@ -6,12 +6,9 @@ sealed interface PlaybackIntent {
         val videoUrl: String?,
         val videoGapSec: Float?,
         val seekToSec: Float,
-        val chartEndLyricsTimeMs: Long?,
     ) : PlaybackIntent
 
-    data class Play(
-        val stopAtLyricsTimeMs: Long,
-    ) : PlaybackIntent
+    data object Play : PlaybackIntent
     data object Pause : PlaybackIntent
     data object Stop : PlaybackIntent
 

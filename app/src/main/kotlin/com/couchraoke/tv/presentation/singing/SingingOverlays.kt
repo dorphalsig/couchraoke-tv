@@ -32,6 +32,8 @@ import com.couchraoke.tv.ui.theme.InterruptionActionRowHeight
 import com.couchraoke.tv.ui.theme.PrimaryModalPadding
 import com.couchraoke.tv.ui.theme.RadiusLarge
 import com.couchraoke.tv.ui.theme.SurfaceLevel1
+import com.couchraoke.tv.ui.theme.TV_PREVIEW_HEIGHT_DP
+import com.couchraoke.tv.ui.theme.TV_PREVIEW_WIDTH_DP
 import com.couchraoke.tv.ui.theme.TextPrimary
 
 @Composable
@@ -177,7 +179,7 @@ private fun OverlayButton(
     }
 }
 
-@Preview(name = "Singing Pause Overlay", widthDp = 1920, heightDp = 1080)
+@Preview(name = "Singing Pause Overlay", widthDp = TV_PREVIEW_WIDTH_DP, heightDp = TV_PREVIEW_HEIGHT_DP)
 @Composable
 fun SingingPauseOverlayPreview() {
     CouchraokeTheme {
@@ -185,7 +187,7 @@ fun SingingPauseOverlayPreview() {
     }
 }
 
-@Preview(name = "Singing Restart Confirm", widthDp = 1920, heightDp = 1080)
+@Preview(name = "Singing Restart Confirm", widthDp = TV_PREVIEW_WIDTH_DP, heightDp = TV_PREVIEW_HEIGHT_DP)
 @Composable
 fun SingingRestartConfirmPreview() {
     CouchraokeTheme {
@@ -193,7 +195,7 @@ fun SingingRestartConfirmPreview() {
     }
 }
 
-@Preview(name = "Singing Quit Confirm", widthDp = 1920, heightDp = 1080)
+@Preview(name = "Singing Quit Confirm", widthDp = TV_PREVIEW_WIDTH_DP, heightDp = TV_PREVIEW_HEIGHT_DP)
 @Composable
 fun SingingQuitConfirmPreview() {
     CouchraokeTheme {

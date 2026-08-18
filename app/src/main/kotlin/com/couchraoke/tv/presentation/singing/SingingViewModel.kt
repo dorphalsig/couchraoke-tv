@@ -49,6 +49,7 @@ class SingingViewModel(
                     badgeText = renderModel.lanes.firstOrNull()?.badgeText ?: "P1",
                     laneState = renderModel.lanes.firstOrNull()?.lane,
                     backgroundImageUrl = renderModel.background.fallbackImageUrl(),
+                    videoUrl = phase.plan.song.videoUrl,
                 )
             }
             GamePhase.Open -> buildState(returnToSongList = true)
@@ -61,6 +62,15 @@ class SingingViewModel(
             // Iteration 3 wires disconnect auto-pause overlay; Iter 1 keeps screen stable.
             is GamePhase.DisconnectPaused -> buildState()
         }.withCoordinatorModal(coordinatorState.modal)
+    }
+
+    val onDecorativeVideoAvailableChanged: (Boolean) -> Unit = { isAvailable ->
+        val phase = coordinator.state.value.phase as? GamePhase.Live
+        if (phase != null) {
+            mutableState.value = state.value.copy(
+                videoUrl = if (isAvailable) phase.plan.song.videoUrl else null,
+            )
+        }
     }
 
     fun advanceCountdown(elapsedMs: Int) {
@@ -132,6 +142,7 @@ class SingingViewModel(
         badgeText: String = "P1",
         laneState: LaneRenderState? = null,
         backgroundImageUrl: String? = null,
+        videoUrl: String? = null,
         activeModal: SingingModal? = null,
         defaultFocus: SingingControlFocus? = null,
     ) = SingingUiState(
@@ -149,6 +160,7 @@ class SingingViewModel(
         badgeText = badgeText,
         laneState = laneState,
         backgroundImageUrl = backgroundImageUrl,
+        videoUrl = videoUrl,
         activeModal = activeModal,
         defaultFocus = defaultFocus,
     )
@@ -211,6 +223,7 @@ data class SingingUiState(
     val badgeText: String = "P1",
     val laneState: LaneRenderState? = null,
     val backgroundImageUrl: String? = null,
+    val videoUrl: String? = null,
     val activeModal: SingingModal? = null,
     val defaultFocus: SingingControlFocus? = null,
 )

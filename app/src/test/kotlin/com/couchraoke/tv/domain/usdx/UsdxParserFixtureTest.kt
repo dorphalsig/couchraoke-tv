@@ -389,6 +389,7 @@ class UsdxParserFixtureTest {
             isDuet = parsedSong.header.isDuet,
             hasRap = false,
             hasVideo = true,
+            hasInstrumental = false,
             canMedley = hasValidSoloMedleyTags,
             medleySource = if (hasValidSoloMedleyTags) "tag" else null,
             medleyStartBeat = parsedSong.header.medleyStartBeat,

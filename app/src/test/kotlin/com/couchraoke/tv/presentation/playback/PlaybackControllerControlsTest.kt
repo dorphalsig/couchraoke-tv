@@ -1,5 +1,7 @@
 package com.couchraoke.tv.presentation.playback
 
+import com.couchraoke.tv.fixtures.SoloSingFixtures
+import kotlinx.coroutines.flow.MutableSharedFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -11,18 +13,19 @@ class PlaybackControllerControlsTest {
         val focus = FakeAudioFocusController()
         val controller = DefaultPlaybackController(
             audioHandle = handle,
-            clockMs = { 1_000L },
+            clockMs = { SoloSingFixtures.PlaybackClockMs },
             audioFocusController = focus,
+            stopAtLyricsTimeMs = { SoloSingFixtures.PreparedDurationMs },
         )
 
-        controller.handle(PlaybackIntent.Play(stopAtLyricsTimeMs = 120_000L))
+        controller.handle(PlaybackIntent.Play)
         controller.handle(PlaybackIntent.Pause)
-        controller.handle(PlaybackIntent.Seek(positionMs = 1_500L))
+        controller.handle(PlaybackIntent.Seek(positionMs = SoloSingFixtures.RestartSeekPositionMs))
         controller.handle(PlaybackIntent.Stop)
 
         assertEquals(1, handle.playCallCount)
         assertEquals(1, handle.pauseCallCount)
-        assertEquals(1_500L, handle.timeMs)
+        assertEquals(SoloSingFixtures.RestartSeekPositionMs, handle.timeMs)
         assertEquals(1, handle.stopCallCount)
         assertEquals(1, focus.abandonCallCount)
     }
@@ -32,11 +35,11 @@ class PlaybackControllerControlsTest {
         val handle = FakeHandle()
         val controller = DefaultPlaybackController(
             audioHandle = handle,
-            clockMs = { 1_000L },
+            clockMs = { SoloSingFixtures.PlaybackClockMs },
             audioFocusController = FakeAudioFocusController(shouldGrant = false),
         )
 
-        controller.handle(PlaybackIntent.Play(stopAtLyricsTimeMs = 120_000L))
+        controller.handle(PlaybackIntent.Play)
 
         assertEquals(0, handle.playCallCount)
         assertEquals(
@@ -51,10 +54,10 @@ class PlaybackControllerControlsTest {
         val focus = FakeAudioFocusController()
         val controller = DefaultPlaybackController(
             audioHandle = handle,
-            clockMs = { 1_000L },
+            clockMs = { SoloSingFixtures.PlaybackClockMs },
             audioFocusController = focus,
         )
-        controller.handle(PlaybackIntent.Play(stopAtLyricsTimeMs = 120_000L))
+        controller.handle(PlaybackIntent.Play)
 
         controller.onAudioFocusChanged(AudioFocusChange.TransientLoss)
         controller.onAudioFocusChanged(AudioFocusChange.Gain)
@@ -74,20 +77,26 @@ class PlaybackControllerControlsTest {
         val focus = FakeAudioFocusController()
         val controller = DefaultPlaybackController(
             audioHandle = handle,
-            clockMs = { 1_000L },
+            clockMs = { SoloSingFixtures.PlaybackClockMs },
             audioFocusController = focus,
         )
 
-        controller.handle(PlaybackIntent.Play(stopAtLyricsTimeMs = 120_000L))
+        controller.handle(PlaybackIntent.Play)
         assertEquals(1, focus.requestCallCount)
         assertEquals(0, focus.abandonCallCount)
 
-        // Restart: Stop abandons, Prepare resets timing, Play re-requests.
         controller.handle(PlaybackIntent.Stop)
         assertEquals(1, focus.abandonCallCount)
 
-        controller.handle(PlaybackIntent.Prepare("http://phone/audio.mp3", null, null, 1.5f, 120_000L))
-        controller.handle(PlaybackIntent.Play(stopAtLyricsTimeMs = 120_000L))
+        controller.handle(
+            PlaybackIntent.Prepare(
+                SoloSingFixtures.PlaybackAudioUrl,
+                null,
+                null,
+                1.5f,
+            ),
+        )
+        controller.handle(PlaybackIntent.Play)
         assertEquals(2, focus.requestCallCount)
         assertEquals(1, focus.abandonCallCount)
     }
@@ -98,10 +107,10 @@ class PlaybackControllerControlsTest {
         val focus = FakeAudioFocusController()
         val controller = DefaultPlaybackController(
             audioHandle = handle,
-            clockMs = { 1_000L },
+            clockMs = { SoloSingFixtures.PlaybackClockMs },
             audioFocusController = focus,
         )
-        controller.handle(PlaybackIntent.Play(stopAtLyricsTimeMs = 120_000L))
+        controller.handle(PlaybackIntent.Play)
 
         controller.onAudioFocusChanged(AudioFocusChange.PermanentLoss)
 
@@ -124,14 +133,14 @@ class PlaybackControllerControlsTest {
         }
     }
 
-    private class FakeHandle : LibVlcPlayerHandle {
+    private class FakeHandle : LibVlcPlayerHandle, PreparedDurationProvider {
         override var timeMs: Long = 0L
         override val durationMs: Long? = 180_000L
+        override val events = MutableSharedFlow<LibVlcEvent>(extraBufferCapacity = 8)
         var playCallCount = 0
         var pauseCallCount = 0
         var stopCallCount = 0
-        override fun setEventListener(listener: (LibVlcEvent) -> Unit) = Unit
-        override fun prepare(url: String) = Unit
+        override fun prepare(mediaUrl: String, seekToSec: Float) = Unit
         override fun play() {
             playCallCount++
         }
@@ -144,6 +153,7 @@ class PlaybackControllerControlsTest {
         override fun seekTo(positionMs: Long) {
             timeMs = positionMs
         }
+        override fun setVolume(percent: Int) = Unit
         override fun release() = Unit
     }
 }

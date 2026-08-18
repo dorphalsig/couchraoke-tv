@@ -114,7 +114,7 @@ class NetworkControllerContractTest {
             lyricsTimeMs = 0L,
             stopAtLyricsTimeMs = SoloSingFixtures.StopAtLyricsTimeMs,
             countdownRemainingMs = 3_000,
-            reason = "song_start",
+            reason = PlaybackStateReason.Unspecified,
             tsTvMs = 123_456L,
         )
 
@@ -135,7 +135,7 @@ class NetworkControllerContractTest {
             state = PlaybackNetworkState.Playing,
             lyricsTimeMs = 0L,
             stopAtLyricsTimeMs = SoloSingFixtures.StopAtLyricsTimeMs,
-            reason = "",
+            reason = PlaybackStateReason.Unspecified,
         )
 
         assertEquals("playing", message.state.wireValue)
@@ -163,7 +163,7 @@ class NetworkControllerContractTest {
             state = PlaybackNetworkState.Playing,
             lyricsTimeMs = 0L,
             stopAtLyricsTimeMs = SoloSingFixtures.StopAtLyricsTimeMs,
-            reason = "",
+            reason = PlaybackStateReason.Unspecified,
         )
 
         val assignSingerEnvelope: NetworkMessage = assignSinger

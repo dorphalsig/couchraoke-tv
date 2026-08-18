@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,7 +31,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
@@ -49,6 +52,7 @@ import com.couchraoke.tv.ui.theme.SongCardFocusedArtistSlotHeight
 import com.couchraoke.tv.ui.theme.SongCardHeight
 import com.couchraoke.tv.ui.theme.SongCardImageCornerRadius
 import com.couchraoke.tv.ui.theme.SongCardImageHeight
+import com.couchraoke.tv.ui.theme.SongCardImageToTitleGap
 import com.couchraoke.tv.ui.theme.SongCardMaxVisibleTags
 import com.couchraoke.tv.ui.theme.SongCardPadding
 import com.couchraoke.tv.ui.theme.SongCardTagCornerInset
@@ -77,6 +81,13 @@ internal fun SongCard(
     useLeftPanelTarget: Boolean,
     onFocused: () -> Unit,
     onSelected: () -> Unit,
+    cardHeight: Dp = SongCardHeight,
+    cardImageHeight: Dp = SongCardImageHeight,
+    cardImageWidth: Dp? = null,
+    cardPadding: Dp = SongCardPadding,
+    cardImageToTitleGap: Dp = SongCardImageToTitleGap,
+    titleStyle: TextStyle = SongCardTitle,
+    titleMaxLines: Int = SongCardTitleMaxLines,
 ) {
     var focused by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
@@ -85,7 +96,7 @@ internal fun SongCard(
     Surface(
         modifier = Modifier
             .then(cardFocusModifier)
-            .height(SongCardHeight)
+            .height(cardHeight)
             .testTag("song-card-${song.songId}")
             .onFocusChanged { focusState ->
                 focused = focusState.isFocused
@@ -98,49 +109,58 @@ internal fun SongCard(
             .border(cardBorder(focused), CARD_SHAPE)
             .padding(FocusBorderInset),
         shape = CARD_SHAPE,
-        colors = SurfaceDefaults.colors(containerColor = SURFACE_MUTED),
+        colors = SurfaceDefaults.colors(
+            containerColor = SURFACE_MUTED,
+        ),
     ) {
-        SongCardBody(song, focused, weakArtwork, interactionSource, onSelected)
-    }
-}
-
-@Composable
-private fun SongCardBody(
-    song: IndexedSong,
-    focused: Boolean,
-    weakArtwork: Boolean,
-    interactionSource: MutableInteractionSource,
-    onSelected: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(if (focused) FOCUS_PLATE else Color.Transparent)
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onSelected)
-            .padding(SongCardPadding),
-    ) {
-        SongArtwork(song = song, weakArtwork = weakArtwork)
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = song.title,
-            modifier = Modifier.testTag("song-card-title-${song.songId}"),
-            maxLines = SongCardTitleMaxLines,
-            overflow = TextOverflow.Ellipsis,
-            style = SongCardTitle,
-        )
-        Spacer(modifier = Modifier.height(SongCardTitleToArtistGap))
-        Box(modifier = Modifier.height(SongCardFocusedArtistSlotHeight)) {
-            if (focused || weakArtwork) ArtistText(song = song, weakArtwork = weakArtwork)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(if (focused) FOCUS_PLATE else Color.Transparent)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onSelected,
+                )
+                .padding(cardPadding),
+        ) {
+            SongArtwork(
+                song = song,
+                weakArtwork = weakArtwork,
+                imageHeight = cardImageHeight,
+                imageWidth = cardImageWidth,
+            )
+            Spacer(modifier = Modifier.height(cardImageToTitleGap))
+            SongTitle(song = song, titleStyle = titleStyle, titleMaxLines = titleMaxLines)
+            Spacer(modifier = Modifier.height(SongCardTitleToArtistGap))
+            Box(modifier = Modifier.height(SongCardFocusedArtistSlotHeight)) {
+                if (focused || weakArtwork) ArtistText(song = song, weakArtwork = weakArtwork)
+            }
         }
     }
 }
 
 @Composable
-private fun SongArtwork(song: IndexedSong, weakArtwork: Boolean) {
+private fun SongTitle(song: IndexedSong, titleStyle: TextStyle, titleMaxLines: Int) {
+    Text(
+        text = song.title,
+        modifier = Modifier.testTag("song-card-title-${song.songId}"),
+        maxLines = titleMaxLines,
+        overflow = TextOverflow.Ellipsis,
+        style = titleStyle,
+    )
+}
+
+@Composable
+private fun SongArtwork(song: IndexedSong, weakArtwork: Boolean, imageHeight: Dp, imageWidth: Dp?) {
+    val sizeModifier = if (imageWidth == null) {
+        Modifier.fillMaxWidth().height(imageHeight)
+    } else {
+        Modifier.width(imageWidth).height(imageHeight)
+    }
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(SongCardImageHeight)
+        modifier = sizeModifier
+            .testTag("song-card-artwork-${song.songId}")
             .clip(IMAGE_SHAPE)
             .background(SURFACE_MUTED),
     ) {
@@ -185,13 +205,14 @@ private fun SongTags(song: IndexedSong) {
         if (song.isDuet) add("D")
         if (song.canMedley) add("M")
         if (song.hasRap) add("R")
-        if (song.genre.equals("Instrumental", ignoreCase = true)) add("I")
+        if (song.hasInstrumental) add("I")
         if (song.hasVideo) add("V")
     }.take(SongCardMaxVisibleTags)
     Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(SongCardTagGap)) {
         tags.forEach { tag ->
             Box(
                 modifier = Modifier
+                    .testTag("song-card-tag-${song.songId}-$tag")
                     .clip(RoundedCornerShape(999.dp))
                     .background(CHIP_BACKGROUND)
                     .border(BorderStroke(BorderThin, BORDER_SUBTLE), RoundedCornerShape(999.dp))

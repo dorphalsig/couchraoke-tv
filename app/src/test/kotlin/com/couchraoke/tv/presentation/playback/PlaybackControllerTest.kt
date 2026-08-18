@@ -1,5 +1,7 @@
 package com.couchraoke.tv.presentation.playback
 
+import com.couchraoke.tv.fixtures.SoloSingFixtures
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -8,25 +10,51 @@ import org.junit.Test
 
 class PlaybackControllerTest {
     @Test(timeout = 30_000)
-    fun prepareRegistersSingleListenerBeforePlayAndEmitsPrepared() = runBlocking {
-        val handle = FakeHandle(duration = 123_000L)
-        val controller = DefaultPlaybackController(audioHandle = handle, clockMs = { 1_000L })
+    fun prepareDelegatesDocumentedMediaSeekAndEmitsPrepared() = runBlocking {
+        val handle = FakeHandle(duration = SoloSingFixtures.ReportedPlaybackDurationMs)
+        val controller = DefaultPlaybackController(
+            audioHandle = handle,
+            clockMs = { SoloSingFixtures.PlaybackClockMs },
+            audioFocusController = FakeAudioFocusController(),
+        )
 
-        controller.handle(PlaybackIntent.Prepare("http://phone/audio.mp3", null, null, 0f, 120_000L))
-        controller.handle(PlaybackIntent.Play(120_000L))
+        controller.handle(
+            PlaybackIntent.Prepare(
+                SoloSingFixtures.PlaybackAudioUrl,
+                null,
+                null,
+                2.5f,
+            ),
+        )
+        controller.handle(PlaybackIntent.Play)
 
-        assertEquals(1, handle.listenerRegistrationCount)
-        assertTrue(handle.listenerRegisteredBeforePlay)
-        assertEquals(PlaybackEvent.Prepared(123_000L), controller.events.single())
+        assertEquals(SoloSingFixtures.PlaybackAudioUrl, handle.preparedUrl)
+        assertEquals(2.5f, handle.preparedSeekSec)
+        assertTrue(handle.preparedBeforePlay)
+        assertEquals(
+            PlaybackEvent.Prepared(SoloSingFixtures.ReportedPlaybackDurationMs),
+            controller.events.single(),
+        )
     }
 
     @Test(timeout = 30_000)
     fun firstPlayingComputesSongStartTvMsFromClockMinusHandleTime() = runBlocking {
         val handle = FakeHandle(timeMs = 0L)
-        val controller = DefaultPlaybackController(audioHandle = handle, clockMs = { 10_000L })
+        val controller = DefaultPlaybackController(
+            audioHandle = handle,
+            clockMs = { SoloSingFixtures.PlaybackReadyClockMs },
+            audioFocusController = FakeAudioFocusController(),
+        )
 
-        controller.handle(PlaybackIntent.Prepare("http://phone/audio.mp3", null, null, 2.5f, 120_000L))
-        controller.handle(PlaybackIntent.Play(120_000L))
+        controller.handle(
+            PlaybackIntent.Prepare(
+                SoloSingFixtures.PlaybackAudioUrl,
+                null,
+                null,
+                2.5f,
+            ),
+        )
+        controller.handle(PlaybackIntent.Play)
         handle.emit(LibVlcEvent.Playing)
 
         assertEquals(PlaybackEvent.Ready(7_500L), controller.events.last())
@@ -34,33 +62,60 @@ class PlaybackControllerTest {
 
     @Test(timeout = 30_000)
     fun fallbackReadyUsesPlayTimeWhenPlayingDoesNotArriveWithin500Ms() = runBlocking {
-        var now = 5_000L
-        val controller = DefaultPlaybackController(audioHandle = FakeHandle(), clockMs = { now })
+        var now = SoloSingFixtures.PlaybackFallbackStartMs
+        val controller = DefaultPlaybackController(
+            audioHandle = FakeHandle(),
+            clockMs = { now },
+            audioFocusController = FakeAudioFocusController(),
+        )
 
-        controller.handle(PlaybackIntent.Prepare("http://phone/audio.mp3", null, null, 0f, 120_000L))
-        controller.handle(PlaybackIntent.Play(120_000L))
-        now = 5_500L
+        controller.handle(
+            PlaybackIntent.Prepare(
+                SoloSingFixtures.PlaybackAudioUrl,
+                null,
+                null,
+                0f,
+            ),
+        )
+        controller.handle(PlaybackIntent.Play)
+        now = SoloSingFixtures.PlaybackFallbackReadyMs
         controller.tick()
 
-        assertEquals(PlaybackEvent.Ready(5_000L), controller.events.last())
+        assertEquals(PlaybackEvent.Ready(SoloSingFixtures.PlaybackFallbackStartMs), controller.events.last())
     }
 
     @Test(timeout = 30_000)
-    fun tickEmitsFallbackReadyAndEnforcesStopBoundary() = runBlocking {
+    fun tickEmitsFallbackReadyAndEnforcesStopBoundaryFromCoordinatorState() = runBlocking {
         val handle = FakeHandle(timeMs = 0L)
-        var now = 1_000L
-        val controller = DefaultPlaybackController(audioHandle = handle, clockMs = { now })
+        var now = SoloSingFixtures.PlaybackClockMs
+        val controller = DefaultPlaybackController(
+            audioHandle = handle,
+            clockMs = { now },
+            audioFocusController = FakeAudioFocusController(),
+            stopAtLyricsTimeMs = { SoloSingFixtures.PreparedDurationMs },
+        )
 
-        controller.handle(PlaybackIntent.Prepare("http://phone/audio.mp3", null, null, 0f, null))
-        controller.handle(PlaybackIntent.Play(120_000L))
-        now = 1_500L
+        controller.handle(
+            PlaybackIntent.Prepare(
+                SoloSingFixtures.PlaybackAudioUrl,
+                null,
+                null,
+                0f,
+            ),
+        )
+        controller.handle(PlaybackIntent.Play)
+        now = SoloSingFixtures.PlaybackClockMs + 500L
         controller.tick()
-        handle.timeMs = 120_000L
+        handle.timeMs = SoloSingFixtures.PreparedDurationMs
         controller.tick()
 
         assertTrue(handle.stopped)
         assertEquals(
-            listOf(PlaybackEvent.Prepared(180_000L), PlaybackEvent.Ready(1_000L), PlaybackEvent.Ended),
+            listOf(
+                PlaybackEvent.Prepared(SoloSingFixtures.FallbackPlaybackDurationMs),
+                PlaybackEvent.Ready(SoloSingFixtures.PlaybackClockMs),
+                PlaybackEvent.Ended,
+            ),
             controller.events,
         )
     }
@@ -68,24 +123,38 @@ class PlaybackControllerTest {
     @Test(timeout = 30_000)
     fun pauseStopAndSeekIntentsCallUnderlyingHandle() = runBlocking {
         val handle = FakeHandle(timeMs = 0L)
-        val controller = DefaultPlaybackController(audioHandle = handle, clockMs = { 0L })
+        val controller = DefaultPlaybackController(
+            audioHandle = handle,
+            clockMs = { 0L },
+            audioFocusController = FakeAudioFocusController(),
+        )
 
         controller.handle(PlaybackIntent.Pause)
-        controller.handle(PlaybackIntent.Seek(positionMs = 42_000L))
+        controller.handle(PlaybackIntent.Seek(positionMs = SoloSingFixtures.SeekPositionMs))
         controller.handle(PlaybackIntent.Stop)
 
         assertTrue(handle.paused)
         assertTrue(handle.stopped)
-        assertEquals(42_000L, handle.timeMs)
-        assertEquals(42_000L, controller.currentPositionMs)
+        assertEquals(SoloSingFixtures.SeekPositionMs, handle.timeMs)
+        assertEquals(SoloSingFixtures.SeekPositionMs, controller.currentPositionMs)
     }
 
     @Test(timeout = 30_000)
     fun medleyOnlyIntentsRemainNoOpsInIteration1() = runBlocking {
         val handle = FakeHandle(timeMs = 0L)
-        val controller = DefaultPlaybackController(audioHandle = handle, clockMs = { 0L })
+        val controller = DefaultPlaybackController(
+            audioHandle = handle,
+            clockMs = { 0L },
+            audioFocusController = FakeAudioFocusController(),
+        )
 
-        controller.handle(PlaybackIntent.PrebufferNext("next.mp3", videoUrl = null, seekToSec = 0f))
+        controller.handle(
+            PlaybackIntent.PrebufferNext(
+                SoloSingFixtures.NextPreviewAudioUrl,
+                videoUrl = null,
+                seekToSec = 0f,
+            ),
+        )
         controller.handle(PlaybackIntent.FadeOut(durationSec = 0.3f))
         controller.handle(PlaybackIntent.Crossfade(fadeOutSec = 0.3f, fadeInSec = 0.3f))
 
@@ -96,38 +165,59 @@ class PlaybackControllerTest {
     @Test(timeout = 30_000)
     fun fallbackDoesNothingBeforePlayOrWhenReadyAlreadyEmitted() = runBlocking {
         val handle = FakeHandle(timeMs = 0L)
-        var now = 10_000L
-        val controller = DefaultPlaybackController(audioHandle = handle, clockMs = { now })
+        var now = SoloSingFixtures.PlaybackReadyClockMs
+        val controller = DefaultPlaybackController(
+            audioHandle = handle,
+            clockMs = { now },
+            audioFocusController = FakeAudioFocusController(),
+        )
 
         controller.tick()
         assertTrue(controller.events.isEmpty())
 
-        controller.handle(PlaybackIntent.Prepare("http://phone/audio.mp3", null, null, 0f, 120_000L))
-        controller.handle(PlaybackIntent.Play(120_000L))
+        controller.handle(
+            PlaybackIntent.Prepare(
+                SoloSingFixtures.PlaybackAudioUrl,
+                null,
+                null,
+                0f,
+            ),
+        )
+        controller.handle(PlaybackIntent.Play)
         handle.emit(LibVlcEvent.Playing)
-        now = 11_000L
+        now = SoloSingFixtures.PlaybackReadyClockMs + SoloSingFixtures.PlaybackClockMs
         controller.tick()
 
         assertEquals(2, controller.events.size)
-        assertEquals(PlaybackEvent.Ready(10_000L), controller.events.last())
+        assertEquals(PlaybackEvent.Ready(SoloSingFixtures.PlaybackReadyClockMs), controller.events.last())
     }
 
     @Test(timeout = 30_000)
-    fun audioEventsEmitEndedAndPlayerErrorAndIgnorePreparedPausedStopped() = runBlocking {
+    fun audioEventsEmitEndedAndPlayerErrorAndIgnorePausedAndTimeChanged() = runBlocking {
         val handle = FakeHandle(timeMs = 0L)
-        val controller = DefaultPlaybackController(audioHandle = handle, clockMs = { 10_000L })
+        val controller = DefaultPlaybackController(
+            audioHandle = handle,
+            clockMs = { SoloSingFixtures.PlaybackReadyClockMs },
+            audioFocusController = FakeAudioFocusController(),
+        )
 
-        controller.handle(PlaybackIntent.Prepare("http://phone/audio.mp3", null, null, 0f, 120_000L))
-        handle.emit(LibVlcEvent.Prepared)
+        controller.handle(
+            PlaybackIntent.Prepare(
+                SoloSingFixtures.PlaybackAudioUrl,
+                null,
+                null,
+                0f,
+            ),
+        )
         handle.emit(LibVlcEvent.Paused)
-        handle.emit(LibVlcEvent.Stopped)
+        handle.emit(LibVlcEvent.TimeChanged(123L))
         handle.emit(LibVlcEvent.EndReached)
-        handle.emit(LibVlcEvent.EncounteredError("last warning"))
+        handle.emit(LibVlcEvent.EncounteredError(SoloSingFixtures.LastWarningLine))
 
         assertEquals(PlaybackEvent.Ended, controller.events[1])
         assertEquals(
             PlaybackEvent.Error(
-                PlaybackErrorCause.PlayerError(lastWarningOrError = "last warning"),
+                PlaybackErrorCause.PlayerError(lastWarningOrError = SoloSingFixtures.LastWarningLine),
             ),
             controller.events[2],
         )
@@ -135,22 +225,96 @@ class PlaybackControllerTest {
 
     @Test(timeout = 30_000)
     fun stopBoundaryDoesNothingBeforePreparedBoundaryOrBelowThreshold() = runBlocking {
-        val handle = FakeHandle(timeMs = 5_000L)
-        val controller = DefaultPlaybackController(audioHandle = handle, clockMs = { 0L })
+        val handle = FakeHandle(timeMs = SoloSingFixtures.PlaybackFallbackStartMs)
+        val controller = DefaultPlaybackController(
+            audioHandle = handle,
+            clockMs = { 0L },
+            audioFocusController = FakeAudioFocusController(),
+            stopAtLyricsTimeMs = { SoloSingFixtures.PreparedDurationMs },
+        )
 
         controller.tick()
         assertFalse(handle.stopped)
 
-        controller.handle(PlaybackIntent.Prepare("http://phone/audio.mp3", null, null, 0f, 120_000L))
+        controller.handle(
+            PlaybackIntent.Prepare(
+                SoloSingFixtures.PlaybackAudioUrl,
+                null,
+                null,
+                0f,
+            ),
+        )
         controller.tick()
         assertFalse(handle.stopped)
     }
 
     @Test(timeout = 30_000)
-    fun prepareFailsWhenNeitherChartBoundaryNorAudioDurationIsUsable() = runBlocking {
-        val controller = DefaultPlaybackController(audioHandle = FakeHandle(duration = null), clockMs = { 0L })
+    fun tickResyncsDecorativeVideoToAuthoritativeAudioTime() = runBlocking {
+        val audio = FakeHandle(timeMs = SoloSingFixtures.AuthoritativeAudioTimeMs)
+        val video = FakeHandle(timeMs = 0L)
+        val controller = DefaultPlaybackController(
+            audioHandle = audio,
+            videoHandle = video,
+            clockMs = { 0L },
+            audioFocusController = FakeAudioFocusController(),
+            stopAtLyricsTimeMs = { SoloSingFixtures.PreparedDurationMs },
+        )
 
-        controller.handle(PlaybackIntent.Prepare("http://phone/audio.mp3", null, null, 0f, null))
+        controller.handle(
+            PlaybackIntent.Prepare(
+                SoloSingFixtures.PlaybackAudioUrl,
+                SoloSingFixtures.PlaybackAviVideoUrl,
+                -4.1f,
+                0f,
+            ),
+        )
+        controller.handle(PlaybackIntent.Play)
+        audio.timeMs = SoloSingFixtures.AuthoritativeAudioTimeMs
+        video.timeMs = SoloSingFixtures.InitialVideoTimeMs
+        controller.tick()
+
+        assertEquals(SoloSingFixtures.SyncedVideoTimeMs, video.timeMs)
+    }
+
+    @Test(timeout = 30_000)
+    fun prepareWithoutVideoClearsDecorativeVideoAvailability() = runBlocking {
+        val fallbackStates = mutableListOf<Boolean>()
+        val controller = DefaultPlaybackController(
+            audioHandle = FakeHandle(),
+            videoHandle = FakeHandle(),
+            clockMs = { 0L },
+            audioFocusController = FakeAudioFocusController(),
+            onDecorativeVideoAvailableChanged = fallbackStates::add,
+        )
+
+        controller.handle(
+            PlaybackIntent.Prepare(
+                SoloSingFixtures.PlaybackAudioUrl,
+                null,
+                null,
+                0f,
+            ),
+        )
+
+        assertEquals(listOf(false), fallbackStates)
+    }
+
+    @Test(timeout = 30_000)
+    fun prepareFailsWhenAudioDurationIsUnavailable() = runBlocking {
+        val controller = DefaultPlaybackController(
+            audioHandle = FakeHandle(duration = null),
+            clockMs = { 0L },
+            audioFocusController = FakeAudioFocusController(),
+        )
+
+        controller.handle(
+            PlaybackIntent.Prepare(
+                SoloSingFixtures.PlaybackAudioUrl,
+                null,
+                null,
+                0f,
+            ),
+        )
 
         assertEquals(
             PlaybackEvent.Error(PlaybackErrorCause.AudioUnavailable("No usable playback duration.")),
@@ -158,59 +322,31 @@ class PlaybackControllerTest {
         )
     }
 
-    @Test(timeout = 30_000)
-    fun vlcHandleAdapterEmitsEventsAndClampsSeekUntilReleased() {
-        val handle = VlcLibVlcPlayerHandle()
-        val events = mutableListOf<LibVlcEvent>()
-        handle.setEventListener(events::add)
-
-        handle.prepare("http://phone/audio.mp3")
-        handle.seekTo(-1_000L)
-        handle.play()
-        handle.pause()
-        handle.stop()
-        handle.release()
-        handle.play()
-
-        assertEquals(0L, handle.timeMs)
-        assertEquals(0L, handle.durationMs)
-        assertEquals(
-            listOf(LibVlcEvent.Prepared, LibVlcEvent.Playing, LibVlcEvent.Paused, LibVlcEvent.Stopped),
-            events,
-        )
-    }
-
-    @Test(timeout = 30_000)
-    fun vlcHandleRejectsBlankPrepareUrl() {
-        val handle = VlcLibVlcPlayerHandle()
-
-        try {
-            handle.prepare("")
-            throw AssertionError("Expected blank URL rejection")
-        } catch (expected: IllegalArgumentException) {
-            assertTrue(expected.message?.contains("Failed requirement") == true)
-        }
+    private class FakeAudioFocusController : AudioFocusController {
+        override fun requestAudioFocus(): Boolean = true
+        override fun abandonAudioFocus() = Unit
     }
 
     private class FakeHandle(
         override var timeMs: Long = 0L,
-        duration: Long? = 180_000L,
-    ) : LibVlcPlayerHandle {
+        duration: Long? = SoloSingFixtures.FallbackPlaybackDurationMs,
+    ) : LibVlcPlayerHandle, PreparedDurationProvider {
         override var durationMs: Long? = duration
-        var listenerRegistrationCount = 0
-        var listenerRegisteredBeforePlay = false
+        override val events = MutableSharedFlow<LibVlcEvent>(extraBufferCapacity = 8)
+        var preparedUrl: String? = null
+        var preparedSeekSec: Float? = null
+        var preparedBeforePlay = false
         var playCallCount = 0
         var paused = false
         var stopped = false
-        private var listener: ((LibVlcEvent) -> Unit)? = null
-        override fun setEventListener(listener: (LibVlcEvent) -> Unit) {
-            listenerRegistrationCount++
-            this.listener = listener
+        override fun prepare(mediaUrl: String, seekToSec: Float) {
+            preparedUrl = mediaUrl
+            preparedSeekSec = seekToSec
+            timeMs = (seekToSec * 1_000).toLong()
         }
-        override fun prepare(url: String) = Unit
         override fun play() {
+            preparedBeforePlay = preparedUrl != null
             playCallCount++
-            listenerRegisteredBeforePlay = listener != null
         }
         override fun pause() {
             paused = true
@@ -221,9 +357,10 @@ class PlaybackControllerTest {
         override fun seekTo(positionMs: Long) {
             timeMs = positionMs
         }
+        override fun setVolume(percent: Int) = Unit
         override fun release() = Unit
         fun emit(event: LibVlcEvent) {
-            listener?.invoke(event)
+            events.tryEmit(event)
         }
     }
 }

@@ -33,6 +33,7 @@ androidx-tv-material = { group = "androidx.tv", name = "tv-material", version.re
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExt" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version = "1.7.0" }
 coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
 jmdns = { group = "org.jmdns", name = "jmdns", version.ref = "jmdns" }
 junit = { group = "junit", name = "junit", version = "4.13.2" }
