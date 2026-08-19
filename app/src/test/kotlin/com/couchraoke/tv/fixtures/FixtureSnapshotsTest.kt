@@ -35,9 +35,13 @@ class FixtureSnapshotsTest {
     fun decodesF08Score() {
         val path = FixturePaths.fixtureFile("F08_scoring_beat_stepping_interval_semantics", "expected.score.json")
         val snapshot = FixtureJson.decode<ScoreSnapshot>(path)
+        val noteWindow = requireNotNull(snapshot.noteWindow)
+
         assertNotNull(snapshot.assumptions)
         assertNotNull(snapshot.expectedTotals)
-        assertEquals(snapshot.perBeat.sortedBy(ScorePerBeat::beat), snapshot.ordered().perBeat)
+        assertTrue(snapshot.perBeat.isEmpty())
+        assertEquals(listOf(1L, 2L), noteWindow.qualifyingFrameSeq)
+        assertEquals(noteWindow.samplesInNote, noteWindow.hits)
     }
 
     @Test(timeout = 30_000)
@@ -47,7 +51,17 @@ class FixtureSnapshotsTest {
             "songs_root/a/valid_duet_interleaved/expected.parsedSong.json",
         )
         val snapshot = FixtureJson.decode<ParsedSongSnapshot>(path)
-        assertEquals(snapshot.tracks.sortedBy(ParsedSongTrack::trackIndex), snapshot.ordered().tracks)
+        assertEquals(snapshot.tracks.sortedBy(ParsedSongTrack::playerId), snapshot.ordered().tracks)
+    }
+
+    @Test(timeout = 30_000)
+    fun decodesF03PlayerScores() {
+        val path = FixturePaths.fixtureFile(
+            "F03_body_grammar_token_recognition",
+            "scoring/all_freestyle/expected.score.json",
+        )
+        val snapshot = FixtureJson.decode<PlayerScoresSnapshot>(path)
+        assertEquals(0, snapshot.playerScores.getValue("P1").scoreTotalInt)
     }
 
     @Test(timeout = 30_000)
