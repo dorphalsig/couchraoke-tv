@@ -102,7 +102,7 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
     )
 }
 
-@Preview(name = "Home", widthDp = 1920, heightDp = 1080)
+@Preview(name = "Home", showBackground = true)
 @Composable
 fun GreetingPreview() {
     CouchraokeTheme {

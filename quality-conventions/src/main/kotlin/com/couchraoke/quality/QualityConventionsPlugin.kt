@@ -205,6 +205,15 @@ class QualityConventionsPlugin : Plugin<Project> {
             description = "Runs selective tests, detekt, and jacoco on provided FQCNs."
         }
 
+        // Screenshots are a verify gate, not a record step: recording always passes and so can
+        // never catch a layout regression. Opt into recording explicitly with -ProborazziRecord=true
+        // (or the dotted alias, which needs quoting on PowerShell).
+        val recordScreenshots = project.providers
+            .gradleProperty("roborazziRecord")
+            .orElse(project.providers.gradleProperty("roborazzi.record"))
+            .map(String::toBoolean)
+            .getOrElse(false)
+
         val srcProvider = testBranch.flatMap { it.srcSelectors }
         val testProvider = testBranch.flatMap { it.testSelectors }
 
@@ -220,9 +229,17 @@ class QualityConventionsPlugin : Plugin<Project> {
 
         val testBranchRoborazzi = project.tasks.register<Test>("testBranchRoborazzi") {
             group = "verification"
-            description = "Runs selective screenshots with Roborazzi."
+            description = if (recordScreenshots) {
+                "Records selective Roborazzi baselines (-ProborazziRecord=true)."
+            } else {
+                "Verifies selective screenshots against committed Roborazzi baselines."
+            }
             useJUnit()
-            systemProperty("roborazzi.test.record", "true")
+            if (recordScreenshots) {
+                systemProperty("roborazzi.test.record", "true")
+            } else {
+                systemProperty("roborazzi.test.verify", "true")
+            }
             systemProperty("robolectric.pixelCopyRenderMode", "hardware")
             extensions.configure(JacocoTaskExtension::class.java) {
                 isIncludeNoLocationClasses = true
