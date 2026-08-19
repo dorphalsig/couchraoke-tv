@@ -86,6 +86,7 @@ Scoped `testBranch` per phase, listed in each phase below. Two rules apply throu
   --test com.couchraoke.tv.domain.control.ControlMessageCodecFixtureTest `
   --test com.couchraoke.tv.domain.session.SessionCoordinatorTest `
   --test com.couchraoke.tv.presentation.join.JoinViewModelTest `
+  --test com.couchraoke.tv.presentation.join.JoinOverlayBoundsTest `
   --test com.couchraoke.tv.presentation.qr.QrPayloadEncoderTest
 ```
 

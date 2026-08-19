@@ -75,14 +75,15 @@ Referred to below as **`«main»/`** and **`«test»/`**.
 ### Composition and host shell
 
 - [ ] T022 Implement `SessionCoordinator` in `«main»/domain/session/SessionCoordinator.kt` with the full surface from contracts/domain-api.md, plus `SessionEvent.kt`. In this phase implement construction, the two `StateFlow`s, `events`, `requestPhase` delegating to the machine, and `end()`. `authorize` and `admit` are stubbed to be filled by US1 and US2.
-- [ ] T023 Implement `SessionComponent` in `«main»/di/SessionComponent.kt` — manual construction of the coordinator from the four injected ports plus the generator and clock. No DI framework.
-- [ ] T024 Move the multicast lock out of activity scope in `«main»/MainActivity.kt`: delete the `onStart`/`onStop` acquire/release and let the session own the `MulticastLease`, acquired at session start and released when the session ends (FR-005, research.md R5). As written, discovery dies whenever the user switches TV inputs while the session is still live.
-- [ ] T025 [P] Create the song-selection shell in `«main»/presentation/songlist/SongListScreen.kt`: an empty-state surface with a header Join action, since no library exists in this slice (FR-029). Host it from `MainActivity`.
+- [ ] T023 Implement `SessionComponent` in `«main»/di/SessionComponent.kt` — manual construction of the coordinator from the four injected ports plus the generator and clock. No DI framework. This is also where the `SessionId` is **generated**: mint a fresh opaque non-empty identifier per session, unique among the sessions this TV creates (FR-001). No other task owns its creation; `SessionCoordinator` only receives it.
+- [ ] T024 Write `SessionCoordinatorTest` in `«test»/domain/session/SessionCoordinatorTest.kt`, creating the file, and assert session identity: the `SessionId` handed to the coordinator is non-empty, and constructing many sessions through `SessionComponent` yields no repeat (FR-001). Later tasks extend this same file, and it is already named in plan.md's completion gate.
+- [ ] T025 Move the multicast lock out of activity scope in `«main»/MainActivity.kt`: delete the `onStart`/`onStop` acquire/release and let the session own the `MulticastLease`, acquired at session start and released when the session ends (FR-005, research.md R5). As written, discovery dies whenever the user switches TV inputs while the session is still live.
+- [ ] T026 Create the song-selection shell in `«main»/presentation/songlist/SongListScreen.kt`: an empty-state surface with a header Join action, since no library exists in this slice (FR-029). Host it from `MainActivity`. Not parallel with T025 — both edit `MainActivity.kt`.
 
 ### Loopback harness
 
-- [ ] T026 Build the peer-driving harness in `«test»/gate/MockPhonePeer.kt`: launch `uv run mock-phone` as a subprocess with the given flags, capture stdout, parse the single `JOIN_RESULT {…}` JSON line, and expose the exit status plus the parsed fields. Map the statuses per quickstart.md — **exit 4 and exit 6 must be surfaced as assertion failures with an explanatory message**, not as generic non-zero exits: 4 means a refusal closed without delivering its reason (FR-016/FR-017) and 6 means the 5-second deadline was never enforced.
-- [ ] T027 Create `«test»/gate/LoopbackJoinGateTest.kt` with a JUnit rule that starts the real `KtorControlTransport` on port 0 against a real `SessionCoordinator`, exposes `boundPort`, and tears down after each test. No in-process transport fake anywhere in this file (FR-039). Leave the per-story cases to T036, T046 and T054.
+- [ ] T027 Build the peer-driving harness in `«test»/gate/MockPhonePeer.kt`: launch `uv run mock-phone` as a subprocess with the given flags, capture stdout, parse the single `JOIN_RESULT {…}` JSON line, and expose the exit status plus the parsed fields. Map the statuses per quickstart.md — **exit 4 and exit 6 must be surfaced as assertion failures with an explanatory message**, not as generic non-zero exits: 4 means a refusal closed without delivering its reason (FR-016/FR-017) and 6 means the 5-second deadline was never enforced.
+- [ ] T028 Create `«test»/gate/LoopbackJoinGateTest.kt` with a JUnit rule that starts the real `KtorControlTransport` on port 0 against a real `SessionCoordinator`, exposes `boundPort`, and tears down after each test. No in-process transport fake anywhere in this file (FR-039). Leave the per-story cases to T037, T047 and T055.
 
 **Checkpoint**: Foundation ready. Gate:
 
@@ -108,23 +109,23 @@ Referred to below as **`«main»/`** and **`«test»/`**.
 
 > Write these first and confirm they fail before implementing.
 
-- [ ] T028 [P] [US1] Write `JoinCodeGeneratorTest` in `«test»/domain/session/JoinCodeGeneratorTest.kt`: a seeded `Random` yields a deterministic pair, `display` renders `ADJECTIVE-NOUN` uppercase, and no code repeats across many generations (FR-003).
-- [ ] T029 [P] [US1] Write `SessionRosterTest` in `«test»/domain/session/SessionRosterTest.kt` for the admit path only: a new device is `Admitted`, size grows by one, and `connected` reflects it. Capacity and reclaim belong to US2 and US3.
-- [ ] T030 [P] [US1] Write `QrPayloadEncoderTest` in `«test»/presentation/qr/QrPayloadEncoderTest.kt`: the payload is exactly `ws://<ip>:<port>/?token=<CODE>` and carries no discovery-service identifier (FR-007).
-- [ ] T031 [P] [US1] Write `JoinViewModelTest` in `«test»/presentation/join/JoinViewModelTest.kt`: `connectedCount` tracks the coordinator's connected list and follows a join with no user action (SC-007), and the view model performs no I/O (FR-035).
+- [ ] T029 [P] [US1] Write `JoinCodeGeneratorTest` in `«test»/domain/session/JoinCodeGeneratorTest.kt`: a seeded `Random` yields a deterministic pair, `display` renders `ADJECTIVE-NOUN` uppercase, and no code repeats across many generations (FR-003).
+- [ ] T030 [P] [US1] Write `SessionRosterTest` in `«test»/domain/session/SessionRosterTest.kt` for the admit path only: a new device is `Admitted`, size grows by one, and `connected` reflects it. Capacity and reclaim belong to US2 and US3.
+- [ ] T031 [P] [US1] Write `QrPayloadEncoderTest` in `«test»/presentation/qr/QrPayloadEncoderTest.kt`: the payload is exactly `ws://<ip>:<port>/?token=<CODE>` and carries no discovery-service identifier (FR-007).
+- [ ] T032 [P] [US1] Write `JoinViewModelTest` in `«test»/presentation/join/JoinViewModelTest.kt`: `connectedCount` tracks the coordinator's connected list and follows a join with no user action (SC-007), and the view model performs no I/O (FR-035).
 
 ### Implementation for User Story 1
 
-- [ ] T032 [P] [US1] Implement `JoinCodeGenerator` in `«main»/domain/session/JoinCodeGenerator.kt` with two bundled ~64-word `List<String>` constants, an injected `Random`, and a per-process issued-set so no code repeats (research.md R7). Constants, not an `assets/` file, so the class stays JVM-pure.
-- [ ] T033 [US1] Implement `SessionRoster` in `«main»/domain/session/SessionRoster.kt` — `RosterEntry` in `«main»/domain/session/model/RosterEntry.kt`, `RosterAdmission` alongside — covering the admit path and the `connected` derivation. Capacity and reclaim land in US2/US3.
-- [ ] T034 [US1] Complete `SessionCoordinator.admit` for the success path: validate, allocate a `ConnectionId`, admit to the roster, emit `SessionEvent.Connected`, and return a decision carrying the `sessionState` reply with `connectionId` set (FR-012, FR-013).
-- [ ] T035 [US1] Wire session start in `«main»/di/SessionComponent.kt` and `«main»/MainActivity.kt`: resolve the active IPv4, acquire the multicast lease, start the transport, publish the announcement with instance name `KaraokeTV-<noun>`, and verify the registered name matches (FR-004, FR-005, FR-008).
-- [ ] T036 [US1] Add the happy-path case to `«test»/gate/LoopbackJoinGateTest.kt`: `--join-only` with the correct token exits 0, returns `sessionState`, and yields `connectionId` ≥ 1; a second peer with a different `--client-id` also joins and receives a **distinct** `connectionId` (acceptance scenario 4).
-- [ ] T037 [P] [US1] Implement `QrPayloadEncoder` in `«main»/presentation/qr/QrPayloadEncoder.kt` — pure string construction, no ZXing type in the signature so it stays coverage-selected.
-- [ ] T038 [P] [US1] Implement `QrBitmapRenderer` and the `QrCode` composable in `«main»/presentation/qr/`: call `QRCodeWriter.encode` with `EncodeHintType.MARGIN = 4` for the four-module quiet zone, and draw the `BitMatrix` into a Compose `ImageBitmap`, dark-on-light and static (FR-030).
-- [ ] T039 [US1] Implement `JoinUiState` and `JoinViewModel` in `«main»/presentation/join/`: expose the join code, the QR payload, and `connectedCount` derived from `coordinator.connectedDevices.size` — the live connections, never the roster size (FR-025, SC-007).
-- [ ] T040 [US1] Implement `JoinOverlay` in `«main»/presentation/join/JoinOverlay.kt` as a modal over the song-list shell, QR dominant with the join code directly beneath, connected count shown, entrance limited to a single short fade or scale-fade, and nothing intruding into the QR or its quiet zone (FR-030, FR-031, FR-032). Dismissing returns to the shell without ending the session or disconnecting anyone (FR-033). Tag nodes with test tags so T059 can assert their bounds.
-- [ ] T041 [US1] Add the disconnect path to `SessionCoordinator.onDisconnected` and `SessionRoster.detach`: remove from the connected list as part of handling the close, **before** any subsequent admission decision, while retaining the roster entry and its capacity slot (FR-023, acceptance scenario 5). Cover the ordering with a virtual-time test in `«test»/domain/session/SessionCoordinatorTest.kt`.
+- [ ] T033 [P] [US1] Implement `JoinCodeGenerator` in `«main»/domain/session/JoinCodeGenerator.kt` with two bundled ~64-word `List<String>` constants, an injected `Random`, and a per-process issued-set so no code repeats (research.md R7). Constants, not an `assets/` file, so the class stays JVM-pure.
+- [ ] T034 [US1] Implement `SessionRoster` in `«main»/domain/session/SessionRoster.kt` — `RosterEntry` in `«main»/domain/session/model/RosterEntry.kt`, `RosterAdmission` alongside — covering the admit path and the `connected` derivation. Capacity and reclaim land in US2/US3.
+- [ ] T035 [US1] Complete `SessionCoordinator.admit` for the success path: validate, allocate a `ConnectionId`, admit to the roster, emit `SessionEvent.Connected`, and return a decision carrying the `sessionState` reply with `connectionId` set (FR-012, FR-013).
+- [ ] T036 [US1] Wire session start in `«main»/di/SessionComponent.kt` and `«main»/MainActivity.kt`: resolve the active IPv4, acquire the multicast lease, start the transport, publish the announcement with instance name `KaraokeTV-<noun>`, and verify the registered name matches (FR-004, FR-005, FR-008).
+- [ ] T037 [US1] Add the happy-path case to `«test»/gate/LoopbackJoinGateTest.kt`: `--join-only` with the correct token exits 0, returns `sessionState`, and yields `connectionId` ≥ 1; a second peer with a different `--client-id` also joins and receives a **distinct** `connectionId` (acceptance scenario 4).
+- [ ] T038 [P] [US1] Implement `QrPayloadEncoder` in `«main»/presentation/qr/QrPayloadEncoder.kt` — pure string construction, no ZXing type in the signature so it stays coverage-selected.
+- [ ] T039 [P] [US1] Implement `QrBitmapRenderer` and the `QrCode` composable in `«main»/presentation/qr/`: call `QRCodeWriter.encode` with `EncodeHintType.MARGIN = 4` for the four-module quiet zone, and draw the `BitMatrix` into a Compose `ImageBitmap`, dark-on-light and static (FR-030).
+- [ ] T040 [US1] Implement `JoinUiState` and `JoinViewModel` in `«main»/presentation/join/`: expose the join code, the QR payload, and `connectedCount` derived from `coordinator.connectedDevices.size` — the live connections, never the roster size (FR-025, SC-007).
+- [ ] T041 [US1] Implement `JoinOverlay` in `«main»/presentation/join/JoinOverlay.kt` as a modal over the song-list shell, QR dominant with the join code directly beneath, connected count shown, entrance limited to a single short fade or scale-fade, and nothing intruding into the QR or its quiet zone (FR-030, FR-031, FR-032). Dismissing returns to the shell without ending the session or disconnecting anyone (FR-033). Tag nodes with test tags so T061 can assert their bounds.
+- [ ] T042 [US1] Add the disconnect path to `SessionCoordinator.onDisconnected` and `SessionRoster.detach`: remove from the connected list as part of handling the close, **before** any subsequent admission decision, while retaining the roster entry and its capacity slot (FR-023, acceptance scenario 5). Cover the ordering with a virtual-time test in `«test»/domain/session/SessionCoordinatorTest.kt`.
 
 **Checkpoint**: US1 is independently functional. Gate — scoped `testBranch` adding `JoinCodeGenerator`, `SessionRoster`, `SessionCoordinator`, `JoinViewModel`, `QrPayloadEncoder`, **plus** `LoopbackJoinGateTest`. Per FR-038 neither alone completes the story.
 
@@ -138,20 +139,20 @@ Referred to below as **`«main»/`** and **`«test»/`**.
 
 ### Validation for User Story 2 ⚠️
 
-- [ ] T042 [P] [US2] Write `HandshakeValidatorFixtureTest` in `«test»/domain/control/HandshakeValidatorFixtureTest.kt` driving all four `fixtures/F20_websocket_message_validation/` cases, asserting the reason code **and** the exact human-readable message (`"Missing required field: clientId"`, `"Unsupported protocolVersion: 2"`). Add unparseable-JSON and unknown-extra-field cases, both `invalid_message`.
-- [ ] T043 [P] [US2] Write `JoinCodeMatcherTest` in `«test»/domain/control/JoinCodeMatcherTest.kt`: `SWIFT-PANDA`, `swift-panda` and `swiftpanda` all match; null, blank and a wrong code do not.
-- [ ] T044 [P] [US2] Extend `«test»/domain/session/SessionRosterTest.kt` for capacity: the 11th previously-unseen device is `AtCapacity`, and capacity is evaluated only for unseen devices.
-- [ ] T045 [P] [US2] Add a virtual-time deadline test to `«test»/domain/session/SessionCoordinatorTest.kt` using `kotlinx-coroutines-test`: a connection that authorizes and then stays silent is refused at 5 s, and never appears in the connected list or consumes a roster slot (FR-017, SC-004).
-- [ ] T046 [US2] Add all five refusal cases to `«test»/gate/LoopbackJoinGateTest.kt`: wrong token → exit 3 `invalid_token`; `--protocol-version 2` → exit 3 `protocol_mismatch`; `--malformed-hello clientId` and `--malformed-hello invalid-json` → exit 3 `invalid_message`; `--silent-handshake --join-timeout 10` → exit 3 `invalid_message` within 5 s. Assert `closeCode` is 1008 and `closeReason` equals the error code in every case.
+- [ ] T043 [P] [US2] Write `HandshakeValidatorFixtureTest` in `«test»/domain/control/HandshakeValidatorFixtureTest.kt` driving all four `fixtures/F20_websocket_message_validation/` cases, asserting the reason code **and** the exact human-readable message (`"Missing required field: clientId"`, `"Unsupported protocolVersion: 2"`). Add unparseable-JSON and unknown-extra-field cases, both `invalid_message`.
+- [ ] T044 [P] [US2] Write `JoinCodeMatcherTest` in `«test»/domain/control/JoinCodeMatcherTest.kt`: `SWIFT-PANDA`, `swift-panda` and `swiftpanda` all match; null, blank and a wrong code do not.
+- [ ] T045 [P] [US2] Extend `«test»/domain/session/SessionRosterTest.kt` for capacity: the 11th previously-unseen device is `AtCapacity`, and capacity is evaluated only for unseen devices.
+- [ ] T046 [P] [US2] Add a virtual-time deadline test to `«test»/domain/session/SessionCoordinatorTest.kt` using `kotlinx-coroutines-test`: a connection that authorizes and then stays silent is refused at 5 s, and never appears in the connected list or consumes a roster slot (FR-017, SC-004).
+- [ ] T047 [US2] Add all five refusal cases to `«test»/gate/LoopbackJoinGateTest.kt`: wrong token → exit 3 `invalid_token`; `--protocol-version 2` → exit 3 `protocol_mismatch`; `--malformed-hello clientId` and `--malformed-hello invalid-json` → exit 3 `invalid_message`; `--silent-handshake --join-timeout 10` → exit 3 `invalid_message` within 5 s. Assert `closeCode` is 1008 and `closeReason` equals the error code in every case.
 
 ### Implementation for User Story 2
 
-- [ ] T047 [P] [US2] Implement `JoinCodeMatcher` in `«main»/domain/control/JoinCodeMatcher.kt`: `normalize` uppercases and strips hyphens and surrounding whitespace; `matches` returns false for null or blank.
-- [ ] T048 [US2] Implement `HandshakeValidator` in `«main»/domain/control/HandshakeValidator.kt` with `AdmissionDecision.kt` alongside. Follow the normative order from contracts/domain-api.md: parse failure, then wrong `type`, then `protocolVersion`, then missing fields in `required`-array order, then range checks. Version precedes field presence because a version-2 phone may legitimately carry a different field set. Decode to `JsonObject` first so the reported missing field is deterministic rather than dependent on kotlinx's batching.
-- [ ] T049 [US2] Implement `SessionCoordinator.authorize` to reject a missing or wrong token with `invalid_token` (FR-009), and complete `admit`'s refusal branches for `protocol_mismatch`, `invalid_message` and `session_full`.
-- [ ] T050 [US2] Add capacity to `SessionRoster.admit`: return `AtCapacity` when `size == capacity` **and** the `deviceId` is previously unseen (FR-015). A known device must never be refused for capacity.
-- [ ] T051 [US2] Enforce the handshake deadline in `KtorControlTransport`: wrap the wait for the first frame in `withTimeoutOrNull(5.seconds)` and on expiry call `refuse("invalid_message", …)` — the `error` frame is delivered, then the close (FR-017, research.md R6). A pending connection must hold no roster slot.
-- [ ] T052 [US2] Implement FR-018's asymmetry in `KtorControlTransport` and the coordinator: an unexpected message type **during** the handshake is fatal and closes the connection; an unrecognised type **after** a successful handshake is logged as a warning and ignored, leaving the connection open.
+- [ ] T048 [P] [US2] Implement `JoinCodeMatcher` in `«main»/domain/control/JoinCodeMatcher.kt`: `normalize` uppercases and strips hyphens and surrounding whitespace; `matches` returns false for null or blank.
+- [ ] T049 [US2] Implement `HandshakeValidator` in `«main»/domain/control/HandshakeValidator.kt` with `AdmissionDecision.kt` alongside. Follow the normative order from contracts/domain-api.md: parse failure, then wrong `type`, then `protocolVersion`, then missing fields in `required`-array order, then range checks. Version precedes field presence because a version-2 phone may legitimately carry a different field set. Decode to `JsonObject` first so the reported missing field is deterministic rather than dependent on kotlinx's batching.
+- [ ] T050 [US2] Implement `SessionCoordinator.authorize` to reject a missing or wrong token with `invalid_token` (FR-009), and complete `admit`'s refusal branches for `protocol_mismatch`, `invalid_message` and `session_full`.
+- [ ] T051 [US2] Add capacity to `SessionRoster.admit`: return `AtCapacity` when `size == capacity` **and** the `deviceId` is previously unseen (FR-015). A known device must never be refused for capacity.
+- [ ] T052 [US2] Enforce the handshake deadline in `KtorControlTransport`: wrap the wait for the first frame in `withTimeoutOrNull(5.seconds)` and on expiry call `refuse("invalid_message", …)` — the `error` frame is delivered, then the close (FR-017, research.md R6). A pending connection must hold no roster slot.
+- [ ] T053 [US2] Implement FR-018's asymmetry in `KtorControlTransport` and the coordinator: an unexpected message type **during** the handshake is fatal and closes the connection; an unrecognised type **after** a successful handshake is logged as a warning and ignored, leaving the connection open.
 
 **Checkpoint**: US1 and US2 both work independently. Gate — scoped `testBranch` adding `HandshakeValidator` and `JoinCodeMatcher`, plus the loopback gate with all five refusal cases.
 
@@ -165,14 +166,14 @@ Referred to below as **`«main»/`** and **`«test»/`**.
 
 ### Validation for User Story 3 ⚠️
 
-- [ ] T053 [P] [US3] Extend `«test»/domain/session/SessionRosterTest.kt` for reclaim: a known `deviceId` returns `Reclaimed` with size unchanged; reclaim succeeds at capacity; reclaim succeeds whether or not a live connection currently exists (FR-020, FR-021); and `detach` with a stale `ConnectionId` returns false and mutates nothing (FR-022).
-- [ ] T054 [US3] Add the reclaim cases to `«test»/gate/LoopbackJoinGateTest.kt`: ten sequential `--join-only` peers fill the roster; an 11th unseen device gets exit 3 `session_full`; one of the original ten rejoins and gets exit 0 with a **different** `connectionId` (SC-005, SC-006). Ten sequential peers suffice because a disconnected device keeps its slot in this slice — `--hold` is needed only where the live count matters.
-- [ ] T055 [P] [US3] Add a supersession test to `«test»/domain/session/SessionCoordinatorTest.kt`: with a replacement connection admitted for a device, the superseded connection's late close must not remove the roster entry or invalidate the new `connectionId` (FR-022, acceptance scenario 4).
+- [ ] T054 [P] [US3] Extend `«test»/domain/session/SessionRosterTest.kt` for reclaim: a known `deviceId` returns `Reclaimed` with size unchanged; reclaim succeeds at capacity; reclaim succeeds whether or not a live connection currently exists (FR-020, FR-021); and `detach` with a stale `ConnectionId` returns false and mutates nothing (FR-022).
+- [ ] T055 [US3] Add the reclaim cases to `«test»/gate/LoopbackJoinGateTest.kt`: ten sequential `--join-only` peers fill the roster; an 11th unseen device gets exit 3 `session_full`; one of the original ten rejoins and gets exit 0 with a **different** `connectionId` (SC-005, SC-006). Ten sequential peers suffice because a disconnected device keeps its slot in this slice — `--hold` is needed only where the live count matters.
+- [ ] T056 [P] [US3] Add a supersession test to `«test»/domain/session/SessionCoordinatorTest.kt`: with a replacement connection admitted for a device, the superseded connection's late close must not remove the roster entry or invalidate the new `connectionId` (FR-022, acceptance scenario 4).
 
 ### Implementation for User Story 3
 
-- [ ] T056 [US3] Complete `SessionRoster.admit`'s reclaim branch and `detach`'s identity guard in `«main»/domain/session/SessionRoster.kt`: a known `deviceId` reuses its entry, refreshes `displayName`/`appVersion`/`assetPort` from the new `hello`, takes a fresh `ConnectionId`, and leaves size unchanged. `detach` no-ops unless the supplied `ConnectionId` is still the entry's active one. Also add `release` and `releaseDisconnected` — unreachable in this slice but required so capacity semantics are complete and testable now (FR-024).
-- [ ] T057 [US3] Emit `SessionEvent.Reconnected` carrying the previous `ConnectionId` from `SessionCoordinator.admit` when the roster reports `Reclaimed` (FR-019).
+- [ ] T057 [US3] Complete `SessionRoster.admit`'s reclaim branch and `detach`'s identity guard in `«main»/domain/session/SessionRoster.kt`: a known `deviceId` reuses its entry, refreshes `displayName`/`appVersion`/`assetPort` from the new `hello`, takes a fresh `ConnectionId`, and leaves size unchanged. `detach` no-ops unless the supplied `ConnectionId` is still the entry's active one. Also add `release` and `releaseDisconnected` — unreachable in this slice but required so capacity semantics are complete and testable now (FR-024).
+- [ ] T058 [US3] Emit `SessionEvent.Reconnected` carrying the previous `ConnectionId` from `SessionCoordinator.admit` when the roster reports `Reclaimed` (FR-019).
 
 **Checkpoint**: All three stories independently functional.
 
@@ -180,13 +181,14 @@ Referred to below as **`«main»/`** and **`«test»/`**.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T058 Implement the FR-028 blocking notice: `SessionStartFailure` in `«main»/domain/session/SessionStartFailure.kt` (bind failure, announcement failure, no usable address), surfaced by `JoinViewModel` and rendered as a modal over the song-list shell, dismissible with one acknowledgement that returns to song selection. It must **not** change the game phase and must not attempt a transition — F22 has no `Open→Error` edge (SC-008).
-- [ ] T059 [P] Write `JoinOverlayBoundsTest` in `«test»/presentation/join/JoinOverlayBoundsTest.kt` using `getUnclippedBoundsInRoot()` under the pinned `w960dp-h540dp-land-television-xhdpi-notouch` qualifier: every expected element present; nothing exceeding 960×540dp; the QR between 30% and 55% of the shorter viewport dimension; the join code directly beneath the QR with nothing between; and no node overlapping the QR's bounds expanded by its quiet zone (research.md R9, FR-030, FR-031).
-- [ ] T060 Confirm no screenshot baseline is recorded by this feature — `git status` must show nothing added under a Roborazzi output directory. The gate is in verify mode and Slice 3 owns baseline creation at the corrected viewport (spec.md Assumptions).
-- [ ] T061 [P] Add an FR-027 guard test in `«test»/domain/session/SessionCoordinatorTest.kt` asserting no runtime path in this slice leaves `GamePhase.Open`.
-- [ ] T062 Run the full feature gate from plan.md's Validation Gate section with `--rerun-tasks`, then `.\gradlew.bat :app:testDebugUnitTest --tests "*LoopbackJoinGateTest*"`. Both must pass fresh. Confirm 0 skips — FR-039 bars a skipped test from satisfying a gate.
-- [ ] T063 Walk quickstart.md end to end against a real phone on a real LAN, including discovery without an explicit `--tv-host`, to prove FR-004 and SC-001/SC-002 outside loopback.
-- [ ] T064 [P] Update `specs/002-phone-joins/spec.md`, marking Implementation Readiness items 5–9 resolved with the commits that closed them.
+- [ ] T059 Write the FR-028 validation in `«test»/presentation/join/JoinViewModelTest.kt`: each of the three start failures — bind failure, announcement failure, no usable IPv4 — surfaces the blocking notice in `JoinUiState`; acknowledging it clears the notice and returns to song selection; and the game phase is still `GamePhase.Open` afterwards, with `GamePhaseMachine` never asked for a transition (SC-008). Without this the one requirement whose entire purpose is handling failure ships unproven.
+- [ ] T060 Implement the FR-028 blocking notice: `SessionStartFailure` in `«main»/domain/session/SessionStartFailure.kt` (bind failure, announcement failure, no usable address), surfaced by `JoinViewModel` and rendered as a modal over the song-list shell, dismissible with one acknowledgement that returns to song selection. It must **not** change the game phase and must not attempt a transition — F22 has no `Open→Error` edge (SC-008).
+- [ ] T061 [P] Write `JoinOverlayBoundsTest` in `«test»/presentation/join/JoinOverlayBoundsTest.kt` using `getUnclippedBoundsInRoot()` under the pinned `w960dp-h540dp-land-television-xhdpi-notouch` qualifier: every expected element present; nothing exceeding 960×540dp; the QR between 30% and 55% of the shorter viewport dimension; the join code directly beneath the QR with nothing between; and no node overlapping the QR's bounds expanded by its quiet zone (research.md R9, FR-030, FR-031).
+- [ ] T062 Confirm no screenshot baseline is recorded by this feature — `git status` must show nothing added under a Roborazzi output directory. The gate is in verify mode and Slice 3 owns baseline creation at the corrected viewport (spec.md Assumptions).
+- [ ] T063 [P] Add an FR-027 guard test in `«test»/domain/session/SessionCoordinatorTest.kt` asserting no runtime path in this slice leaves `GamePhase.Open`.
+- [ ] T064 Run the full feature gate from plan.md's Validation Gate section with `--rerun-tasks`, then `.\gradlew.bat :app:testDebugUnitTest --tests "*LoopbackJoinGateTest*"`. Both must pass fresh. Confirm 0 skips — FR-039 bars a skipped test from satisfying a gate. Then run the **whole** suite once more, `.\gradlew.bat :app:testDebugUnitTest --rerun-tasks`, and confirm the 55 pre-existing Slice 0 fixture tests still pass unchanged (SC-009). The scoped gate selects only this feature's classes, so it cannot detect a Slice 0 regression; T005's run was taken before any behaviour changed and proves nothing about the end state.
+- [ ] T065 Walk quickstart.md end to end against a real phone on a real LAN, including discovery without an explicit `--tv-host`, to prove FR-004 and SC-001/SC-002 outside loopback.
+- [ ] T066 [P] Update `specs/002-phone-joins/spec.md`, marking Implementation Readiness items 5–9 resolved with the commits that closed them.
 
 ---
 
@@ -216,10 +218,10 @@ The template's ideal is fully parallel stories. That does not hold cleanly here,
 - T003, T004 in Setup.
 - T006, T007, T008, T011, T012, T013, T016, T017 in Foundational — all distinct files.
 - T019, T020, T021 — three independent adapters. **T018 is not parallel** with them: it is the largest adapter and the transport everything else attaches to.
-- All four US1 validation tasks (T028–T031).
-- T037, T038 — the QR pair, distinct files.
-- US2 validation T042, T043, T044, T045.
-- T059, T061, T064 in Polish.
+- All four US1 validation tasks (T029–T032).
+- T038, T039 — the QR pair, distinct files.
+- US2 validation T043, T044, T045, T046.
+- T061, T063, T066 in Polish.
 
 ---
 
