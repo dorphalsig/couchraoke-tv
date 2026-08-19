@@ -1,6 +1,6 @@
 # Quickstart: Phone Joins
 
-**Feature**: `002-phone-joins` | **Date**: 2026-08-19
+**Feature**: `003-phone-joins` | **Date**: 2026-08-19
 
 How to build, run and prove this slice. Every command is PowerShell — there is no bash in this environment.
 

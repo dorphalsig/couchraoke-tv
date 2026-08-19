@@ -1,6 +1,6 @@
 # Contract: Wire protocol serialization surface
 
-**Feature**: `002-phone-joins` | **Date**: 2026-08-19
+**Feature**: `003-phone-joins` | **Date**: 2026-08-19
 
 The JSON-level field contract is in [data-model.md](../data-model.md). This file pins the Kotlin types that produce and consume it: FQCN, exact property names, types, nullability, and defaults. Property names must match the schema exactly, so no `@SerialName` renaming is permitted on these classes.
 

@@ -1,6 +1,6 @@
 # Contract: Domain API
 
-**Feature**: `002-phone-joins` | **Date**: 2026-08-19
+**Feature**: `003-phone-joins` | **Date**: 2026-08-19
 
 Every class below is pure Kotlin — no Android, Ktor, jmDNS or Compose types. All are selected for coverage by the `testBranch` gate.
 

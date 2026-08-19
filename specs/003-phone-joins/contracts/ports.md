@@ -1,6 +1,6 @@
 # Contract: Domain-declared ports
 
-**Feature**: `002-phone-joins` | **Date**: 2026-08-19
+**Feature**: `003-phone-joins` | **Date**: 2026-08-19
 
 Four ports separate framework from logic. Each is declared in `domain`, implemented in `data`, and constructed at the composition root. No adapter holds a decision; every branch beyond null handling belongs on the domain side.
 

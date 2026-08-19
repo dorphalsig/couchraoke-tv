@@ -59,13 +59,16 @@ These apply at all times, no skill exempts them:
 
 
 ## Active Technologies
-- Kotlin 2.3.20, Java 11 + AndroidX Core/AppCompat, Jetpack Compose + Compose for TV, Lifecycle ViewModel, Kotlin Coroutines, Kotlinx Serialization JSON, Ktor server/websockets, Media3 ExoPlayer + OkHttp datasource, Coil 3, DataStore Preferences, Hilt, jmDNS, ZXing, JUnit/Robolectric/AndroidX test (002-solo-sing-playback)
-- DataStore preferences for host settings; no persistent storage for remote song assets (002-solo-sing-playback)
-- Kotlin 2.2.10, Java 11 + AndroidX Core/AppCompat, Jetpack Compose + Compose for TV, Lifecycle Runtime, Kotlin Coroutines, Kotlinx Serialization JSON, JUnit 4, quality-conventions `testBranch` (001-tv-host-foundation)
-- N/A for Phase 0 core logic; fixture files only at test harness boundary (001-tv-host-foundation)
-- Kotlin 2.2.10, Java 11, minSdk 30, targetSdk 36 + Ktor server CIO + WebSockets, jmDNS, Kotlinx Serialization JSON, Compose for TV, ZXing core, Lifecycle ViewModel (DH1-slice-1-phone-joins)
-- None — all session state is in-memory (DH1-slice-1-phone-joins)
+
+**Current — Slice 1 (`specs/003-phone-joins/`, branch `DH1-slice-1-phone-joins`):**
+- Kotlin 2.2.10, Java 11, minSdk 30, targetSdk 36 + Ktor server CIO + WebSockets, jmDNS, Kotlinx Serialization JSON, Compose for TV, ZXing core, Lifecycle ViewModel
+- None — all session state is in-memory
+
+**Superseded — do not treat as current:**
+- ~~Kotlin 2.3.20 + Media3 ExoPlayer, Coil 3, DataStore, Hilt, ZXing (002-solo-sing-playback)~~ — unmerged branch, work authored 2026-04/05, superseded. See `specs/003-phone-joins/research.md` R11.
+- ~~DataStore preferences for host settings (002-solo-sing-playback)~~ — same branch.
+- ~~Kotlin 2.2.10 + Lifecycle Runtime, JUnit 4 (001-tv-host-foundation)~~ — spec removed as stale; preserved on `done/001-tv-host-foundation`.
 
 ## Recent Changes
-- 002-phone-joins: Planned Slice 1. Adds ZXing `core`, `lifecycle-viewmodel-compose` and `kotlinx-coroutines-test` to the catalogue, plus the `ACCESS_NETWORK_STATE` permission. Ktor server, jmDNS, coroutines and serialization were already declared. Hilt and navigation-compose deliberately deferred; Kotlin stays at the catalogue's 2.2.10 rather than the 2.3.20 recorded for 002-solo-sing-playback.
-- 002-solo-sing-playback: Added Kotlin 2.3.20, Java 11 + AndroidX Core/AppCompat, Jetpack Compose + Compose for TV, Lifecycle ViewModel, Kotlin Coroutines, Kotlinx Serialization JSON, Ktor server/websockets, Media3 ExoPlayer + OkHttp datasource, Coil 3, DataStore Preferences, Hilt, jmDNS, ZXing, JUnit/Robolectric/AndroidX test
+- 003-phone-joins: Planned Slice 1. Adds ZXing `core`, `lifecycle-viewmodel-compose` and `kotlinx-coroutines-test` to the catalogue, plus the `ACCESS_NETWORK_STATE` permission. Ktor server, jmDNS, coroutines and serialization were already declared. Hilt and navigation-compose deliberately deferred; Kotlin stays at the catalogue's 2.2.10 rather than the 2.3.20 recorded on the superseded 002-solo-sing-playback branch.
+

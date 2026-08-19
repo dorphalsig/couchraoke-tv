@@ -1,6 +1,6 @@
 # Phase 0 Research: Phone Joins
 
-**Feature**: `002-phone-joins` | **Date**: 2026-08-19
+**Feature**: `003-phone-joins` | **Date**: 2026-08-19
 
 Every unknown that blocked the design is resolved below. Each entry states the decision, why it was chosen, and what was rejected.
 
@@ -16,9 +16,10 @@ Every unknown that blocked the design is resolved below. Each entry states the d
 
 **Alternatives rejected**:
 - `journeyapps:zxing-android-embedded` — a scanner. It pulls a camera `Activity`, `CameraX` and a preview surface for a job that never reads a code. Wrong direction and a large surface for nothing.
+- `io.github.alexzhirkevich:qrose` — reconsidered late, after it was found already integrated on the superseded `002-solo-sing-playback` branch, and rejected on evidence. QRose is attractive on paper: no dependencies beyond `compose.ui`, vector output rather than a raster bitmap, and a `Painter` straight from composition, which would delete our `BitMatrix` → `ImageBitmap` step. But its public API exposes shapes, colours, logo and error-correction level only — **there is no margin option and no way to read back the module count**. FR-030 and the bounds test both pin the quiet zone in modules, and QRose cannot express either quantity. The prior integration shows the consequence: it approximated with `moduleSizePx = maxOf(1, sizePx / 100)` and a `0.92f` content scale, then asserted `contentBounds.left >= moduleSizePx * 4` against that approximation. For our payload the real code is version 4 (33 modules), so at `sizePx = 400` a module is ~11 px, not 4 — the test passed while the actual quiet zone was roughly 1.4 modules, about a third of the requirement. The test confirmed its own arithmetic rather than the QR, which is precisely the failure mode Principle IV exists to catch.
 - Hand-rolling QR encoding — Reed-Solomon error correction and mask-pattern selection are a week of work with a silent failure mode.
 
-**Quiet zone**: FR-030 demands at least four modules. `QRCodeWriter` honours `EncodeHintType.MARGIN`, so we pass `4` explicitly rather than relying on its default, and the bounds test asserts the resulting margin.
+**Quiet zone**: FR-030 demands at least four modules. `QRCodeWriter` honours `EncodeHintType.MARGIN`, so we pass `4` explicitly rather than relying on its default, and `BitMatrix.width` gives the module count exactly, so the bounds test asserts a measured margin rather than an assumed one.
 
 ---
 
@@ -131,7 +132,30 @@ The screenshot gate is now correctly in verify mode and has no baselines to comp
 
 ---
 
-## Resolved dependency questions
+## R11 — The superseded implementation on `002-solo-sing-playback`
+
+**Decision**: Reference only. Slice 1 is implemented fresh against `tasks.md`; no code is carried over, and no dependency choice is inherited from it.
+
+An unmerged branch, `origin/002-solo-sing-playback`, contains roughly 800 lines covering part of this ground: a Ktor CIO WebSocket accepting `?token=`, a `hello` → `sessionState` exchange, four refusal codes, a jmDNS advertiser, a QR renderer and a join overlay. It is not on `master`. Its substantive work is authored 2026-04-29 → 2026-05-05 and was pushed much later, so the recent push date is not evidence of currency — check `%ad`, not `%cd`.
+
+**Rationale**: it predates the current fixture set and diverges from this spec in eight ways, each of which is a gate we would fail:
+
+1. Refusals close the socket with a bare `close()`, so the peer sees a normal closure instead of `1008` plus a reason string (FR-016).
+2. There is no `invalid_message` path at all — a malformed `hello` returns null and is reported as `protocol_mismatch` (FR-011, and two F20 cases).
+3. Refusal text is generic (`"Protocol version mismatch."`) where F20 pins exact strings.
+4. No handshake deadline (FR-017).
+5. Disconnect deletes the device rather than keeping its roster entry, and reclaim matches live connections only — which FR-021 forbids outright. US3 is absent.
+6. `sessionState` omits `connectedDevices`, implementing the drifted F20 fixture rather than the normative B.2.2 schema. This independently confirms Observation 8 and shows the drift reaching code.
+7. The mDNS instance name is `KaraokeTV-<last 4 of code>`, not `KaraokeTV-<noun>`, and the registered name is never read back, so a jmDNS collision rename would go unnoticed (FR-005).
+8. DTOs, validation and admission all live inside the Ktor adapter — the arrangement R8's split exists to avoid, since the coverage gate cannot reach it without the fakes FR-039 bars.
+
+Its QR integration was evaluated seriously and rejected on measurement; see R1.
+
+**Worth knowing**: that branch also carries a constitution marked v2.0.0 (amended 2026-08-18) whose Principle IV drops `testBranch` as the single gate. `master` is still v1.0.0. This is the bump Observation 2 records as claimed-but-absent — it exists, but not on the main line. This spec satisfies both versions, so nothing here depends on which one lands.
+
+---
+
+
 
 Everything Slice 1 needs is either already in `gradle/libs.versions.toml` or listed in the plan's Dependency Governance table. No `NEEDS CLARIFICATION` remains.
 

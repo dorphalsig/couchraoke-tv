@@ -1,6 +1,6 @@
 # Data Model: Phone Joins
 
-**Feature**: `002-phone-joins` | **Date**: 2026-08-19
+**Feature**: `003-phone-joins` | **Date**: 2026-08-19
 
 All types below live in `com.couchraoke.tv.domain` and import nothing from Android, Ktor, jmDNS or Compose.
 

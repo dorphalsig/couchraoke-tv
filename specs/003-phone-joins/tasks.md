@@ -1,6 +1,6 @@
 # Tasks: Phone Joins (Slice 1)
 
-**Input**: Design documents from `specs/002-phone-joins/`
+**Input**: Design documents from `specs/003-phone-joins/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
 
 **Tests**: Mandatory, not optional. FR-038 requires a fresh scoped `testBranch` pass **and** a passing loopback gate driven by the real out-of-process peer, and states neither substitutes for the other. FR-039 bars any in-process fake from satisfying a claim that the transport, the announcement, or the connection lifecycle works, and bars any skipped or conditionally-skipped test from satisfying a gate.
@@ -188,7 +188,7 @@ Referred to below as **`«main»/`** and **`«test»/`**.
 - [ ] T063 [P] Add an FR-027 guard test in `«test»/domain/session/SessionCoordinatorTest.kt` asserting no runtime path in this slice leaves `GamePhase.Open`.
 - [ ] T064 Run the full feature gate from plan.md's Validation Gate section with `--rerun-tasks`, then `.\gradlew.bat :app:testDebugUnitTest --tests "*LoopbackJoinGateTest*"`. Both must pass fresh. Confirm 0 skips — FR-039 bars a skipped test from satisfying a gate. Then run the **whole** suite once more, `.\gradlew.bat :app:testDebugUnitTest --rerun-tasks`, and confirm the 55 pre-existing Slice 0 fixture tests still pass unchanged (SC-009). The scoped gate selects only this feature's classes, so it cannot detect a Slice 0 regression; T005's run was taken before any behaviour changed and proves nothing about the end state.
 - [ ] T065 Walk quickstart.md end to end against a real phone on a real LAN, including discovery without an explicit `--tv-host`, to prove FR-004 and SC-001/SC-002 outside loopback.
-- [ ] T066 [P] Update `specs/002-phone-joins/spec.md`, marking Implementation Readiness items 5–9 resolved with the commits that closed them.
+- [ ] T066 [P] Update `specs/003-phone-joins/spec.md`, marking Implementation Readiness items 5–9 resolved with the commits that closed them.
 
 ---
 

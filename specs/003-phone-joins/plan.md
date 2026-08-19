@@ -1,7 +1,7 @@
 # Implementation Plan: Phone Joins
 
 **Branch**: `DH1-slice-1-phone-joins` | **Date**: 2026-08-19 | **Spec**: [spec.md](./spec.md)
-**Input**: Feature specification from `specs/002-phone-joins/spec.md`
+**Input**: Feature specification from `specs/003-phone-joins/spec.md`
 
 ## Summary
 
@@ -101,7 +101,7 @@ plus the loopback gate:
 ### Documentation (this feature)
 
 ```text
-specs/002-phone-joins/
+specs/003-phone-joins/
 ├── plan.md              # This file
 ├── research.md          # Phase 0 output
 ├── data-model.md        # Phase 1 output
