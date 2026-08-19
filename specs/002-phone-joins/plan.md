@@ -11,15 +11,17 @@ The approach keeps every decision in pure Kotlin. Admission, roster, join-code m
 
 ## Technical Context
 
-**Language/Version**: Kotlin 2.2.10, Java 11 target, `minSdk` 30, `targetSdk` 36
-**Primary Dependencies**: Ktor server CIO + WebSockets (already in the catalogue), jmDNS 3.6.2 (already), Kotlinx Serialization JSON (already), Compose BOM 2024.09.00 with TV Foundation/Material (already). Added by this plan: ZXing `core` for QR, `lifecycle-viewmodel-compose`, `kotlinx-coroutines-test`.
-**Storage**: None. All session state is in-memory and dies with the session; the constitution forbids persisting remote song assets and this slice persists nothing at all.
+**Language/Version**: Kotlin 2.2.10, Java 11, minSdk 30, targetSdk 36
+**Primary Dependencies**: Ktor server CIO + WebSockets, jmDNS, Kotlinx Serialization JSON, Compose for TV, ZXing core, Lifecycle ViewModel
+**Storage**: None — all session state is in-memory
 **Testing**: JUnit 4 + Robolectric 4.16.1 via `quality-conventions`, Compose UI test JUnit4 for bounds assertions, and the real out-of-process `mockphone` peer for the loopback gate.
 **Target Platform**: Android TV, S905X4 box, 1920×1080 at `w960dp-h540dp-land-television-xhdpi-notouch`
-**Project Type**: Single-module Android application (`:app`) with an included `quality-conventions` build plugin
+**Project Type**: Single-module Android application
 **Performance Goals**: A phone appears in the connected list within 5 s of starting to look (SC-001). The handshake deadline is a hard 5 s (FR-017). No frame-rate or throughput target applies — this slice renders one static overlay.
 **Constraints**: LAN-only, no internet path. The control server accepts on all interfaces but advertises exactly one IPv4 address. Coverage ≥ 80% line on selected classes. No skipped or conditionally-skipped test may satisfy a gate.
 **Scale/Scope**: 10 devices per session, one session per TV, two screens (song-list shell + join overlay), one WebSocket endpoint, one mDNS service.
+
+Ktor server, jmDNS, coroutines, serialization and the Compose TV libraries are **already** declared in `gradle/libs.versions.toml`. ZXing `core`, `lifecycle-viewmodel-compose` and `kotlinx-coroutines-test` are added by this plan; see Dependency Governance below. The module is `:app`, alongside the included `quality-conventions` build plugin. The constitution forbids persisting remote song assets, and this slice persists nothing at all.
 
 ## Constitution Check
 
