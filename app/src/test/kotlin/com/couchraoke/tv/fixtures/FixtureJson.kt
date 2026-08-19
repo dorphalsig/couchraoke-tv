@@ -72,6 +72,28 @@ object FixtureJson {
             is JsonPrimitive -> element
         }
 
+    /**
+     * Normalises numeric primitives so `0` and `0.0` compare equal.
+     *
+     * JSON has a single number type, so a fixture writing `"gapMs": 0` and a `Float` field
+     * rendering `0.0` are the same value. Comparing their raw text is a harness artifact, not a
+     * real assertion. Strings, booleans and nulls are left untouched.
+     */
+    fun canonicalizeNumbers(element: JsonElement): JsonElement =
+        when (element) {
+            is JsonObject -> JsonObject(element.mapValues { (_, value) -> canonicalizeNumbers(value) })
+            is JsonArray -> JsonArray(element.map(::canonicalizeNumbers))
+            is JsonPrimitive ->
+                if (element.isString) {
+                    element
+                } else {
+                    element.content.toDoubleOrNull()
+                        ?.takeIf(Double::isFinite)
+                        ?.let(::JsonPrimitive)
+                        ?: element
+                }
+        }
+
     fun readJsonLines(path: Path): List<JsonObject> =
         Files.readAllLines(path, UTF_8)
             .asSequence()

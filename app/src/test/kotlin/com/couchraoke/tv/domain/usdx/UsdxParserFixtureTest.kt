@@ -18,9 +18,9 @@ import com.couchraoke.tv.domain.usdx.model.Severity
 import com.couchraoke.tv.domain.usdx.model.SongHeader
 import com.couchraoke.tv.domain.usdx.model.SongTiming
 import com.couchraoke.tv.domain.usdx.model.Track
-import com.couchraoke.tv.fixtures.FixtureJson
 import com.couchraoke.tv.fixtures.FixturePaths
-import com.couchraoke.tv.fixtures.ParsedSongSnapshot
+import com.couchraoke.tv.fixtures.ParsedSongProjection
+import com.couchraoke.tv.fixtures.Phase0Assertions
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -39,23 +39,14 @@ class UsdxParserFixtureTest {
             "songs_root/a/valid_duet_interleaved/song.txt",
         )
         val parsed = parser.parse("F04_valid_duet_interleaved", fixturePath.readBytes()).getOrThrow()
-        val expected = FixtureJson.decode<ParsedSongSnapshot>(
+
+        Phase0Assertions.assertParsedSongSnapshot(
             FixturePaths.fixtureFile(
                 "F04_duet_parsing_track_routing",
                 "songs_root/a/valid_duet_interleaved/expected.parsedSong.json",
-            )
+            ),
+            ParsedSongProjection.project(parsed),
         )
-
-        assertEquals(expected.songId, parsed.songId)
-        assertEquals(expected.header.title, parsed.header.title)
-        assertEquals(expected.header.artist, parsed.header.artist)
-        assertEquals(expected.header.audio, parsed.header.audio)
-        assertEquals(expected.header.p1Name, parsed.header.p1Name)
-        assertEquals(expected.header.p2Name, parsed.header.p2Name)
-        assertEquals(2, parsed.tracks.size)
-        assertEquals(PlayerId.P1, parsed.tracks[0].playerId)
-        assertEquals(PlayerId.P2, parsed.tracks[1].playerId)
-        assertTrue(parsed.header.isDuet)
     }
 
     @Test(timeout = 30_000)
@@ -320,6 +311,8 @@ class UsdxParserFixtureTest {
         video = "song.mp4",
         cover = "cover.jpg",
         background = "bg.jpg",
+        instrumental = null,
+        vocals = null,
         version = "1.0.0",
         year = 2005,
         genre = "Pop",

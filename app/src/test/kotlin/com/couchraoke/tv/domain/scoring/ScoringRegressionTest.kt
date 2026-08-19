@@ -153,6 +153,8 @@ class ScoringRegressionTest {
             video = null,
             cover = null,
             background = null,
+            instrumental = null,
+            vocals = null,
             version = "1.0.0",
             year = null,
             genre = null,

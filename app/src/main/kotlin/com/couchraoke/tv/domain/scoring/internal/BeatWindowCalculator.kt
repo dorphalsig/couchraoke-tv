@@ -25,7 +25,7 @@ internal object BeatWindowCalculator {
         gapMs: Float,
         bpmFile: Float,
         micDelayMs: Int,
-    ): Int = floor(midBeat(scoringTimeSec(lyricsTimeSec, gapMs, micDelayMs), bpmFile) - 1.0).toInt()
+    ): Int = floor(midBeat(scoringTimeSec(lyricsTimeSec, gapMs, micDelayMs), bpmFile)).toInt()
 
     /**
      * Returns the stepped scoring beat at a captured sample time.

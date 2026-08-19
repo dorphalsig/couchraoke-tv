@@ -6,10 +6,14 @@ import com.couchraoke.tv.domain.scoring.internal.Phase0ScoringEngine
 import com.couchraoke.tv.domain.scoring.internal.PitchSampleSource
 import com.couchraoke.tv.domain.scoring.model.Difficulty
 import com.couchraoke.tv.domain.scoring.model.PitchSample
+import com.couchraoke.tv.domain.scoring.model.PlayerScore
 import com.couchraoke.tv.domain.scoring.model.ScoringConfig
 import com.couchraoke.tv.domain.usdx.internal.DefaultUsdxParser
+import com.couchraoke.tv.domain.usdx.model.ParsedSong
 import com.couchraoke.tv.fixtures.FixtureJson
 import com.couchraoke.tv.fixtures.FixturePaths
+import com.couchraoke.tv.fixtures.PlayerScoresSnapshot
+import com.couchraoke.tv.fixtures.ScoreNoteWindow
 import com.couchraoke.tv.fixtures.ScoreSnapshot
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
@@ -34,6 +38,7 @@ class ScoringEngineFixtureTest {
                 fixtureId = "F08_scoring_beat_stepping_interval_semantics",
                 relativePath = "pitchFrames.jsonl",
             ),
+            expandBeatSamples = false,
         )
     }
 
@@ -100,20 +105,45 @@ class ScoringEngineFixtureTest {
     }
 
     @Test(timeout = 30_000)
-    fun matchesF03FreestyleOnlyScoringFixture() {
-        val fixtureId = "F03_body_grammar_token_recognition"
-        val pitchSamples = readPitchSamples(
-            fixtureId = fixtureId,
-            relativePath = "scoring/freestyle_only/pitchFrames.jsonl",
-        )
-
-        assertFixtureCase(
-            fixtureId = fixtureId,
-            chartRelativePath = "scoring/freestyle_only/song.txt",
-            expectedPath = "scoring/freestyle_only/expected.score.json",
+    fun matchesF03AllFreestyleScoringFixture() {
+        assertPlayerScoresCase(
+            subcase = "all_freestyle",
             difficulty = Difficulty.Medium,
-            pitchSamples = pitchSamples,
         )
+    }
+
+    @Test(timeout = 30_000)
+    fun matchesF03MixedNormalFreestyleScoringFixture() {
+        assertPlayerScoresCase(
+            subcase = "mixed_normal_freestyle",
+            difficulty = Difficulty.Medium,
+        )
+    }
+
+    /**
+     * The F03 scoring subcases assert totals per player rather than the `expectedTotals` block the
+     * other score fixtures use (tv_app.md T6.1.5, T6.1.6a).
+     */
+    private fun assertPlayerScoresCase(subcase: String, difficulty: Difficulty) {
+        val fixtureId = "F03_body_grammar_token_recognition"
+        val chartRelativePath = "scoring/$subcase/song.txt"
+        val chart = parser.parse(
+            "$fixtureId::$chartRelativePath",
+            FixturePaths.fixtureFile(fixtureId, chartRelativePath).readBytes(),
+        ).getOrThrow()
+        val expected = FixtureJson.decode<PlayerScoresSnapshot>(
+            FixturePaths.fixtureFile(fixtureId, "scoring/$subcase/expected.score.json"),
+        )
+        val pitchSamples = readPitchSamples(fixtureId, "scoring/$subcase/pitchFrames.jsonl")
+        val actual = scoreChart(chart, difficulty, pitchSamples, expandBeatSamples = true)
+
+        expected.playerScores.forEach { (playerId, totals) ->
+            val playerScore = actual.getValue(PlayerId.valueOf(playerId))
+            totals.scoreInt?.let { assertEquals(it, playerScore.scoreInt) }
+            totals.scoreGoldenInt?.let { assertEquals(it, playerScore.scoreGoldenInt) }
+            totals.scoreLineInt?.let { assertEquals(it, playerScore.scoreLineInt) }
+            assertEquals(totals.scoreTotalInt, playerScore.scoreTotalInt)
+        }
     }
 
     private fun assertSubcase(
@@ -145,6 +175,7 @@ class ScoringEngineFixtureTest {
         expectedPath: String,
         difficulty: Difficulty,
         pitchSamples: List<PitchSample>,
+        expandBeatSamples: Boolean = true,
     ) {
         val chartPath = FixturePaths.fixtureFile(fixtureId, chartRelativePath)
         val expectedScorePath = FixturePaths.fixtureFile(fixtureId, expectedPath)
@@ -166,24 +197,8 @@ class ScoringEngineFixtureTest {
                 )
             }
         }
-        val normalizedPitchSamples = expandFixtureBeatSamples(
-            bpmFile = chart.header.bpmFile,
-            gapMs = chart.header.gapMs,
-            pitchSamples = fixturePitchSamples,
-        )
-        val engine = Phase0ScoringEngine(PitchSampleSource { normalizedPitchSamples })
-        engine.loadChart(
-            chart = chart,
-            micDelayMs = 0,
-            medleyWindow = null,
-            config = ScoringConfig(
-                playerDifficulties = mapOf(PlayerId.P1 to difficulty),
-                lineBonusEnabled = true,
-            ),
-        )
-        engine.setSongStart(0L)
-
-        val actual = runBlocking { engine.finalizeAll() }.getValue(PlayerId.P1)
+        val actual = scoreChart(chart, difficulty, fixturePitchSamples, expandBeatSamples)
+            .getValue(PlayerId.P1)
 
         expected.expectedTotals.score?.let {
             assertEquals(it.toDouble(), actual.score, 1e-6)
@@ -202,6 +217,71 @@ class ScoringEngineFixtureTest {
             assertEquals(it, actual.scoreLineInt)
         }
         assertEquals(expected.expectedTotals.scoreTotalInt, actual.scoreTotalInt)
+        expected.noteWindow?.let { noteWindow ->
+            assertNoteWindow(chart, noteWindow, fixturePitchSamples, actual.score)
+        }
+    }
+
+    /**
+     * Checks the fixture's deadline-driven projection: the note's window in file beats, the frames
+     * that qualify under `noteStartTvMs <= tvTimeMs < noteEndTvMs`, and the resulting note score.
+     */
+    private fun assertNoteWindow(
+        chart: ParsedSong,
+        noteWindow: ScoreNoteWindow,
+        pitchSamples: List<PitchSample>,
+        actualScore: Double,
+    ) {
+        val note = chart.tracks.first().lines.first().notes.single()
+        val noteStartTvMs = beatStartTvMs(chart.header.bpmFile, chart.header.gapMs, note.startBeatFile)
+        val noteEndTvMs = BeatWindowCalculator.noteEndTvMs(
+            songStartTvMs = 0L,
+            startBeatFile = note.startBeatFile,
+            durationBeats = note.durationBeats,
+            bpmFile = chart.header.bpmFile,
+            gapMs = chart.header.gapMs,
+            micDelayMs = 0,
+        )
+        val qualifying = pitchSamples.filter { sample ->
+            val tvTimeMs = sample.tvTimeMs ?: return@filter false
+            tvTimeMs in noteStartTvMs until noteEndTvMs
+        }
+
+        assertEquals(noteWindow.startBeat, note.startBeatFile)
+        assertEquals(noteWindow.endBeatExclusive, note.endBeatFileExclusive)
+        assertEquals(noteWindow.samplesInNote, qualifying.size)
+        assertEquals(noteWindow.hits, qualifying.count { it.midiNote != 255 })
+        assertEquals(noteWindow.expectedNoteScore.toDouble(), actualScore, 1e-6)
+    }
+
+    private fun scoreChart(
+        chart: ParsedSong,
+        difficulty: Difficulty,
+        pitchSamples: List<PitchSample>,
+        expandBeatSamples: Boolean,
+    ): Map<PlayerId, PlayerScore> {
+        val normalizedPitchSamples = if (expandBeatSamples) {
+            expandFixtureBeatSamples(
+                bpmFile = chart.header.bpmFile,
+                gapMs = chart.header.gapMs,
+                pitchSamples = pitchSamples,
+            )
+        } else {
+            pitchSamples
+        }
+        val engine = Phase0ScoringEngine(PitchSampleSource { normalizedPitchSamples })
+        engine.loadChart(
+            chart = chart,
+            micDelayMs = 0,
+            medleyWindow = null,
+            config = ScoringConfig(
+                playerDifficulties = mapOf(PlayerId.P1 to difficulty),
+                lineBonusEnabled = true,
+            ),
+        )
+        engine.setSongStart(0L)
+
+        return runBlocking { engine.finalizeAll() }
     }
 
     private fun expandFixtureBeatSamples(

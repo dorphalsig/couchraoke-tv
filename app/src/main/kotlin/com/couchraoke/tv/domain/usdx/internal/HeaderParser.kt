@@ -30,6 +30,8 @@ internal data class HeaderDraft(
     val video: String?,
     val cover: String?,
     val background: String?,
+    val instrumental: String?,
+    val vocals: String?,
     val version: String,
     val year: Int?,
     val genre: String?,
@@ -46,7 +48,7 @@ internal data class HeaderDraft(
             artist = requireNotNull(artist),
             bpmFile = requireNotNull(bpmFile),
             gapMs = gapMs,
-            audio = requireNotNull(resolvedAudio),
+            audio = resolvedAudio,
             startSec = startSec,
             endMs = endMs,
             videoGapSec = videoGapSec,
@@ -54,6 +56,8 @@ internal data class HeaderDraft(
             video = video,
             cover = cover,
             background = background,
+            instrumental = instrumental,
+            vocals = vocals,
             version = version,
             year = year,
             genre = genre,
@@ -131,6 +135,8 @@ internal object HeaderParser {
                 "VIDEO" -> knownTags.video = value.takeUnless(String::isBlank)
                 "COVER" -> knownTags.cover = value.takeUnless(String::isBlank)
                 "BACKGROUND" -> knownTags.background = value.takeUnless(String::isBlank)
+                "INSTRUMENTAL" -> knownTags.instrumental = value.takeUnless(String::isBlank)
+                "VOCALS" -> knownTags.setVocals(value.takeUnless(String::isBlank), lineNumber)
                 "VERSION" -> parseVersion(value, lineNumber)
                 "YEAR" -> knownTags.year = value.toIntOrWarn(lineNumber)
                 "GENRE" -> knownTags.genre = value.takeUnless(String::isBlank)
@@ -172,12 +178,17 @@ internal object HeaderParser {
         private fun buildDraft(): HeaderDraft {
             val resolvedVersion = knownTags.version ?: "0.3.0"
             val resolvedAudio = resolvedAudio(resolvedVersion)
+            if (knownTags.vocals != null && knownTags.instrumental == null) {
+                diagnostics += vocalsWithoutInstrumental(txtUri, knownTags.vocalsLineNumber)
+            }
+            // Base audio is optional when an #INSTRUMENTAL+#VOCALS pair is authored; the phone
+            // serves the generated mix as the effective audioUrl (tv_app.md §2.4.7, §2.5.5).
+            val audioRequirementSatisfied = resolvedAudio.value != null || knownTags.hasAuthoredMixPair
             val missingCount = listOf(
                 knownTags.title,
                 knownTags.artist,
                 knownTags.bpmFile,
-                resolvedAudio.value,
-            ).count { value -> value == null }
+            ).count { value -> value == null } + if (audioRequirementSatisfied) 0 else 1
             repeat(missingCount) {
                 diagnostics += DiagnosticFactory.invalid(
                     code = DiagnosticFactory.ERROR_CORRUPT_SONG_MISSING_REQUIRED_HEADER,
@@ -199,6 +210,8 @@ internal object HeaderParser {
                 video = knownTags.video,
                 cover = knownTags.cover,
                 background = knownTags.background,
+                instrumental = knownTags.instrumental,
+                vocals = knownTags.vocals,
                 version = resolvedVersion,
                 year = knownTags.year,
                 genre = knownTags.genre,
@@ -239,6 +252,19 @@ internal object HeaderParser {
             lineNumber = lineNumber,
         )
 
+    /**
+     * `#VOCALS` without `#INSTRUMENTAL` is ignored for playback resolution (tv_app.md §2.4.7).
+     *
+     * This is the only mix-pair diagnostic derivable from the chart text alone. The two
+     * `WARN_MIX_PAIR_INELIGIBLE_*` codes compare decoded sample rate and channel count, which is
+     * phone-side work — the TV never decodes or mixes those sources (tv_app.md §2.6.7).
+     */
+    private fun vocalsWithoutInstrumental(txtUri: String, lineNumber: Int?): DiagnosticEntry =
+        DiagnosticFactory.warn(
+            code = DiagnosticFactory.WARN_VOCALS_WITHOUT_INSTRUMENTAL,
+            txtUri = txtUri,
+            lineNumber = lineNumber,
+        )
     private data class KnownHeaderTags(
         var title: String? = null,
         var artist: String? = null,
@@ -255,6 +281,9 @@ internal object HeaderParser {
         var video: String? = null,
         var cover: String? = null,
         var background: String? = null,
+        var instrumental: String? = null,
+        var vocals: String? = null,
+        var vocalsLineNumber: Int? = null,
         var version: String? = null,
         var year: Int? = null,
         var genre: String? = null,
@@ -264,6 +293,14 @@ internal object HeaderParser {
         var medleyStartBeat: Int? = null,
         var medleyEndBeat: Int? = null,
     ) {
+        /**
+         * Base audio is optional when both mix sources are authored; whether the pair is actually
+         * accepted depends on decoded sample rate and channel count, which is phone-side
+         * (tv_app.md §2.4.7, §2.6.7).
+         */
+        val hasAuthoredMixPair: Boolean
+            get() = instrumental != null && vocals != null
+
         fun setAudio(value: String?, lineNumber: Int) {
             audio = value
             audioLineNumber = lineNumber
@@ -272,6 +309,11 @@ internal object HeaderParser {
         fun setMp3(value: String?, lineNumber: Int) {
             mp3 = value
             mp3LineNumber = lineNumber
+        }
+
+        fun setVocals(value: String?, lineNumber: Int) {
+            vocals = value
+            vocalsLineNumber = lineNumber
         }
     }
 
