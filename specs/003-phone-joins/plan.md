@@ -27,6 +27,8 @@ Ktor server, jmDNS, coroutines, serialization and the Compose TV libraries are *
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
+*Checked against constitution **v2.0.0**. This plan was originally written under v1.0.0 and re-checked when v2.0.0 landed; no section needed rewriting. The three tightened clauses in Principle IV were already satisfied: an L gate is declared below, screenshots verify against a committed baseline rather than recording, and no gate in this feature contains `assumeTrue` or `@Ignore`. Principle I's newly pinned 20-byte `<IqIBBH` frame is not exercised by this slice — the datagram socket is deliberately unbound until Slice 8.*
+
 ### Host Authority — PASS
 
 The TV creates the session identity, the join code, every connection identity, and the roster, and no companion-supplied value overrides them (FR-034). `HandshakeValidator` reads the phone's `hello` but derives nothing authoritative from it; `ConnectionIdAllocator` is TV-owned and monotonic. LAN-only holds: no outbound internet call exists in this slice. Streaming-only remote assets is preserved trivially — the asset-server port is recorded and never contacted (spec Assumptions). Fixed-size UDP pitch transport is untouched: the datagram socket is deliberately not bound here (Slice 8 owns it), so no transport decision is pre-empted.
@@ -61,7 +63,7 @@ One `spec.md`, one `plan.md`, one `tasks.md` (the latter produced by `/speckit.t
 
 ### Validation Gate — DEFINED
 
-Scoped `testBranch` per phase, listed in each phase below. Two rules apply throughout. First, adapters are excluded from `--src` selection because they are thin by construction and cannot reach 80% from JVM tests; their behaviour is proved by the loopback gate instead. Second, and per FR-038, a scoped `testBranch` pass alone never completes a phase that touches the transport — the loopback gate against the real peer must also pass, and neither substitutes for the other.
+Scoped `testBranch` per phase, listed in each phase below. Three rules apply throughout. First, adapters are excluded from `--src` selection because they are thin by construction and cannot reach 80% from JVM tests; their behaviour is proved by the loopback gate instead. Second, and per FR-038, a scoped `testBranch` pass alone never completes a phase that touches the transport — the loopback gate against the real peer must also pass, and neither substitutes for the other. Third, per constitution v2.0.0 Principle IV, the loopback gate is this slice's mandatory **L** gate: a slice proved only by U and S is not proved, and a gate satisfied by a skipped test is a failure rather than a pass.
 
 **Feature-level completion gate:**
 

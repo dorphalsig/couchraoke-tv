@@ -151,7 +151,7 @@ An unmerged branch, `origin/002-solo-sing-playback`, contains roughly 800 lines 
 
 Its QR integration was evaluated seriously and rejected on measurement; see R1.
 
-**Worth knowing**: that branch also carries a constitution marked v2.0.0 (amended 2026-08-18) whose Principle IV drops `testBranch` as the single gate. `master` is still v1.0.0. This is the bump Observation 2 records as claimed-but-absent — it exists, but not on the main line. This spec satisfies both versions, so nothing here depends on which one lands.
+**Worth knowing**: that branch also carried the constitution v2.0.0 text, whose Principle IV drops `testBranch` as the single gate. That amendment has since been landed on this branch on its own, separately from the superseded code around it, so `.specify/memory/constitution.md` here is v2.0.0. This spec was written under v1.0.0 and satisfies v2.0.0 unchanged — it already declares an L gate, verifies screenshots against a committed baseline, and carries no runtime skips.
 
 ---
 
