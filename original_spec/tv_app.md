@@ -1,1 +1,1 @@
-../../spec/tv_app.md
+../../couchraoke-spec/tv_app.md
