@@ -11,11 +11,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * T030: covers [SessionRoster]'s admit path only (contracts/domain-api.md). T045 extends it
- * with the capacity cases (FR-015); reclaim (T057) belongs to US3 and is not exercised here.
- *
- * T042 later extends this file to cover [SessionRoster.detach]'s FR-023 retention path,
- * which the disconnect flow needs alongside the admit path.
+ * T030: covers [SessionRoster]'s admit path for previously-unseen devices
+ * (contracts/domain-api.md). T045 extends it with the capacity cases (FR-015). T042 extends
+ * it with [SessionRoster.detach]'s FR-023 retention path. T054 extends
+ * [SessionRosterReclaimAndReleaseTest], a sibling class in this file, with reclaim
+ * (FR-020, FR-021), `detach`'s FR-022 identity guard, and `release`/`releaseDisconnected`
+ * (FR-024).
  */
 class SessionRosterTest {
 
@@ -161,27 +162,13 @@ class SessionRosterTest {
         )
 
         // A known deviceId must never be refused for capacity (FR-015, FR-020, FR-021): it must
-        // still reach the reclaim branch (T057's TODO), not be short-circuited into AtCapacity.
-        assertThrows(NotImplementedError::class.java) {
-            roster.admit(DEVICE_A, "Alice's Phone (again)", "1.0.0", AssetPort(8082), ConnectionId(3))
-        }
-    }
-
-    /**
-     * Re-admitting a `deviceId` already on the roster is T057's reclaim job (see this
-     * class's KDoc); this phase has no reclaim path to fall into, so it must fail loudly
-     * rather than silently double-admitting or overwriting the existing entry. This test
-     * documents that current, deliberate boundary -- T057 replaces the [TODO] this reaches
-     * with real reclaim behaviour, at which point this test is expected to be rewritten.
-     */
-    @Test(timeout = 30_000)
-    fun admittingAnAlreadyPresentDeviceIsNotYetImplemented() {
-        val roster = SessionRoster()
-        roster.admit(DEVICE_A, "Alice's Phone", "1.0.0", AssetPort(8080), ConnectionId(1))
-
-        assertThrows(NotImplementedError::class.java) {
-            roster.admit(DEVICE_A, "Alice's Phone (second hello)", "1.0.0", AssetPort(8082), ConnectionId(2))
-        }
+        // still reclaim, not be short-circuited into AtCapacity.
+        val knownResult = roster.admit(DEVICE_A, "Alice's Phone (again)", "1.0.0", AssetPort(8082), ConnectionId(3))
+        assertTrue(
+            "a known deviceId must reclaim rather than be refused for capacity",
+            knownResult is RosterAdmission.Reclaimed,
+        )
+        assertEquals("reclaiming a known device must not change roster size", 1, roster.size)
     }
 
     private companion object {
@@ -191,5 +178,133 @@ class SessionRosterTest {
         // Ten distinct device ids filling the default capacity, plus one more previously-unseen.
         val DEFAULT_CAPACITY_DEVICE_IDS = (1..10).map { DeviceId("device-000$it") }
         val ELEVENTH_DEVICE = DeviceId("device-00011")
+    }
+}
+
+/**
+ * T057 extends [SessionRosterTest] with reclaim, `detach`'s FR-022 identity guard, and
+ * `release`/`releaseDisconnected` (FR-024). Kept as a sibling class in the same file to stay
+ * under detekt's `TooManyFunctions` limit on [SessionRosterTest].
+ */
+class SessionRosterReclaimAndReleaseTest {
+
+    @Test(timeout = 30_000)
+    fun reclaimingAKnownDeviceRefreshesFieldsKeepsSizeUnchangedAndPreservesOrder() {
+        val roster = SessionRoster()
+        roster.admit(DEVICE_A, "Alice's Phone", "1.0.0", AssetPort(8080), ConnectionId(1))
+        roster.admit(DEVICE_B, "Bob's Phone", "1.0.0", AssetPort(8081), ConnectionId(2))
+
+        val result = roster.admit(
+            deviceId = DEVICE_A,
+            displayName = "Alice's Phone (v2)",
+            appVersion = "2.0.0",
+            assetPort = AssetPort(9090),
+            connectionId = ConnectionId(3),
+        )
+
+        val reclaimed = result as? RosterAdmission.Reclaimed
+            ?: error("expected RosterAdmission.Reclaimed, was $result")
+        assertEquals(
+            "reclaim must refresh displayName, appVersion and assetPort from the new hello",
+            RosterEntry(
+                deviceId = DEVICE_A,
+                displayName = "Alice's Phone (v2)",
+                appVersion = "2.0.0",
+                assetPort = AssetPort(9090),
+                connection = ConnectionId(3),
+            ),
+            reclaimed.entry,
+        )
+        assertEquals("reclaim must report the entry's prior live connection", ConnectionId(1), reclaimed.previous)
+        assertEquals("reclaiming a known device must not grow the roster", 2, roster.size)
+        assertEquals(
+            "reclaim must not move the device to the end of admission order",
+            listOf(DEVICE_A, DEVICE_B),
+            roster.entries.map { it.deviceId },
+        )
+    }
+
+    @Test(timeout = 30_000)
+    fun reclaimSucceedsAtCapacity() {
+        val roster = SessionRoster(capacity = 1)
+        roster.admit(DEVICE_A, "Alice's Phone", "1.0.0", AssetPort(8080), ConnectionId(1))
+
+        val result = roster.admit(DEVICE_A, "Alice's Phone (again)", "1.0.0", AssetPort(8080), ConnectionId(2))
+
+        assertTrue(
+            "a known deviceId must reclaim even when the roster is at capacity (FR-020, FR-021)",
+            result is RosterAdmission.Reclaimed,
+        )
+        assertEquals(1, roster.size)
+    }
+
+    @Test(timeout = 30_000)
+    fun reclaimSucceedsWhenDeviceHasNoLiveConnection() {
+        val roster = SessionRoster()
+        roster.admit(DEVICE_A, "Alice's Phone", "1.0.0", AssetPort(8080), ConnectionId(1))
+        roster.detach(DEVICE_A, ConnectionId(1))
+        assertEquals(null, roster.entries.single().connection)
+
+        val result = roster.admit(DEVICE_A, "Alice's Phone (reconnect)", "1.0.0", AssetPort(8080), ConnectionId(2))
+
+        val reclaimed = result as? RosterAdmission.Reclaimed
+            ?: error("expected RosterAdmission.Reclaimed, was $result")
+        assertEquals(
+            "reclaim without a live connection must report a null previous ConnectionId (FR-021)",
+            null,
+            reclaimed.previous,
+        )
+        assertEquals(1, roster.size)
+        assertEquals(ConnectionId(2), roster.entries.single().connection)
+    }
+
+    @Test(timeout = 30_000)
+    fun detachWithAStaleConnectionIdReturnsFalseAndMutatesNothing() {
+        val roster = SessionRoster()
+        roster.admit(DEVICE_A, "Alice's Phone", "1.0.0", AssetPort(8080), ConnectionId(1))
+        roster.admit(DEVICE_A, "Alice's Phone (reconnect)", "1.0.0", AssetPort(8080), ConnectionId(2))
+
+        val detached = roster.detach(DEVICE_A, ConnectionId(1))
+
+        assertFalse("a superseded ConnectionId must not detach the replacement (FR-022)", detached)
+        assertEquals(1, roster.size)
+        assertEquals(
+            "the active connection must be unchanged by the stale detach attempt",
+            ConnectionId(2),
+            roster.entries.single().connection,
+        )
+    }
+
+    @Test(timeout = 30_000)
+    fun releaseRemovesTheDeviceAndFreesItsCapacitySlot() {
+        val roster = SessionRoster(capacity = 1)
+        roster.admit(DEVICE_A, "Alice's Phone", "1.0.0", AssetPort(8080), ConnectionId(1))
+
+        roster.release(DEVICE_A)
+
+        assertEquals("release must drop the entry entirely, freeing its capacity slot", 0, roster.size)
+        val result = roster.admit(DEVICE_B, "Bob's Phone", "1.0.0", AssetPort(8081), ConnectionId(2))
+        assertTrue(result is RosterAdmission.Admitted)
+    }
+
+    @Test(timeout = 30_000)
+    fun releaseDisconnectedDropsOnlyEntriesWithNoLiveConnection() {
+        val roster = SessionRoster()
+        roster.admit(DEVICE_A, "Alice's Phone", "1.0.0", AssetPort(8080), ConnectionId(1))
+        roster.admit(DEVICE_B, "Bob's Phone", "1.0.0", AssetPort(8081), ConnectionId(2))
+        roster.detach(DEVICE_A, ConnectionId(1))
+
+        roster.releaseDisconnected()
+
+        assertEquals(
+            "releaseDisconnected must drop only entries with no live connection",
+            listOf(DEVICE_B),
+            roster.entries.map { it.deviceId },
+        )
+    }
+
+    private companion object {
+        val DEVICE_A = DeviceId("device-aaaa")
+        val DEVICE_B = DeviceId("device-bbbb")
     }
 }

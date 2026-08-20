@@ -9,17 +9,20 @@ import com.couchraoke.tv.domain.session.model.RosterEntry
  * The durable session membership list, keyed by [DeviceId], capacity 10 by default
  * (data-model.md).
  *
- * T034 implements the admit path (new devices only -- a repeat `deviceId` is T057's
- * reclaim branch) and the `connected`/`entries` derivations. T051 adds `admit`'s
- * capacity check (FR-015): a previously-unseen `deviceId` is refused with `AtCapacity`
- * once `size == capacity`; a known `deviceId` never is, because that check only runs on
- * the new-entry branch below, after the reclaim branch's `TODO` would already have been
- * reached. T042 implements `detach`'s FR-023 retention: the entry survives with its
- * connection cleared, keeping its capacity slot. `detach` does not yet check whether the
- * given [ConnectionId] is still the entry's *active* one before clearing it (FR-022) --
- * that guard is unreachable before T057, since without reclaim a device can never hold
- * more than one `ConnectionId` in its lifetime, so there is nothing yet for a stale
- * connectionId to be stale against. T057 adds that guard alongside reclaim.
+ * T034 implements the admit path for previously-unseen devices and the
+ * `connected`/`entries` derivations. T051 adds `admit`'s capacity check (FR-015): a
+ * previously-unseen `deviceId` is refused with `AtCapacity` once `size == capacity`; a
+ * known `deviceId` never is, because the capacity check only runs on the new-entry
+ * branch, after the reclaim branch below has already returned. T042 implements
+ * `detach`'s FR-023 retention: the entry survives with its connection cleared, keeping
+ * its capacity slot. T057 completes `admit`'s reclaim branch (FR-020, FR-021): a known
+ * `deviceId` reuses its entry in place, refreshing `displayName`/`appVersion`/
+ * `assetPort` from the new hello and taking a fresh [ConnectionId], regardless of
+ * capacity or whether a live connection currently exists. T057 also completes
+ * `detach`'s FR-022 guard -- it is a no-op unless the supplied [ConnectionId] is still
+ * the entry's *active* one -- and adds `release`/`releaseDisconnected` (FR-024),
+ * unreachable in this slice but required so capacity semantics are complete and
+ * testable now.
  */
 class SessionRoster(private val capacity: Int = 10) {
 
@@ -41,44 +44,57 @@ class SessionRoster(private val capacity: Int = 10) {
         connectionId: ConnectionId,
     ): RosterAdmission {
         val existing = byDevice[deviceId]
-        if (existing != null) {
-            TODO(
-                "SessionRoster.admit's reclaim branch is completed by T057: deviceId=$deviceId " +
-                    "existing=$existing connectionId=$connectionId capacity=$capacity",
-            )
+        val admission = when {
+            existing != null -> {
+                val reclaimed = existing.copy(
+                    displayName = displayName,
+                    appVersion = appVersion,
+                    assetPort = assetPort,
+                    connection = connectionId,
+                )
+                byDevice[deviceId] = reclaimed
+                RosterAdmission.Reclaimed(reclaimed, existing.connection)
+            }
+            size == capacity -> RosterAdmission.AtCapacity
+            else -> {
+                val entry = RosterEntry(
+                    deviceId = deviceId,
+                    displayName = displayName,
+                    appVersion = appVersion,
+                    assetPort = assetPort,
+                    connection = connectionId,
+                )
+                byDevice[deviceId] = entry
+                RosterAdmission.Admitted(entry)
+            }
         }
-        if (size == capacity) {
-            return RosterAdmission.AtCapacity
-        }
-        val entry = RosterEntry(
-            deviceId = deviceId,
-            displayName = displayName,
-            appVersion = appVersion,
-            assetPort = assetPort,
-            connection = connectionId,
-        )
-        byDevice[deviceId] = entry
-        return RosterAdmission.Admitted(entry)
+        return admission
     }
 
     /**
-     * `connectionId` is currently unused: FR-022's guard (a no-op unless it is still the
-     * entry's *active* connection) is provably unreachable before T057 adds reclaim -- a
-     * device can only ever hold one `ConnectionId` in its lifetime without it, so there is
-     * nothing yet for a stale value to be stale against. `@Suppress`ed rather than dropped
-     * because the contract's binding signature (contracts/domain-api.md) requires it now, and
-     * T057 completes the guard using it.
+     * A no-op unless [connectionId] is still the entry's *active* connection (FR-022):
+     * this is what stops a superseded connection's late close from evicting the
+     * replacement that reclaimed it. On success the entry is retained with
+     * `connection = null`, keeping its capacity slot (FR-023).
      */
-    @Suppress("UnusedParameter")
     fun detach(deviceId: DeviceId, connectionId: ConnectionId): Boolean {
-        val entry = byDevice[deviceId] ?: return false
+        val entry = byDevice[deviceId]
+        if (entry == null || entry.connection != connectionId) {
+            return false
+        }
         byDevice[deviceId] = entry.copy(connection = null)
         return true
     }
 
-    fun release(deviceId: DeviceId): Unit = TODO("SessionRoster.release is completed by T057: deviceId=$deviceId")
+    /** Kick: drops [deviceId]'s entry entirely, freeing its capacity slot. Unreachable this slice. */
+    fun release(deviceId: DeviceId) {
+        byDevice.remove(deviceId)
+    }
 
-    fun releaseDisconnected(): Unit = TODO("SessionRoster.releaseDisconnected is completed by T057")
+    /** Song-end sweep: drops every entry with no live connection (FR-024). Unreachable this slice. */
+    fun releaseDisconnected() {
+        byDevice.entries.removeAll { it.value.connection == null }
+    }
 
     /**
      * No task in tasks.md owns `clear`'s behaviour — flagged as an out-of-scope

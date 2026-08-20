@@ -40,7 +40,9 @@ class SessionCoordinator(
 
 `onDisconnected` takes both identifiers so it can enforce FR-022 — it is a no-op unless `connectionId` is still the active one for `deviceId`. It completes removal from the connected list before returning, which is what gives FR-023 its ordering guarantee relative to the next `admit`.
 
-**`SessionEvent`**: `sealed interface` with `Connected(deviceId, connectionId)`, `Disconnected(deviceId, connectionId)`, `Reconnected(deviceId, connectionId, previous: ConnectionId)` (FR-019).
+**`SessionEvent`**: `sealed interface` with `Connected(deviceId, connectionId)`, `Disconnected(deviceId, connectionId)`, `Reconnected(deviceId, connectionId, previous: ConnectionId?)` (FR-019).
+
+> Corrected during implementation (T058). `previous` was specified non-null, which contradicted `RosterAdmission.Reclaimed(entry, previous: ConnectionId?)` two sections below. FR-021 decides reclaim from roster presence alone and FR-023 keeps a dropped device's entry with `connection = null`, so the ordinary reconnect reaches `Reclaimed` with no connection to supersede. `ConnectionId` requires `1..65535`, so no sentinel exists to fill the gap. `null` now means "no live connection was displaced"; non-null means one was (FR-022). See spec.md Observation 22.
 
 **`PhaseTransitionResult`**: `Accepted(from, to)` | `Rejected(from, to)`. Rejected leaves the phase unchanged (FR-026).
 
