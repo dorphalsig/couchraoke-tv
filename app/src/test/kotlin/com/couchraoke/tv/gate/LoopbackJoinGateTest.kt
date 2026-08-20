@@ -168,6 +168,59 @@ class LoopbackJoinGateTest {
     }
 
     /**
+     * T055/SC-005/SC-006: the roster fills at ten devices, refuses an eleventh, and still
+     * welcomes back one of its own.
+     *
+     * Ten sequential peers suffice because a disconnected device keeps its roster slot in
+     * this slice (FR-023) — each peer has already exited by the time the next dials in, so
+     * the live connection count is zero throughout and only the roster's retained entries
+     * hold the capacity. That is exactly what makes the last leg meaningful: `phone-1` comes
+     * back to a *full* roster with no live connection of its own, which is the reconnect
+     * shape spec.md Observation 22 describes, and it must still be admitted. A capacity
+     * check placed before the reclaim branch would refuse it, so this case is what pins
+     * that ordering over a real socket rather than in a unit test's imagination.
+     */
+    @Test(timeout = 120_000)
+    fun theRosterFillsAtTenDevicesRefusesAnEleventhAndStillWelcomesBackOneOfItsOwn() {
+        val token = gate.coordinator.snapshot.value.joinCode.display
+
+        val firstTen = (1..10).map { n ->
+            val result = MockPhonePeer.run(
+                tvPort = gate.boundPort,
+                token = token,
+                extraArgs = listOf("--join-only", "--client-id", "loopback-phone-$n"),
+            )
+            assertEquals("device $n of the first ten must be admitted", 0, result.exitStatus)
+            result.connectionId
+        }
+        assertEquals("the ten admitted devices must hold ten distinct connectionIds", 10, firstTen.toSet().size)
+
+        val eleventh = MockPhonePeer.run(
+            tvPort = gate.boundPort,
+            token = token,
+            extraArgs = listOf("--join-only", "--client-id", "loopback-phone-eleventh"),
+        )
+        assertRefused(eleventh, expectedCode = "session_full")
+
+        val returning = MockPhonePeer.run(
+            tvPort = gate.boundPort,
+            token = token,
+            extraArgs = listOf("--join-only", "--client-id", "loopback-phone-1"),
+        )
+        assertEquals(
+            "a device already on the roster must be readmitted even though the roster is full (SC-006)",
+            0,
+            returning.exitStatus,
+        )
+        assertEquals("accepted", returning.outcome)
+        assertNotEquals(
+            "a reclaim must mint a fresh connectionId, not hand back the old one (FR-020)",
+            firstTen.first(),
+            returning.connectionId,
+        )
+    }
+
+    /**
      * Every refusal must look the same on the wire: an `error` frame carrying the code,
      * then a 1008 close whose reason repeats that code (FR-019, contracts/control-protocol.md).
      * Asserting the close alongside the frame is what catches a refusal that sends the
