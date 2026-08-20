@@ -26,10 +26,13 @@ import kotlinx.coroutines.flow.update
  *
  * This phase (T022) implements construction, [snapshot], [connectedDevices], [events],
  * [requestPhase] (delegating to [phaseMachine]) and [end]. T035 completes `admit`'s accept
- * path and T042 completes [onDisconnected]; [authorize] and `admit`'s refusal branches
- * (`invalid_token`, `protocol_mismatch`, `invalid_message`, `session_full`) remain stubbed
- * for US2's T050, which is also expected to emit `SessionEvent.Reconnected` (T058) for a
- * roster reclaim.
+ * path and T042 completes [onDisconnected]. [authorize] rejects a missing or wrong token
+ * with `invalid_token` (T050, FR-009). `admit`'s `session_full` refusal is completed by
+ * T050 below; `protocol_mismatch` and `invalid_message` can never reach `admit` at all,
+ * because [HandshakeValidator] rejects a malformed raw frame before it is ever parsed into
+ * the [Hello] this method receives (contracts/domain-api.md) -- that validator is wired in
+ * by the caller (`SessionControlConnectionHandler`), not here. T058 is still expected to
+ * emit `SessionEvent.Reconnected` for a roster reclaim.
  *
  * [connectedDevices] and `snapshot.connected` are derived from [SessionRoster.connected] by
  * [refreshConnectedProjection], called after every roster mutation that can change it: a
@@ -95,14 +98,15 @@ class SessionCoordinator(
         }
 
     /**
-     * Completes only the accept path (T035): a new device is allocated a fresh
-     * [ConnectionId], admitted into [roster], projected into [connectedDevices] /
-     * `snapshot.connected`, and announced via [SessionEvent.Connected]. `admit` receives an
-     * already-parsed [Hello] -- [HandshakeValidator] validates the *raw* wire frame before
-     * this is ever called (contracts/domain-api.md's `HelloValidation.Valid(hello)`), so the
-     * `protocol_mismatch`/`invalid_message` refusals it guards cannot occur here; they and
-     * `session_full` are left as US2's T050 to complete below. `Reclaimed` (T057/T058) is
-     * likewise unreachable until [SessionRoster.admit] implements reclaim.
+     * Completes the accept path (T035) and the `session_full` refusal (T050): a new device
+     * is allocated a fresh [ConnectionId], admitted into [roster], projected into
+     * [connectedDevices] / `snapshot.connected`, and announced via [SessionEvent.Connected].
+     * `admit` receives an already-parsed [Hello] -- [HandshakeValidator] validates the *raw*
+     * wire frame before this is ever called (contracts/domain-api.md's
+     * `HelloValidation.Valid(hello)`), so the `protocol_mismatch`/`invalid_message` refusals
+     * it guards can never occur here; those are refused upstream, by the caller wiring
+     * [HandshakeValidator] in before `admit` is reached. `Reclaimed` (T057/T058) is likewise
+     * unreachable until [SessionRoster.admit] implements reclaim.
      */
     fun admit(hello: Hello): AdmissionDecision {
         val connectionId = connectionIds.next()
@@ -126,8 +130,9 @@ class SessionCoordinator(
                     "completed by T058 (US3): admission=$admission",
             )
 
-            RosterAdmission.AtCapacity -> TODO(
-                "SessionCoordinator.admit's session_full refusal is completed by T050 (US2)",
+            RosterAdmission.AtCapacity -> AdmissionDecision.Refused(
+                reason = RefusalReason.SESSION_FULL,
+                message = "This session already has the maximum number of connected devices.",
             )
         }
     }

@@ -4,6 +4,9 @@ import com.couchraoke.tv.di.SessionComponent
 import com.couchraoke.tv.domain.control.AdmissionDecision
 import com.couchraoke.tv.domain.control.ControlConnectionHandler
 import com.couchraoke.tv.domain.control.ControlTransport
+import com.couchraoke.tv.domain.control.HandshakeValidator
+import com.couchraoke.tv.domain.control.JoinCodeMatcher
+import com.couchraoke.tv.domain.control.RefusalReason
 import com.couchraoke.tv.domain.control.StartedTransport
 import com.couchraoke.tv.domain.control.model.Hello
 import com.couchraoke.tv.domain.platform.AnnouncementHandle
@@ -12,6 +15,8 @@ import com.couchraoke.tv.domain.platform.MulticastLease
 import com.couchraoke.tv.domain.platform.SessionAnnouncer
 import com.couchraoke.tv.domain.session.model.ConnectionId
 import com.couchraoke.tv.domain.session.model.DeviceId
+import com.couchraoke.tv.domain.session.model.JoinCode
+import com.couchraoke.tv.domain.session.model.SessionId
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
@@ -26,12 +31,17 @@ import java.net.Inet4Address
  * T024: asserts session identity (FR-001) — the [com.couchraoke.tv.domain.session.model.SessionId]
  * handed to [SessionCoordinator] is non-empty, and many sessions minted through
  * [SessionComponent] never repeat one. T035 extends this file to cover `admit`'s accept
- * path and T042 to cover `onDisconnected`'s FR-022/FR-023 ordering guarantee; T050 and T058
- * extend it further for US2/US3. See plan.md's feature-level completion gate.
+ * path, T042 to cover `onDisconnected`'s FR-022/FR-023 ordering guarantee, and T050 to
+ * cover `admit`'s `session_full` refusal; T058 extends it further for US3's reclaim. See
+ * plan.md's feature-level completion gate.
  *
  * This phase (T022) also implements construction, both `StateFlow`s, `events`,
  * `requestPhase` and `end()` for real, so the tests below cover that genuinely-implemented
- * behaviour rather than the stubbed `authorize` (owned by US2's T050).
+ * behaviour. `authorize`'s `invalid_token` refusal and `admit`'s `protocol_mismatch` /
+ * `invalid_message` refusals are covered in `SessionControlConnectionHandlerTest` instead,
+ * since both require a raw wire frame -- `authorize` takes the token directly, and
+ * `HandshakeValidator` (not `SessionCoordinator`) rejects a malformed frame before `admit`
+ * is ever reached.
  */
 class SessionCoordinatorTest {
 
@@ -229,6 +239,33 @@ class SessionCoordinatorTest {
         )
     }
 
+    @Test(timeout = 30_000)
+    fun admitRefusesAPreviouslyUnseenDeviceWithSessionFullWhenTheRosterIsAtCapacity() {
+        // A one-slot roster is enough to prove FR-015 without admitting ten devices first:
+        // the check is on `size == capacity`, not on the number ten specifically.
+        val coordinator = newCoordinatorWithRoster(SessionRoster(capacity = 1))
+        val firstAdmission = coordinator.admit(helloFrom(DEVICE_A))
+
+        // Guards against vacuity: the sole slot must actually be taken by A before B's
+        // admission is asserted to be refused for capacity.
+        assertTrue(
+            "device A must be admitted so the one-slot roster is genuinely at capacity",
+            firstAdmission is AdmissionDecision.Admitted,
+        )
+
+        val decision = coordinator.admit(helloFrom(DEVICE_B))
+
+        val refused = decision as? AdmissionDecision.Refused
+            ?: error("expected AdmissionDecision.Refused for a previously-unseen device at capacity, was $decision")
+        assertEquals(RefusalReason.SESSION_FULL, refused.reason)
+        assertTrue("the session_full message must be non-empty and human-readable", refused.message.isNotBlank())
+        assertEquals(
+            "a refused previously-unseen device must never be projected as connected",
+            listOf(DeviceId(DEVICE_A)),
+            coordinator.connectedDevices.value.map { it.deviceId },
+        )
+    }
+
     private fun helloFrom(clientId: String): Hello = Hello(
         type = "hello",
         protocolVersion = 1,
@@ -245,6 +282,21 @@ class SessionCoordinatorTest {
         multicastLease = FakeMulticastLease,
         joinCodeGenerator = JoinCodeGenerator(),
         clock = { 0L },
+    )
+
+    /**
+     * Builds a [SessionCoordinator] directly, bypassing [SessionComponent], so [roster]'s
+     * capacity can be set below the default 10 -- [SessionComponent.createCoordinator] always
+     * constructs its own default-capacity [SessionRoster] with no way to override it.
+     */
+    private fun newCoordinatorWithRoster(roster: SessionRoster): SessionCoordinator = SessionCoordinator(
+        roster = roster,
+        phaseMachine = GamePhaseMachine(),
+        connectionIds = ConnectionIdAllocator(),
+        validator = HandshakeValidator(),
+        codeMatcher = JoinCodeMatcher,
+        sessionId = SessionId("sess-capacity-test"),
+        joinCode = JoinCode(adjective = "brave", noun = "otter"),
     )
 
     /** A do-nothing [ControlTransport]; T028's `LoopbackJoinGateTest` proves the real one. */

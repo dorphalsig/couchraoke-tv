@@ -47,11 +47,13 @@ class SessionComponent(
         },
     )
 
+    private val validator = HandshakeValidator()
+
     fun createCoordinator(): SessionCoordinator = SessionCoordinator(
         roster = SessionRoster(),
         phaseMachine = GamePhaseMachine(),
         connectionIds = ConnectionIdAllocator(),
-        validator = HandshakeValidator(),
+        validator = validator,
         codeMatcher = JoinCodeMatcher,
         sessionId = SessionId(UUID.randomUUID().toString()),
         joinCode = joinCodeGenerator.next(),
@@ -79,7 +81,7 @@ class SessionComponent(
         val coordinator = createCoordinator()
         multicastLease.acquire()
 
-        val started = transport.start(controlPort, SessionControlConnectionHandler(coordinator, codec))
+        val started = transport.start(controlPort, SessionControlConnectionHandler(coordinator, codec, validator))
         val joinCode = coordinator.snapshot.value.joinCode
         val instanceName = "$INSTANCE_NAME_PREFIX${joinCode.noun}"
         val announcement = announcer.publish(

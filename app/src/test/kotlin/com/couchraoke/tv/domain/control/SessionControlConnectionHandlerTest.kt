@@ -92,10 +92,13 @@ class SessionControlConnectionHandlerTest {
     }
 
     @Test(timeout = 30_000)
-    fun onConnectionDoesNothingWhenTheFirstFrameFailsToDecode() = runBlocking {
-        // No invalid_message policy exists yet (T049/T050 own it) -- this locks in today's
-        // scope-respecting behaviour: a frame that fails to decode is simply not carried
-        // forward, with no refusal invented for it.
+    fun onConnectionRefusesAFirstFrameThatFailsToDecodeWithInvalidMessage() = runBlocking {
+        // T050 wires HandshakeValidator into the handler: a frame that fails to decode is no
+        // longer silently dropped (that was T036's placeholder behaviour, before this
+        // task's validator existed) -- it is now refused with invalid_message, same as any
+        // other handshake validation failure. `{"type":"hello"}` is missing every field
+        // after `type`; HandshakeValidator reports the first missing field in
+        // `required`-array order, which is `protocolVersion`.
         val coordinator = newCoordinator()
         val handler = SessionControlConnectionHandler(coordinator, codec)
         val connection = FakeControlConnection(
@@ -105,9 +108,98 @@ class SessionControlConnectionHandlerTest {
 
         handler.onConnection(connection)
 
-        assertTrue("no reply may be sent for an undecodable frame", connection.sentTexts.isEmpty())
-        assertNull(connection.refusal)
+        assertEquals("invalid_message" to "Missing required field: protocolVersion", connection.refusal)
+        assertTrue("no reply may be sent for a refused frame", connection.sentTexts.isEmpty())
         assertTrue(coordinator.connectedDevices.value.isEmpty())
+    }
+
+    @Test(timeout = 30_000)
+    fun onConnectionRefusesUnparseableJsonAsInvalidMessage() = runBlocking {
+        val coordinator = newCoordinator()
+        val handler = SessionControlConnectionHandler(coordinator, codec)
+        val connection = FakeControlConnection(
+            token = JOIN_CODE.display,
+            inbound = listOf("{ this is not json", null),
+        )
+
+        handler.onConnection(connection)
+
+        assertEquals("invalid_message" to "Malformed message", connection.refusal)
+        assertTrue("no reply may be sent for a refused frame", connection.sentTexts.isEmpty())
+        assertTrue(coordinator.connectedDevices.value.isEmpty())
+    }
+
+    @Test(timeout = 30_000)
+    fun onConnectionRefusesAHelloMissingClientIdAsInvalidMessage() = runBlocking {
+        val coordinator = newCoordinator()
+        val handler = SessionControlConnectionHandler(coordinator, codec)
+        val connection = FakeControlConnection(
+            token = JOIN_CODE.display,
+            inbound = listOf(
+                """{"type":"hello","protocolVersion":1,""" +
+                    """"deviceName":"Pixel 7","appVersion":"1.0.0","httpPort":34781}""",
+                null,
+            ),
+        )
+
+        handler.onConnection(connection)
+
+        assertEquals("invalid_message" to "Missing required field: clientId", connection.refusal)
+        assertTrue("no reply may be sent for a refused frame", connection.sentTexts.isEmpty())
+        assertTrue(coordinator.connectedDevices.value.isEmpty())
+    }
+
+    @Test(timeout = 30_000)
+    fun onConnectionRefusesAnUnsupportedProtocolVersionAsProtocolMismatch() = runBlocking {
+        val coordinator = newCoordinator()
+        val handler = SessionControlConnectionHandler(coordinator, codec)
+        val connection = FakeControlConnection(
+            token = JOIN_CODE.display,
+            inbound = listOf(
+                """{"type":"hello","protocolVersion":2,"clientId":"$CLIENT_ID",""" +
+                    """"deviceName":"Pixel 7","appVersion":"1.0.0","httpPort":34781}""",
+                null,
+            ),
+        )
+
+        handler.onConnection(connection)
+
+        assertEquals("protocol_mismatch" to "Unsupported protocolVersion: 2", connection.refusal)
+        assertTrue("no reply may be sent for a refused frame", connection.sentTexts.isEmpty())
+        assertTrue("a refused peer must never reach the roster", coordinator.connectedDevices.value.isEmpty())
+    }
+
+    @Test(timeout = 30_000)
+    fun onConnectionRefusesAPreviouslyUnseenDeviceWithSessionFullWhenTheRosterIsAtCapacity() = runBlocking {
+        val coordinator = newCoordinator(roster = SessionRoster(capacity = 1))
+        val handler = SessionControlConnectionHandler(coordinator, codec)
+        val first = FakeControlConnection(token = JOIN_CODE.display, inbound = listOf(VALID_HELLO_JSON, null))
+
+        handler.onConnection(first)
+
+        // Guards against vacuity: the sole slot must actually be taken before the second
+        // peer arrives, or a passing assertion below would prove nothing about capacity.
+        assertTrue(
+            "the first device must be admitted before the one-slot roster can be at capacity",
+            first.sentTexts.isNotEmpty(),
+        )
+
+        val second = FakeControlConnection(
+            token = JOIN_CODE.display,
+            inbound = listOf(
+                """{"type":"hello","protocolVersion":1,"clientId":"device-bbbb",""" +
+                    """"deviceName":"Pixel 8","appVersion":"1.0.0","httpPort":34782}""",
+                null,
+            ),
+        )
+
+        handler.onConnection(second)
+
+        assertEquals(
+            "session_full" to "This session already has the maximum number of connected devices.",
+            second.refusal,
+        )
+        assertTrue("a refused peer must never receive a sessionState", second.sentTexts.isEmpty())
     }
 
     @Test(timeout = 30_000)
@@ -139,8 +231,8 @@ class SessionControlConnectionHandlerTest {
         assertTrue(coordinator.connectedDevices.value.isEmpty())
     }
 
-    private fun newCoordinator(): SessionCoordinator = SessionCoordinator(
-        roster = SessionRoster(),
+    private fun newCoordinator(roster: SessionRoster = SessionRoster()): SessionCoordinator = SessionCoordinator(
+        roster = roster,
         phaseMachine = GamePhaseMachine(),
         connectionIds = ConnectionIdAllocator(),
         validator = HandshakeValidator(),
