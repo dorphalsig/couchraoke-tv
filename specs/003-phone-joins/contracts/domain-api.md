@@ -48,11 +48,14 @@ class SessionCoordinator(
 
 ```kotlin
 sealed interface AdmissionDecision {
+    data object Authorized : AdmissionDecision
     data class Admitted(val connectionId: ConnectionId) : AdmissionDecision
     data class Refused(val reason: RefusalReason, val message: String) : AdmissionDecision
 }
 ```
 
+`Authorized` is `authorize`'s accept case and carries nothing, because nothing is allocated yet.
+`Admitted` is `admit`'s accept case and carries the allocated `ConnectionId`.
 `Admitted` carries only the allocated `ConnectionId`. It deliberately does **not** embed the
 `sessionState` reply: that is a wire DTO, and putting it here would drag the wire schema into a pure
 `domain.control` type. The transport-facing caller builds the reply from `Admitted.connectionId` and
@@ -65,6 +68,11 @@ strings and both halves travel together into `ControlConnection.refuse(code, mes
 > `authorize`/`admit` without ever defining it; T049 was to create it "alongside"
 > `HandshakeValidator`, which left the type undefined for every earlier task that had to compile
 > against it. Shape inferred from T050's refusal vocabulary.
+>
+> `Authorized` added during T036. With only `Admitted` and `Refused`, `authorize` had no
+> representable accept value — `Admitted` requires a `ConnectionId`, which does not exist until
+> `admit` mints one, and `ConnectionId` cannot encode "none" (its range starts at 1). See
+> spec.md Observation 19.
 
 ---
 

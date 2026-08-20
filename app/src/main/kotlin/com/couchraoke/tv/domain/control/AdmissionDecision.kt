@@ -22,6 +22,14 @@ import com.couchraoke.tv.domain.session.model.ConnectionId
  * branches) own the code that produces each case.
  */
 sealed interface AdmissionDecision {
+    /**
+     * The token was accepted. Carries nothing because `authorize` allocates nothing — a
+     * connection that authorizes and then never introduces itself must hold no identity and
+     * no roster slot (FR-017), and `ConnectionId` cannot represent "none" by construction
+     * (its range starts at 1). `admit` produces the [Admitted] that carries the real
+     * identifier. Added during T036; see spec.md Observation 19.
+     */
+    data object Authorized : AdmissionDecision
     data class Admitted(val connectionId: ConnectionId) : AdmissionDecision
     data class Refused(val reason: RefusalReason, val message: String) : AdmissionDecision
 }

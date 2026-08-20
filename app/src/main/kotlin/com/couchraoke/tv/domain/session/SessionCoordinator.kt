@@ -3,6 +3,7 @@ package com.couchraoke.tv.domain.session
 import com.couchraoke.tv.domain.control.AdmissionDecision
 import com.couchraoke.tv.domain.control.HandshakeValidator
 import com.couchraoke.tv.domain.control.JoinCodeMatcher
+import com.couchraoke.tv.domain.control.RefusalReason
 import com.couchraoke.tv.domain.control.model.Hello
 import com.couchraoke.tv.domain.session.model.AssetPort
 import com.couchraoke.tv.domain.session.model.ConnectedDevice
@@ -73,9 +74,25 @@ class SessionCoordinator(
     private val mutableEvents = MutableSharedFlow<SessionEvent>(extraBufferCapacity = EVENT_BUFFER_CAPACITY)
     val events: SharedFlow<SessionEvent> = mutableEvents.asSharedFlow()
 
-    /** Stubbed for this phase; US2's T050 implements the `invalid_token` refusal (FR-009). */
+    /**
+     * Checks the token presented on the connection query string against this session's
+     * [joinCode] (FR-009).
+     *
+     * Acceptance is [AdmissionDecision.Authorized], which carries nothing: no
+     * [com.couchraoke.tv.domain.session.model.ConnectionId] exists yet, because the
+     * identifier is minted by [admit] and only for a connection that actually introduces
+     * itself, so that a connection which authorizes and then goes quiet holds nothing
+     * (FR-017). See spec.md Observation 19.
+     */
     fun authorize(token: String?): AdmissionDecision =
-        TODO("SessionCoordinator.authorize is completed by US2 (T050): token=$token codeMatcher=$codeMatcher")
+        if (codeMatcher.matches(joinCode, token)) {
+            AdmissionDecision.Authorized
+        } else {
+            AdmissionDecision.Refused(
+                reason = RefusalReason.INVALID_TOKEN,
+                message = "The join code did not match the one shown on the TV.",
+            )
+        }
 
     /**
      * Completes only the accept path (T035): a new device is allocated a fresh

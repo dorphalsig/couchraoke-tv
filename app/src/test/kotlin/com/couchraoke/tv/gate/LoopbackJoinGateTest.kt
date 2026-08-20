@@ -2,9 +2,9 @@ package com.couchraoke.tv.gate
 
 import com.couchraoke.tv.data.control.KtorControlTransport
 import com.couchraoke.tv.di.SessionComponent
-import com.couchraoke.tv.domain.control.ControlConnection
 import com.couchraoke.tv.domain.control.ControlConnectionHandler
 import com.couchraoke.tv.domain.control.ControlMessageCodec
+import com.couchraoke.tv.domain.control.SessionControlConnectionHandler
 import com.couchraoke.tv.domain.control.StartedTransport
 import com.couchraoke.tv.domain.platform.AnnouncementHandle
 import com.couchraoke.tv.domain.platform.LocalAddressProvider
@@ -15,6 +15,7 @@ import com.couchraoke.tv.domain.session.SessionCoordinator
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -22,47 +23,107 @@ import org.junit.rules.ExternalResource
 import java.net.Inet4Address
 
 /**
- * T028: the loopback harness's JUnit rule, plus the one scaffold smoke test that proves
- * the rule itself works.
+ * T036/T037: the loopback harness's JUnit rule, plus the real join-dispatch happy path.
  *
  * [LoopbackJoinGateRule] starts the real [KtorControlTransport] on an ephemeral port
  * (`0`) against a real [SessionCoordinator] built through the production
- * [SessionComponent] composition root — no in-process transport fake anywhere in this
- * file (FR-039). Later tasks T037, T047 and T055 add the per-story cases; this file
- * only proves the scaffold binds and is reachable.
+ * [SessionComponent] composition root, dispatching every connection to the real
+ * production [SessionControlConnectionHandler] — no in-process transport fake anywhere
+ * in this file (FR-039). Later tasks T047 and T055 add the refusal and reconnect cases;
+ * this file proves acceptance scenario 4: a correct-token join is admitted end to end,
+ * and a second, distinct peer is admitted with a distinct `connectionId`.
  *
- * `SessionCoordinator.authorize` and `SessionCoordinator.admit` are still `TODO()`
- * stubs at this point in the task order (T035/T050/T051 complete them), so the
- * connection handler used here deliberately never calls them — doing so would throw
- * `NotImplementedError`, which is exactly the join/admission logic this task is scoped
- * to leave alone. Instead it proves reachability the same way every later case will:
- * over the real socket, with a real (if deliberately trivial) response.
+ * Both tests use `gate.coordinator.snapshot.value.joinCode.display` as the `--token`
+ * they hand the peer, never a hardcoded literal, so they keep working regardless of
+ * which join code [JoinCodeGenerator] happens to mint for a given run.
  */
 class LoopbackJoinGateTest {
 
+    private val codec = ControlMessageCodec(
+        Json {
+            explicitNulls = false
+            ignoreUnknownKeys = false
+        },
+    )
+
     @get:Rule
-    val gate = LoopbackJoinGateRule { ScaffoldConnectionHandler() }
+    val gate = LoopbackJoinGateRule { coordinator -> SessionControlConnectionHandler(coordinator, codec) }
 
     @Test(timeout = 60_000)
-    fun ruleBindsARealPortAndTheRealPeerCanReachIt() {
+    fun joinOnlyWithTheCorrectTokenIsAcceptedAndReceivesSessionState() {
         assertTrue("boundPort must be a real ephemeral port, not the requested 0", gate.boundPort > 0)
 
         val result = MockPhonePeer.run(
             tvPort = gate.boundPort,
-            token = "SCAFFOLD-TOKEN",
-            extraArgs = listOf("--join-only", "--join-timeout", "5"),
+            token = gate.coordinator.snapshot.value.joinCode.display,
+            extraArgs = listOf("--join-only"),
         )
 
-        // The scaffold handler always refuses with an explicit, non-protocol code, so a
-        // successful run here proves the real mock-phone subprocess reached the real
-        // KtorControlTransport over 127.0.0.1 and received an explicit response — not a
-        // connect failure (exit 5), and not an un-enforced deadline (exit 6, which
-        // MockPhonePeer.run already turns into a hard failure regardless of scenario).
+        assertEquals(0, result.exitStatus)
+        assertEquals("accepted", result.outcome)
+        val connectionId = result.connectionId
+        assertTrue("connectionId must be >= 1, was $connectionId", connectionId != null && connectionId >= 1)
+    }
+
+    /**
+     * The counterpart the happy path needs to mean anything: without it, a dispatch that
+     * ignored the token entirely would still pass every other case in this file. It is here
+     * rather than with US2's refusal cases (T051) because it is what proves the *acceptance*
+     * above was a decision and not a formality — see spec.md Observation 19.
+     */
+    @Test(timeout = 60_000)
+    fun joinOnlyWithAWrongTokenIsRefusedWithInvalidToken() {
+        val correct = gate.coordinator.snapshot.value.joinCode.display
+        val wrong = "WRONG-WORD"
+        assertNotEquals("the test's wrong token must actually differ from the session's", correct, wrong)
+
+        val result = MockPhonePeer.run(
+            tvPort = gate.boundPort,
+            token = wrong,
+            extraArgs = listOf("--join-only"),
+        )
+
         assertEquals(3, result.exitStatus)
         assertEquals("rejected", result.outcome)
-        assertEquals(ScaffoldConnectionHandler.REFUSAL_CODE, result.errorCode)
+        assertEquals("invalid_token", result.errorCode)
         assertEquals(1008, result.closeCode)
-        assertEquals(ScaffoldConnectionHandler.REFUSAL_CODE, result.closeReason)
+    }
+
+    @Test(timeout = 60_000)
+    fun aSecondPeerWithADifferentClientIdAlsoJoinsAndReceivesADistinctConnectionId() {
+        val token = gate.coordinator.snapshot.value.joinCode.display
+
+        val first = MockPhonePeer.run(
+            tvPort = gate.boundPort,
+            token = token,
+            extraArgs = listOf("--join-only"),
+        )
+        val second = MockPhonePeer.run(
+            tvPort = gate.boundPort,
+            token = token,
+            extraArgs = listOf("--join-only", "--client-id", "phone-second-peer"),
+        )
+
+        assertEquals(0, first.exitStatus)
+        assertEquals("accepted", first.outcome)
+        assertEquals(0, second.exitStatus)
+        assertEquals("accepted", second.outcome)
+
+        val firstConnectionId = first.connectionId
+        val secondConnectionId = second.connectionId
+        assertTrue(
+            "first connectionId must be >= 1, was $firstConnectionId",
+            firstConnectionId != null && firstConnectionId >= 1,
+        )
+        assertTrue(
+            "second connectionId must be >= 1, was $secondConnectionId",
+            secondConnectionId != null && secondConnectionId >= 1,
+        )
+        assertNotEquals(
+            "two distinct devices must receive distinct connectionIds (acceptance scenario 4)",
+            firstConnectionId,
+            secondConnectionId,
+        )
     }
 }
 
@@ -137,26 +198,5 @@ class LoopbackJoinGateRule(
     private object NoOpMulticastLease : MulticastLease {
         override fun acquire() = Unit
         override fun release() = Unit
-    }
-}
-
-/**
- * The scaffold's own [ControlConnectionHandler]: reads the peer's `hello` frame (proving
- * bytes flow in both directions over the real socket) and then refuses unconditionally
- * with a code that names itself as a placeholder, rather than any real
- * `com.couchraoke.tv.domain.control.RefusalReason`. It deliberately never consults the
- * [SessionCoordinator] handed to it — `authorize`/`admit` are not implemented until
- * T035/T050/T051, and calling either here would just throw `NotImplementedError`.
- */
-private class ScaffoldConnectionHandler : ControlConnectionHandler {
-    override suspend fun onConnection(connection: ControlConnection) {
-        connection.receiveText()
-        connection.refuse(REFUSAL_CODE, REFUSAL_MESSAGE)
-    }
-
-    companion object {
-        const val REFUSAL_CODE = "scaffold_not_implemented"
-        private const val REFUSAL_MESSAGE =
-            "T028 scaffold: SessionCoordinator.authorize/admit are not implemented until T035/T050/T051"
     }
 }
