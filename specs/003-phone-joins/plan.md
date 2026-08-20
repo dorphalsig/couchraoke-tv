@@ -245,6 +245,18 @@ is `--src` selected from T022 onward with no deferral.
 
 The feature-level `testBranch` above, the loopback gate, and a device run. Satisfies FR-038, FR-039, SC-009, SC-010.
 
+**The device under test is the TV, and the peer is `mockphone`, not a phone.** No companion phone app
+exists — `settings.gradle.kts` builds `:app` and nothing else, on any branch — so the device run is
+`:app` on real Android hardware with `mock-phone --discover` driving it from a second machine on the
+same LAN. That is a genuine D-tier proof: real network interface, real multicast, real jmDNS
+registration observed by an independent process, none of which loopback can reach. Any real Android
+device suffices for the network claim; TV form factor is the screenshot gate's concern.
+
+One claim survives this and stays unproven: SC-002's *single-scan gesture*. The QR payload's
+correctness is provable by decoding it with a stock camera app and dialling the result, but "in a
+single scan, with no manual address entry" needs a companion app to exist. Recorded as spec.md
+Out-of-Scope Observation 14 rather than quietly satisfied by the payload check.
+
 ## Loopback gate design
 
 `LoopbackJoinGateTest` is the only thing that can satisfy SC-003, SC-005 and SC-010, because FR-039 bars an in-process fake from proving the transport. It starts the real `KtorControlTransport` on an ephemeral port and invokes `mockphone` as a subprocess, asserting on its documented exit status and its single-line `JOIN_RESULT` JSON.

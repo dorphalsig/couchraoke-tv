@@ -8,8 +8,13 @@ How to build, run and prove this slice. Every command is PowerShell — there is
 
 ## Prerequisites
 
-- Android TV device or emulator, API 30+, on the **same LAN** as the machine running the peer. This is not optional: the whole slice is LAN discovery, and an emulator on a NAT'd network will not be found by mDNS.
+- Android TV device, API 30+, on the **same LAN** as the machine running the peer. This is not optional: the whole slice is LAN discovery, and an emulator on a NAT'd network will not be found by mDNS. Any real Android device will do for the network claim — TV form factor matters to the screenshot gate, not to multicast.
 - The `mockphone` peer checked out with branch `DH1-peer-negative-case-flags` merged, and `uv` on `PATH`.
+
+**There is no companion phone app.** `settings.gradle.kts` builds `:app` (the TV host) and nothing
+else, and no companion module exists on any branch. `mockphone` is the only phone-side peer there
+is, for the manual walk exactly as for the loopback gate. It speaks the full protocol including mDNS
+discovery, so every claim in this slice except the QR *scan* gesture is provable without one.
 
 Verify the peer first — if it is not runnable, every gate in Phase D and F is unprovable:
 
@@ -88,7 +93,11 @@ Both must fail the gate. Neither is an acceptable pass.
 
 ---
 
-## Manual run against a real phone
+## Manual run on a real LAN
+
+This is the D-tier walk: the TV app on real hardware, the peer on a different machine, real
+multicast between them. Loopback cannot prove any of it, because `127.0.0.1` never touches a network
+interface.
 
 1. Install and launch: `.\gradlew.bat :app:installDebug`
 2. The song list appears in its empty state with a Join action in the header.
@@ -100,13 +109,27 @@ cd 'C:\Users\DSarmie\Github Copilot\mockphone'
 uv run mock-phone --join-only --tv-host <tv-ip> --token SWIFT-PANDA
 ```
 
-Discovery instead of an explicit host proves FR-004 end to end:
+Discovery instead of an explicit host is what proves FR-004 end to end:
 
 ```powershell
-uv run mock-phone --join-only --token SWIFT-PANDA
+uv run mock-phone --join-only --discover
 ```
 
+`--discover` is required to browse mDNS. Omitting `--tv-host` does **not** fall back to discovery —
+the two live in a `required=True` mutually exclusive group, so passing neither is an argparse error,
+not a discovery attempt. `--discover` also ignores `--token`: the join code comes from the
+service's TXT `code` record, which is the point of the test. If it connects, the TV registered the
+service, published the right code, and the peer found it without being told where to look.
+
 5. The overlay's connected count increments. Dismiss the overlay — the count is unaffected and no phone is disconnected (FR-033).
+
+**Verifying the QR (SC-002).** No companion app exists, so the scan gesture cannot be walked. The
+substantive half still can: point any stock camera or QR-reader app at the on-screen code and read
+the decoded payload. Confirm it carries the address the TV is actually reachable on — not a
+loopback or link-local address — then dial exactly that with `--tv-host`/`--tv-port`/`--token` and
+confirm it joins on the first attempt with no manual correction. That proves the payload is
+correct and dialable. What stays unproven is only "in a single scan, with no manual address entry",
+which needs a companion app; see spec.md Out-of-Scope Observation 14.
 
 **Negative cases**, matching the gate:
 
