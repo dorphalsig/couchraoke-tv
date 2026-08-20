@@ -262,6 +262,10 @@ class JoinViewModel(
 
 **`JoinUiState`**: `data class(joinCodeDisplay: String, qrPayload: String, connectedCount: Int, startFailure: SessionStartFailure?)`.
 
+`startFailure` is dead by construction in `«main»` (spec.md Observation 24): the constructor above requires a live `SessionCoordinator` and a bound `ControlEndpoint`, neither of which a failed `startSession` produces, so no `JoinViewModel` can exist to carry a start failure. The composition root therefore renders `SessionStartFailureNotice` straight from `SessionStartOutcome.Failed`, which needs only the `SessionStartFailure` (T067). Corrected during implementation.
+
+**Composition root** (`com.couchraoke.tv.SessionShell`, T067): `SongListScreen` is the base layer; `JoinOverlay` is composed over it from a `JoinViewModel` built on `SessionStartOutcome.Started` and opened by `SongListScreen`'s `onJoinClick`; `SessionStartFailureNotice` is composed over it instead on `SessionStartOutcome.Failed`. `JoinViewModel` is obtained through the activity's `ViewModelStore`, not `remember`, so its `viewModelScope` is cancelled with the activity.
+
 **`ControlEndpoint`**: `com.couchraoke.tv.presentation.join.ControlEndpoint`
 
 ```kotlin
