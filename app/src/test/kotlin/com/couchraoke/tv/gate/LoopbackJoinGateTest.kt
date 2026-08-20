@@ -29,9 +29,11 @@ import java.net.Inet4Address
  * (`0`) against a real [SessionCoordinator] built through the production
  * [SessionComponent] composition root, dispatching every connection to the real
  * production [SessionControlConnectionHandler] — no in-process transport fake anywhere
- * in this file (FR-039). Later tasks T047 and T055 add the refusal and reconnect cases;
- * this file proves acceptance scenario 4: a correct-token join is admitted end to end,
- * and a second, distinct peer is admitted with a distinct `connectionId`.
+ * in this file (FR-039). This file proves acceptance scenario 4 (a correct-token join is
+ * admitted end to end, and a second, distinct peer is admitted with a distinct
+ * `connectionId`) and, since T047, every US2 refusal: wrong token, unsupported protocol
+ * version, a hello missing a required field, a first frame that is not JSON, and a peer
+ * that never introduces itself at all. T055 later adds the reconnect cases.
  *
  * Both tests use `gate.coordinator.snapshot.value.joinCode.display` as the `--token`
  * they hand the peer, never a hardcoded literal, so they keep working regardless of
@@ -87,6 +89,96 @@ class LoopbackJoinGateTest {
         assertEquals("rejected", result.outcome)
         assertEquals("invalid_token", result.errorCode)
         assertEquals(1008, result.closeCode)
+        assertEquals("invalid_token", result.closeReason)
+    }
+
+    /**
+     * T047: a peer speaking protocolVersion 2 is refused with `protocol_mismatch`.
+     *
+     * This is the one refusal whose wording the F20 fixture pins, so it is also the one
+     * that proves the fixture-driven validator is the thing running over a real socket
+     * and not a second, hand-written copy of the rules.
+     */
+    @Test(timeout = 60_000)
+    fun aPeerSpeakingAnUnsupportedProtocolVersionIsRefusedWithProtocolMismatch() {
+        val result = MockPhonePeer.run(
+            tvPort = gate.boundPort,
+            token = gate.coordinator.snapshot.value.joinCode.display,
+            extraArgs = listOf("--join-only", "--protocol-version", "2"),
+        )
+
+        assertRefused(result, expectedCode = "protocol_mismatch")
+    }
+
+    /** T047: a hello missing a required field is refused with `invalid_message`. */
+    @Test(timeout = 60_000)
+    fun aHelloMissingItsClientIdIsRefusedWithInvalidMessage() {
+        val result = MockPhonePeer.run(
+            tvPort = gate.boundPort,
+            token = gate.coordinator.snapshot.value.joinCode.display,
+            extraArgs = listOf("--join-only", "--malformed-hello", "clientId"),
+        )
+
+        assertRefused(result, expectedCode = "invalid_message")
+    }
+
+    /**
+     * T047: a first frame that is not JSON at all is refused with `invalid_message`.
+     *
+     * Distinct from the case above: that one decodes cleanly and fails a field check,
+     * this one cannot be decoded at all. Before T050 the handler silently dropped
+     * undecodable frames and left the socket open, which this case would have caught
+     * as exit 6 rather than 3.
+     */
+    @Test(timeout = 60_000)
+    fun aFirstFrameThatIsNotJsonIsRefusedWithInvalidMessage() {
+        val result = MockPhonePeer.run(
+            tvPort = gate.boundPort,
+            token = gate.coordinator.snapshot.value.joinCode.display,
+            extraArgs = listOf("--join-only", "--malformed-hello", "invalid-json"),
+        )
+
+        assertRefused(result, expectedCode = "invalid_message")
+    }
+
+    /**
+     * T047/FR-017: a peer that connects and then says nothing is refused by the TV's own
+     * five-second deadline.
+     *
+     * The peer is given `--join-timeout 10`, deliberately longer than the deadline, which
+     * is what makes this case non-vacuous. If the TV failed to enforce any deadline the
+     * peer would give up first and exit 6 (`no_response`); it can only reach exit 3 with
+     * an error frame if the TV closed the connection on its own initiative, before the
+     * peer's own patience ran out. Asserting exit 3 therefore asserts the deadline.
+     */
+    @Test(timeout = 60_000)
+    fun aPeerThatNeverIntroducesItselfIsRefusedByTheTvBeforeItsOwnTimeout() {
+        val result = MockPhonePeer.run(
+            tvPort = gate.boundPort,
+            token = gate.coordinator.snapshot.value.joinCode.display,
+            extraArgs = listOf("--silent-handshake", "--join-timeout", "10"),
+        )
+
+        assertEquals(
+            "exit 6 would mean the peer timed out first and the TV enforced no deadline",
+            3,
+            result.exitStatus,
+        )
+        assertRefused(result, expectedCode = "invalid_message")
+    }
+
+    /**
+     * Every refusal must look the same on the wire: an `error` frame carrying the code,
+     * then a 1008 close whose reason repeats that code (FR-019, contracts/control-protocol.md).
+     * Asserting the close alongside the frame is what catches a refusal that sends the
+     * error and then leaks the socket — the peer reports that as exit 4, not 3.
+     */
+    private fun assertRefused(result: JoinProbeResult, expectedCode: String) {
+        assertEquals("expected a clean refusal, got outcome=${result.outcome}", 3, result.exitStatus)
+        assertEquals("rejected", result.outcome)
+        assertEquals(expectedCode, result.errorCode)
+        assertEquals(1008, result.closeCode)
+        assertEquals("the close reason must repeat the error code", expectedCode, result.closeReason)
     }
 
     @Test(timeout = 60_000)
