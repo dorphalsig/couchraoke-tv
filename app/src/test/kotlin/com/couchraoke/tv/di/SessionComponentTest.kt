@@ -8,33 +8,42 @@ import com.couchraoke.tv.domain.platform.LocalAddressProvider
 import com.couchraoke.tv.domain.platform.MulticastLease
 import com.couchraoke.tv.domain.platform.SessionAnnouncer
 import com.couchraoke.tv.domain.session.JoinCodeGenerator
+import com.couchraoke.tv.domain.session.SessionStartFailure
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.IOException
 import java.net.Inet4Address
 import java.net.InetAddress
 
 /**
- * T036(a): unit coverage for [SessionComponent.startSession]/[SessionComponent.stopSession] --
- * the session-start wiring (FR-004/FR-005/FR-008) that resolves the active address, acquires
- * the multicast lease, starts the transport, publishes the `KaraokeTV-<noun>` announcement and
- * verifies the registered name matches, per this class's own KDoc. `LoopbackJoinGateTest`
- * (T037) proves the real adapters end-to-end over a real socket; this file proves this
- * class's own branching -- no address, a jmDNS rename, success, and `stopSession`'s release
- * order -- against fakes, which is exactly what the `--src` coverage gate measures here.
+ * T036(a)/T059(a) (T060, FR-028): unit coverage for
+ * [SessionComponent.startSession]/[SessionComponent.stopSession] -- the session-start wiring
+ * (FR-004/FR-005/FR-008) that resolves the active address, acquires the multicast lease, starts
+ * the transport, publishes the `KaraokeTV-<noun>` announcement and verifies the registered name
+ * matches, per this class's own KDoc. `LoopbackJoinGateTest` (T037) proves the real adapters
+ * end-to-end over a real socket; this file proves this class's own branching -- no address, a
+ * bind exception, a jmDNS rename, success, and `stopSession`'s release order -- against fakes,
+ * which is exactly what the `--src` coverage gate measures here. Each of FR-028's three failure
+ * modes must come back as a distinct [SessionStartOutcome.Failed] rather than a bare `null`
+ * (SC-008); [JoinViewModelStartFailureTest][com.couchraoke.tv.presentation.join] proves those
+ * outcomes reach the presentation layer without ever touching `GamePhaseMachine`.
  */
 class SessionComponentTest {
 
     @Test(timeout = 30_000)
-    fun startSessionReturnsNullWhenNoAddressIsAvailable() = runBlocking {
+    fun startSessionFailsWithNoUsableAddressWhenNoAddressIsAvailable() = runBlocking {
         val transport = RecordingControlTransport()
         val component = newComponent(address = null, transport = transport)
 
-        val result = component.startSession(CONTROL_PORT)
+        val outcome = component.startSession(CONTROL_PORT)
 
-        assertNull("no usable address must fail session start (T036)", result)
+        assertEquals(
+            "no usable address must fail session start with NoUsableAddress (FR-028)",
+            SessionStartOutcome.Failed(SessionStartFailure.NoUsableAddress),
+            outcome,
+        )
         assertEquals(
             "a failed address resolution must never bind the transport",
             0,
@@ -54,13 +63,14 @@ class SessionComponentTest {
             multicastLease = lease,
         )
 
-        val result = component.startSession(CONTROL_PORT)
+        val outcome = component.startSession(CONTROL_PORT)
 
-        checkNotNull(result) {
+        val started = outcome as? SessionStartOutcome.Started
+        checkNotNull(started) {
             "startSession must succeed when an address resolves and the announced name matches"
         }
-        assertEquals(LOCALHOST, result.address)
-        assertEquals(CONTROL_PORT, result.boundPort)
+        assertEquals(LOCALHOST, started.result.address)
+        assertEquals(CONTROL_PORT, started.result.boundPort)
         assertTrue("the multicast lease must be acquired", lease.acquired)
         assertEquals(1, transport.startCount)
         assertEquals(1, announcer.publishCount)
@@ -71,7 +81,38 @@ class SessionComponentTest {
     }
 
     @Test(timeout = 30_000)
-    fun startSessionReleasesEverythingAndReturnsNullWhenTheAnnouncementIsRenamed() = runBlocking {
+    fun startSessionReleasesTheLeaseAndFailsWithBindFailedWhenTheTransportThrows() = runBlocking {
+        // FR-028's third failure mode: a bind exception (port in use, permission denied, ...)
+        // from ControlTransport.start previously propagated uncaught. It must now come back
+        // as SessionStartOutcome.Failed(BindFailed) with the multicast lease released, and the
+        // announcer must never even be reached since there is nothing bound to announce.
+        val transport = ThrowingControlTransport()
+        val announcer = RecordingSessionAnnouncer()
+        val lease = RecordingMulticastLease()
+        val component = newComponent(
+            address = LOCALHOST,
+            transport = transport,
+            announcer = announcer,
+            multicastLease = lease,
+        )
+
+        val outcome = component.startSession(CONTROL_PORT)
+
+        assertEquals(
+            "a bind exception must fail session start with BindFailed (FR-028)",
+            SessionStartOutcome.Failed(SessionStartFailure.BindFailed),
+            outcome,
+        )
+        assertTrue("the multicast lease must be released on a bind failure", lease.released)
+        assertEquals(
+            "a bind failure must never reach the announcement step",
+            0,
+            announcer.publishCount,
+        )
+    }
+
+    @Test(timeout = 30_000)
+    fun startSessionReleasesEverythingAndFailsWithAnnouncementFailedWhenTheAnnouncementIsRenamed() = runBlocking {
         val transport = RecordingControlTransport()
         val announcer = RenamingSessionAnnouncer()
         val lease = RecordingMulticastLease()
@@ -82,9 +123,13 @@ class SessionComponentTest {
             multicastLease = lease,
         )
 
-        val result = component.startSession(CONTROL_PORT)
+        val outcome = component.startSession(CONTROL_PORT)
 
-        assertNull("a jmDNS rename must be treated as a session-start failure", result)
+        assertEquals(
+            "a jmDNS rename must fail session start with AnnouncementFailed (FR-028)",
+            SessionStartOutcome.Failed(SessionStartFailure.AnnouncementFailed),
+            outcome,
+        )
         assertTrue("a renamed announcement must be withdrawn", announcer.withdrawn)
         assertEquals(1, transport.stopCount)
         assertTrue("the multicast lease must be released on a rename failure", lease.released)
@@ -101,9 +146,9 @@ class SessionComponentTest {
             announcer = announcer,
             multicastLease = lease,
         )
-        val result = checkNotNull(component.startSession(CONTROL_PORT))
+        val started = component.startSession(CONTROL_PORT) as SessionStartOutcome.Started
 
-        component.stopSession(result)
+        component.stopSession(started.result)
 
         assertTrue("stopSession must withdraw the announcement", announcer.withdrawn)
         assertEquals(1, transport.stopCount)
@@ -140,6 +185,14 @@ class SessionComponentTest {
         override suspend fun stop() {
             stopCount++
         }
+    }
+
+    /** Simulates a bind failure (port in use, permission denied, ...): FR-028's third case. */
+    private class ThrowingControlTransport : ControlTransport {
+        override suspend fun start(port: Int, handler: ControlConnectionHandler): StartedTransport =
+            throw IOException("simulated bind failure")
+
+        override suspend fun stop() = Unit
     }
 
     private open class RecordingSessionAnnouncer : SessionAnnouncer {

@@ -14,8 +14,10 @@ import com.couchraoke.tv.domain.session.GamePhaseMachine
 import com.couchraoke.tv.domain.session.JoinCodeGenerator
 import com.couchraoke.tv.domain.session.SessionCoordinator
 import com.couchraoke.tv.domain.session.SessionRoster
+import com.couchraoke.tv.domain.session.SessionStartFailure
 import com.couchraoke.tv.domain.session.model.SessionId
 import kotlinx.serialization.json.Json
+import java.io.IOException
 import java.net.Inet4Address
 import java.util.UUID
 
@@ -60,28 +62,56 @@ class SessionComponent(
     )
 
     /**
-     * Starts one session end-to-end (T036, FR-004/FR-005/FR-008): resolves [addressProvider]'s
-     * active IPv4, acquires [multicastLease], binds [transport] on [controlPort] behind a
-     * [SessionControlConnectionHandler] wrapping a freshly built coordinator, then publishes
-     * the `KaraokeTV-<noun>` announcement via [announcer] and verifies the readback name
-     * matches what was requested — jmDNS silently renames on a LAN collision
-     * ([com.couchraoke.tv.domain.platform.AnnouncementHandle.registeredInstanceName]'s own
-     * doc), so a mismatch is treated as a session-start failure rather than an unnoticed
+     * Starts one session end-to-end (T036/T060, FR-004/FR-005/FR-008/FR-028): resolves
+     * [addressProvider]'s active IPv4, acquires [multicastLease], binds [transport] on
+     * [controlPort] behind a [SessionControlConnectionHandler] wrapping a freshly built
+     * coordinator, then publishes the `KaraokeTV-<noun>` announcement via [announcer] and
+     * verifies the readback name matches what was requested — jmDNS silently renames on a
+     * LAN collision ([com.couchraoke.tv.domain.platform.AnnouncementHandle.registeredInstanceName]'s
+     * own doc), so a mismatch is treated as a session-start failure rather than an unnoticed
      * rename.
      *
-     * Returns `null` for either failure — no usable address, or a renamed announcement —
-     * releasing whatever was already acquired first so a failed start never leaks the
-     * multicast lock or leaves the transport bound. Turning `null` into the FR-028 blocking
-     * notice is T060's job (`SessionStartFailure`, tasks.md T060): that domain type does not
-     * exist yet, and inventing one here would leave T060 nothing of its own to add.
+     * Returns [SessionStartOutcome.Failed] for any of FR-028's three distinguishable failure
+     * modes — [SessionStartFailure.NoUsableAddress], [SessionStartFailure.BindFailed] (a bind
+     * exception from [transport], previously unhandled and left to propagate) or
+     * [SessionStartFailure.AnnouncementFailed] — releasing whatever was already acquired on
+     * every failure path so a failed start never leaks the multicast lock or leaves the
+     * transport bound. See [bindAndAnnounce] for the bind/announce half.
      */
-    suspend fun startSession(controlPort: Int): SessionStartResult? {
-        val address = addressProvider.activeLocalIpv4() ?: return null
+    suspend fun startSession(controlPort: Int): SessionStartOutcome {
+        val address = addressProvider.activeLocalIpv4()
+            ?: return SessionStartOutcome.Failed(SessionStartFailure.NoUsableAddress)
 
         val coordinator = createCoordinator()
         multicastLease.acquire()
 
-        val started = transport.start(controlPort, SessionControlConnectionHandler(coordinator, codec, validator))
+        return bindAndAnnounce(controlPort, coordinator, address)
+    }
+
+    /**
+     * Binds [transport] and publishes the announcement, given [multicastLease] is already
+     * held. Split out of [startSession] so each function keeps at most two `return`s: this one
+     * for the bind failure, and a final `if`/`else` for the announcement outcome.
+     *
+     * A bind failure (port already in use, permission denied, …) surfaces from
+     * [ControlTransport.start] as an [IOException] rather than a typed result
+     * (contracts/ports.md fixes that signature; it is not this task's to change). Catching it
+     * here — narrowly, only around the bind call — releases [multicastLease] before reporting
+     * [SessionStartFailure.BindFailed], so a bind failure never leaks the lease the way a bare
+     * propagated exception would have.
+     */
+    private suspend fun bindAndAnnounce(
+        controlPort: Int,
+        coordinator: SessionCoordinator,
+        address: Inet4Address,
+    ): SessionStartOutcome {
+        val started = try {
+            transport.start(controlPort, SessionControlConnectionHandler(coordinator, codec, validator))
+        } catch (_: IOException) {
+            multicastLease.release()
+            return SessionStartOutcome.Failed(SessionStartFailure.BindFailed)
+        }
+
         val joinCode = coordinator.snapshot.value.joinCode
         val instanceName = "$INSTANCE_NAME_PREFIX${joinCode.noun}"
         val announcement = announcer.publish(
@@ -96,9 +126,9 @@ class SessionComponent(
             announcer.withdraw(announcement)
             transport.stop()
             multicastLease.release()
-            null
+            SessionStartOutcome.Failed(SessionStartFailure.AnnouncementFailed)
         } else {
-            SessionStartResult(coordinator, address, started.boundPort, announcement)
+            SessionStartOutcome.Started(SessionStartResult(coordinator, address, started.boundPort, announcement))
         }
     }
 
@@ -127,3 +157,15 @@ data class SessionStartResult(
     val boundPort: Int,
     val announcement: AnnouncementHandle,
 )
+
+/**
+ * [SessionComponent.startSession]'s result (T060, FR-028). Replaces a bare nullable
+ * [SessionStartResult] so the three failure modes FR-028 requires the caller to distinguish —
+ * [SessionStartFailure.NoUsableAddress], [SessionStartFailure.BindFailed] and
+ * [SessionStartFailure.AnnouncementFailed] — are carried as data rather than collapsed into a
+ * single `null` that cannot say which one occurred.
+ */
+sealed interface SessionStartOutcome {
+    data class Started(val result: SessionStartResult) : SessionStartOutcome
+    data class Failed(val failure: SessionStartFailure) : SessionStartOutcome
+}

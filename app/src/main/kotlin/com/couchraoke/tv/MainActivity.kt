@@ -16,7 +16,7 @@ import com.couchraoke.tv.data.discovery.JmdnsSessionAnnouncer
 import com.couchraoke.tv.data.platform.ConnectivityLocalAddressProvider
 import com.couchraoke.tv.data.platform.WifiMulticastLease
 import com.couchraoke.tv.di.SessionComponent
-import com.couchraoke.tv.di.SessionStartResult
+import com.couchraoke.tv.di.SessionStartOutcome
 import com.couchraoke.tv.domain.control.ControlMessageCodec
 import com.couchraoke.tv.domain.session.JoinCodeGenerator
 import com.couchraoke.tv.presentation.songlist.SongListScreen
@@ -33,7 +33,7 @@ private const val CONTROL_PORT = 8080
 class MainActivity : ComponentActivity() {
 
     private lateinit var sessionComponent: SessionComponent
-    private var startedSession: SessionStartResult? = null
+    private var startOutcome: SessionStartOutcome? = null
     private var startJob: Job? = null
 
     /**
@@ -70,10 +70,15 @@ class MainActivity : ComponentActivity() {
             clock = System::currentTimeMillis,
         )
 
-        // T060 owns surfacing a `null` result as the FR-028 blocking notice; there is no
-        // presentation composition root yet to hand it to (T040/T041 are later in this
-        // slice), so a failed start is silently not retried here for now.
-        startJob = sessionScope.launch { startedSession = sessionComponent.startSession(CONTROL_PORT) }
+        // T060 (FR-028, SC-008) now reports *which* of the three failures occurred as a
+        // SessionStartOutcome.Failed(SessionStartFailure). Composing that into a visible
+        // failure modal needs a JoinViewModel built from a live SessionCoordinator and
+        // ControlEndpoint, neither of which exists when startSession itself is what failed —
+        // wiring that composition root is out of this task's scope (no task in tasks.md owns
+        // it yet), so a failed start is still not surfaced in the UI here. It is, however, no
+        // longer silently swallowed: the specific SessionStartFailure is retained in
+        // startOutcome for whatever composition-root work wires it up next.
+        startJob = sessionScope.launch { startOutcome = sessionComponent.startSession(CONTROL_PORT) }
 
         setContent {
             CouchraokeTheme {
@@ -96,7 +101,9 @@ class MainActivity : ComponentActivity() {
         // down whatever that start acquired, instead of stopping nothing.
         sessionScope.launch {
             startJob?.join()
-            startedSession?.let { session -> sessionComponent.stopSession(session) }
+            (startOutcome as? SessionStartOutcome.Started)?.let { started ->
+                sessionComponent.stopSession(started.result)
+            }
         }
         super.onDestroy()
     }
