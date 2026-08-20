@@ -31,8 +31,8 @@ import kotlinx.coroutines.flow.update
  * T050 below; `protocol_mismatch` and `invalid_message` can never reach `admit` at all,
  * because [HandshakeValidator] rejects a malformed raw frame before it is ever parsed into
  * the [Hello] this method receives (contracts/domain-api.md) -- that validator is wired in
- * by the caller (`SessionControlConnectionHandler`), not here. T058 is still expected to
- * emit `SessionEvent.Reconnected` for a roster reclaim.
+ * by the caller (`SessionControlConnectionHandler`), not here. T058 completes `admit`'s
+ * reclaim branch, emitting `SessionEvent.Reconnected` for a roster reclaim (FR-019).
  *
  * [connectedDevices] and `snapshot.connected` are derived from [SessionRoster.connected] by
  * [refreshConnectedProjection], called after every roster mutation that can change it: a
@@ -105,8 +105,11 @@ class SessionCoordinator(
      * wire frame before this is ever called (contracts/domain-api.md's
      * `HelloValidation.Valid(hello)`), so the `protocol_mismatch`/`invalid_message` refusals
      * it guards can never occur here; those are refused upstream, by the caller wiring
-     * [HandshakeValidator] in before `admit` is reached. `Reclaimed` (T057/T058) is likewise
-     * unreachable until [SessionRoster.admit] implements reclaim.
+     * [HandshakeValidator] in before `admit` is reached. A device already in [roster]
+     * reclaims its entry (T058, FR-019/FR-020): it is likewise projected into
+     * [connectedDevices] / `snapshot.connected`, and [SessionEvent.Reconnected] is emitted
+     * carrying the roster's `previous` [ConnectionId] unchanged -- `null` if no live
+     * connection existed to supersede, non-null if one was displaced (FR-022).
      */
     fun admit(hello: Hello): AdmissionDecision {
         val connectionId = connectionIds.next()
@@ -125,10 +128,17 @@ class SessionCoordinator(
                 AdmissionDecision.Admitted(connectionId)
             }
 
-            is RosterAdmission.Reclaimed -> TODO(
-                "SessionCoordinator.admit's Reconnected emission for a reclaimed device is " +
-                    "completed by T058 (US3): admission=$admission",
-            )
+            is RosterAdmission.Reclaimed -> {
+                refreshConnectedProjection()
+                mutableEvents.tryEmit(
+                    SessionEvent.Reconnected(
+                        deviceId = admission.entry.deviceId,
+                        connectionId = connectionId,
+                        previous = admission.previous,
+                    ),
+                )
+                AdmissionDecision.Admitted(connectionId)
+            }
 
             RosterAdmission.AtCapacity -> AdmissionDecision.Refused(
                 reason = RefusalReason.SESSION_FULL,

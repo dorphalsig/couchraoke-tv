@@ -22,7 +22,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.net.Inet4Address
@@ -266,6 +268,96 @@ class SessionCoordinatorTest {
         )
     }
 
+    @Test(timeout = 30_000)
+    fun admitReclaimsASupersededConnectionAndTheStaleCloseDoesNotEvictItsReplacement() = runBlocking {
+        // Device A's first connection is still live when its second admission arrives --
+        // this is the supersession shape of reconnect (FR-020/FR-021/FR-022, acceptance
+        // scenario 4), as opposed to the clean-drop-then-reconnect shape covered below.
+        val coordinator = newComponent().createCoordinator()
+        val admittedFirst = coordinator.admit(helloFrom(DEVICE_A)) as AdmissionDecision.Admitted
+
+        // Started before the second admit, UNDISPATCHED, so the subscription is guaranteed
+        // live before `admit` tryEmits -- see admitEmitsAConnectedEventCarryingTheDeviceIdAndConnectionId.
+        val reconnectEvent = async(start = CoroutineStart.UNDISPATCHED) { coordinator.events.first() }
+        val admittedSecond = coordinator.admit(helloFrom(DEVICE_A)) as AdmissionDecision.Admitted
+        val event = withTimeout(5_000) { reconnectEvent.await() }
+
+        assertEquals(
+            "a reclaim while the prior connection is still live must supersede it, not grow the roster (FR-020)",
+            1,
+            coordinator.snapshot.value.roster.size,
+        )
+        assertEquals(
+            "reclaiming a still-connected device must emit Reconnected carrying its displaced connectionId",
+            SessionEvent.Reconnected(DeviceId(DEVICE_A), admittedSecond.connectionId, admittedFirst.connectionId),
+            event,
+        )
+        assertEquals(
+            "the reclaimed device must be projected into connectedDevices under its fresh connectionId",
+            listOf(admittedSecond.connectionId),
+            coordinator.connectedDevices.value.map { it.connectionId },
+        )
+
+        // The stale close: connection 1's late disconnect arrives after connection 2 has
+        // already reclaimed the device. Subscribing before the call, UNDISPATCHED, proves a
+        // real absence of emission rather than merely a race won by the assertion.
+        val staleCloseEvent = async(start = CoroutineStart.UNDISPATCHED) {
+            withTimeoutOrNull(STALE_CLOSE_SILENCE_MS) { coordinator.events.first() }
+        }
+        coordinator.onDisconnected(DeviceId(DEVICE_A), admittedFirst.connectionId)
+
+        assertEquals(
+            "the superseded connection's late close must not remove the roster entry (FR-022)",
+            1,
+            coordinator.snapshot.value.roster.size,
+        )
+        assertEquals(
+            "the superseded connection's late close must not invalidate the replacement connectionId (FR-022)",
+            listOf(admittedSecond.connectionId),
+            coordinator.connectedDevices.value.map { it.connectionId },
+        )
+        assertNull(
+            "the superseded connection's late close must not emit Disconnected (FR-022)",
+            staleCloseEvent.await(),
+        )
+    }
+
+    @Test(timeout = 30_000)
+    fun admitAfterACleanDropEmitsReconnectedWithNoPreviousConnectionAndRestoresTheDevice() = runBlocking {
+        // The ordinary reconnect shape: the phone drops, its connection is fully detached
+        // first, and only then does it come back (FR-021, FR-023, spec.md Observation 22).
+        val coordinator = newComponent().createCoordinator()
+        val admittedFirst = coordinator.admit(helloFrom(DEVICE_A)) as AdmissionDecision.Admitted
+        coordinator.onDisconnected(DeviceId(DEVICE_A), admittedFirst.connectionId)
+
+        // Guards against vacuity: the device must genuinely be gone from the connected
+        // projection before we assert anything about it coming back.
+        assertTrue(
+            "device A must be disconnected before its reconnect is exercised",
+            coordinator.connectedDevices.value.isEmpty(),
+        )
+
+        val reconnectEvent = async(start = CoroutineStart.UNDISPATCHED) { coordinator.events.first() }
+        val admittedSecond = coordinator.admit(helloFrom(DEVICE_A)) as AdmissionDecision.Admitted
+        val event = withTimeout(5_000) { reconnectEvent.await() }
+
+        assertEquals(
+            "a reconnect after a clean drop has no live connection to supersede, so previous must be null",
+            SessionEvent.Reconnected(DeviceId(DEVICE_A), admittedSecond.connectionId, null),
+            event,
+        )
+        assertEquals(
+            "the reconnected device must be back in connectedDevices",
+            listOf(DeviceId(DEVICE_A)),
+            coordinator.connectedDevices.value.map { it.deviceId },
+        )
+        assertEquals(
+            "reclaiming an existing roster entry must not grow the roster",
+            1,
+            coordinator.snapshot.value.roster.size,
+        )
+    }
+
     private fun helloFrom(clientId: String): Hello = Hello(
         type = "hello",
         protocolVersion = 1,
@@ -330,6 +422,7 @@ class SessionCoordinatorTest {
 
     private companion object {
         const val SESSION_SAMPLE_SIZE = 1_000
+        const val STALE_CLOSE_SILENCE_MS = 200L
         const val DEVICE_A = "device-aaaa"
         const val DEVICE_B = "device-bbbb"
     }
