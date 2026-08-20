@@ -358,6 +358,52 @@ class SessionCoordinatorTest {
         )
     }
 
+    /**
+     * T063/FR-027/SC-008: no runtime path this slice actually has may leave `GamePhase.Open`.
+     *
+     * The sweep below is every such path in one test — a refused token, an accepted one, a
+     * new admission, a capacity refusal, a reclaim while the prior connection is still live,
+     * a stale close, a real close, and a reclaim after a clean drop. None of them may touch
+     * the phase, because F22 has no `Open -> Error` edge at all: a session-start failure is a
+     * blocking modal, not a phase change (FR-028).
+     *
+     * The final two assertions are the point. Without them this test would pass just as
+     * happily against a `phase` field that nothing anywhere ever writes, which would make
+     * "still Open" an artifact rather than a finding. Driving a legal `Open -> Preparing`
+     * transition proves the phase is genuinely observable and mutable through this very
+     * snapshot, so the join paths leaving it alone is a real property of those paths.
+     */
+    @Test(timeout = 30_000)
+    fun noRuntimePathInThisSliceLeavesTheOpenPhase() {
+        val coordinator = newCoordinatorWithRoster(SessionRoster(capacity = 1))
+        assertEquals(GamePhase.Open, coordinator.snapshot.value.phase)
+
+        coordinator.authorize("not-the-join-code")
+        coordinator.authorize(coordinator.snapshot.value.joinCode.display)
+        val first = coordinator.admit(helloFrom(DEVICE_A)) as AdmissionDecision.Admitted
+        coordinator.admit(helloFrom(DEVICE_B))
+        val second = coordinator.admit(helloFrom(DEVICE_A)) as AdmissionDecision.Admitted
+        coordinator.onDisconnected(DeviceId(DEVICE_A), first.connectionId)
+        coordinator.onDisconnected(DeviceId(DEVICE_A), second.connectionId)
+        coordinator.admit(helloFrom(DEVICE_A))
+
+        assertEquals(
+            "no join-path runtime call may move the game phase (FR-027, SC-008)",
+            GamePhase.Open,
+            coordinator.snapshot.value.phase,
+        )
+
+        assertTrue(
+            "control: Open -> Preparing is a legal edge, so the phase is genuinely mutable here",
+            coordinator.requestPhase(GamePhase.Preparing) is PhaseTransitionResult.Accepted,
+        )
+        assertEquals(
+            "control: the snapshot really does observe phase changes, so 'still Open' above means something",
+            GamePhase.Preparing,
+            coordinator.snapshot.value.phase,
+        )
+    }
+
     private fun helloFrom(clientId: String): Hello = Hello(
         type = "hello",
         protocolVersion = 1,
