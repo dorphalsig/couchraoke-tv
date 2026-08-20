@@ -7,8 +7,14 @@ import com.couchraoke.tv.domain.control.model.SlotDto
 import com.couchraoke.tv.domain.control.model.Slots
 import com.couchraoke.tv.domain.session.SessionCoordinator
 import com.couchraoke.tv.domain.session.model.DeviceId
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.seconds
 
 private const val UNASSIGNED_SLOT_STATE = "connected_unassigned"
+
+/** FR-017 / research.md R6: a pending connection must introduce itself within this window. */
+private val HANDSHAKE_DEADLINE = 5.seconds
+private const val HANDSHAKE_TIMEOUT_MESSAGE = "No introduction received within 5 seconds"
 
 /**
  * The production join dispatch (T036; spec.md Observation 18 — no task previously owned
@@ -33,9 +39,21 @@ private const val UNASSIGNED_SLOT_STATE = "connected_unassigned"
  * and message, replacing the previous silent drop. [ControlMessageCodec.decodeHello] is no
  * longer used for this step, because [HandshakeValidator.validate]'s `Valid` case already
  * hands back the decoded [Hello] -- [codec] is still needed for [buildSessionState]'s
- * `sessionState` reply. A peer that closes *before sending anything* is left untouched: that
- * is the 5-second handshake deadline (T052), a different case from a validation failure, and
- * out of this task's scope.
+ * `sessionState` reply. A peer that closes *before sending anything* is a different case
+ * from a peer that stays connected but silent: only the latter trips the 5-second handshake
+ * deadline (T052, FR-017, research.md R6) enforced by [readFirstFrame] below.
+ *
+ * FR-018's during/after asymmetry (T053) was already structurally correct before T053: an
+ * unexpected message `type` during the handshake is fatal because [HandshakeValidator]
+ * refuses it before [Hello] ever exists, ending [onConnection] on that refusal; an
+ * unrecognised message *after* admission is drained by [serveAdmitted]'s read loop without
+ * inspection and never closes the connection. What T053 actually adds is test coverage
+ * pinning both halves -- see `SessionControlConnectionHandlerTest`'s second test class.
+ * The FR-018 "logged as a warning" half is not implemented: there is no logging facility
+ * anywhere in `«main»`, and this class lives in `domain.control`, which contracts/domain-api.md
+ * requires to stay pure Kotlin with no Android types, so adding `android.util.Log` here would
+ * both invent a dependency and violate that boundary. Reported as an open gap rather than
+ * fixed; see this unit's report for a suggested `Logger` port.
  *
  * `admit`'s `RosterAdmission.Reclaimed` branch (T057/T058) is deliberately left to throw
  * rather than being normalised away: it only fires for the reclaim scenario this slice's
@@ -75,23 +93,26 @@ class SessionControlConnectionHandler(
         val admitted = decision as AdmissionDecision.Admitted
         connection.sendText(codec.encodeSessionState(buildSessionState(admitted)))
         while (connection.receiveText() != null) {
-            // The control channel carries no further inbound frames in this slice; keep
-            // reading until the peer closes so onDisconnected below always runs.
+            // FR-018 (T053): once admitted, any inbound frame's type is unrecognised in this
+            // slice's protocol and is ignored without inspection -- it is never treated as
+            // fatal, so the loop keeps reading and the connection stays open until the peer
+            // itself closes it, at which point onDisconnected below runs.
         }
         coordinator.onDisconnected(DeviceId(hello.clientId), admitted.connectionId)
     }
 
     /**
      * Reads the peer's first frame and validates it with [validator]. Returns `null` for a
-     * peer that closes before sending anything -- a different case from a validation
-     * failure, and the 5-second handshake deadline (T052) this handler does not enforce --
-     * left un-refused exactly as before. A frame [validator] rejects is refused here with
-     * its own [RefusalReason] and message before this returns `null`, so [onConnection] does
-     * nothing further. A frame [validator] accepts hands back its already-decoded [Hello]
-     * directly, so no separate [ControlMessageCodec] decode step is needed here.
+     * peer that closes before sending anything -- a different case from the 5-second
+     * handshake deadline enforced by [readFirstFrame]. A frame [validator] rejects is
+     * refused here with its own [RefusalReason] and message before this returns `null`, so
+     * [onConnection] does nothing further -- this is FR-018's "during the handshake" half:
+     * an unexpected `type` is fatal because it never produces a [Hello]. A frame [validator]
+     * accepts hands back its already-decoded [Hello] directly, so no separate
+     * [ControlMessageCodec] decode step is needed here.
      */
     private suspend fun readHello(connection: ControlConnection): Hello? {
-        val raw = connection.receiveText() ?: return null
+        val raw = readFirstFrame(connection) ?: return null
         return when (val validation = validator.validate(raw)) {
             is HelloValidation.Valid -> validation.hello
             is HelloValidation.Invalid -> {
@@ -100,6 +121,36 @@ class SessionControlConnectionHandler(
             }
         }
     }
+
+    /**
+     * Waits for the peer's first frame under the FR-017 5-second handshake deadline
+     * (research.md R6). This connection has already passed [coordinator]'s token check and
+     * is pending -- it holds no roster slot and appears in no list -- so exactly one of two
+     * distinct `null` outcomes is refused:
+     * - the peer closes *before sending anything*: [ControlConnection.receiveText] completes
+     *   with `null` inside the deadline, and this is left un-refused, matching this
+     *   handler's original (pre-T052) behaviour for that case;
+     * - the peer stays connected but silent past the deadline: [withTimeoutOrNull] cancels
+     *   the read, and only this branch calls [ControlConnection.refuse] with
+     *   `invalid_message`, because a pending connection that never introduces itself must
+     *   not be left open indefinitely.
+     *
+     * [FirstFrame] boxes the nullable [ControlConnection.receiveText] result so that
+     * [withTimeoutOrNull] returning `null` can only mean "timed out" -- without the wrapper,
+     * a same-typed `null` from a peer that closed within the deadline would be
+     * indistinguishable from a timeout, since both are `String?`.
+     */
+    private suspend fun readFirstFrame(connection: ControlConnection): String? {
+        val frame = withTimeoutOrNull(HANDSHAKE_DEADLINE) { FirstFrame(connection.receiveText()) }
+        if (frame == null) {
+            connection.refuse(RefusalReason.INVALID_MESSAGE.code, HANDSHAKE_TIMEOUT_MESSAGE)
+            return null
+        }
+        return frame.raw
+    }
+
+    /** Non-null box around a nullable first-frame read; see [readFirstFrame]. */
+    private data class FirstFrame(val raw: String?)
 
     /**
      * Builds the `sessionState` reply from [coordinator]'s current snapshot plus the
