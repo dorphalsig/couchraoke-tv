@@ -28,13 +28,12 @@ import com.couchraoke.tv.di.SessionComponent
 import com.couchraoke.tv.di.SessionStartOutcome
 import com.couchraoke.tv.di.SessionStartResult
 import com.couchraoke.tv.domain.control.ControlMessageCodec
-import com.couchraoke.tv.domain.session.SessionStartFailure
+import com.couchraoke.tv.domain.session.JoinCodeGenerator
 import com.couchraoke.tv.presentation.join.ControlEndpoint
 import com.couchraoke.tv.presentation.join.JoinOverlay
 import com.couchraoke.tv.presentation.join.JoinViewModel
 import com.couchraoke.tv.presentation.join.SessionStartFailureNotice
 import com.couchraoke.tv.presentation.qr.QrPayloadEncoder
-import com.couchraoke.tv.domain.session.JoinCodeGenerator
 import com.couchraoke.tv.presentation.songlist.SongListScreen
 import com.couchraoke.tv.ui.theme.CouchraokeTheme
 import kotlinx.coroutines.CoroutineScope

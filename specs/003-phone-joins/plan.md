@@ -239,7 +239,9 @@ is `--src` selected from T022 onward with no deferral.
 
 `SongListScreen` shell, `JoinOverlay`, `JoinViewModel`, `JoinUiState`, `QrPayloadEncoder`, `QrBitmapRenderer`, and the FR-028 blocking notice. Satisfies FR-007, FR-028 through FR-033, FR-035.
 
-*Gate*: `testBranch` including `JoinViewModel` and `QrPayloadEncoder`, plus `JoinOverlayBoundsTest` asserting structural layout numerically — every expected element present, nothing exceeding the 960×540dp viewport, the QR's share of the screen within tolerance, and a quiet zone of at least four modules. No screenshot baseline is recorded; Slice 3 owns that (spec Assumptions, readiness item 5).
+*Gate*: `testBranch` including `JoinViewModel`, `QrPayloadEncoder` and `QrBitmapRenderer`, plus `JoinOverlayBoundsTest` asserting structural layout numerically — every expected element present, nothing exceeding the 960×540dp viewport, the QR's share of the screen within tolerance, and a quiet zone of at least four modules. No screenshot baseline is recorded; Slice 3 owns that (spec Assumptions, readiness item 5).
+
+`QrBitmapRenderer` was added to the selection during implementation (T061). Named with only `JoinViewModel` and `QrPayloadEncoder`, the bundle contains exactly two branches, both of them inside the synthetic `JoinViewModel$uiState$1` suspend lambda the Kotlin compiler emits for `combine {}` — its `tableswitch` default arm throws `IllegalStateException("call to 'resume' before 'invoke'")` and is unreachable by construction. `QrPayloadEncoder` and `JoinViewModel` itself contribute no branches at all, so BRANCH read 1/2 = 0.50 and the gate could never pass no matter how thoroughly the phase was tested. `QrBitmapRenderer` is already named in this phase's own scope sentence above, and adding it measures *more* production code, not less: the selection now reads BRANCH 7/8 and LINE 34/37, with the unreachable branch still counted rather than suppressed. See spec.md Observation 25.
 
 ### Phase F — Full gate
 
