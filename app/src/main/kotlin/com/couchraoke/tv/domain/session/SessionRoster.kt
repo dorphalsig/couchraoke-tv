@@ -10,13 +10,16 @@ import com.couchraoke.tv.domain.session.model.RosterEntry
  * (data-model.md).
  *
  * T034 implements the admit path (new devices only -- a repeat `deviceId` is T057's
- * reclaim branch) and the `connected`/`entries` derivations. T042 implements `detach`'s
- * FR-023 retention: the entry survives with its connection cleared, keeping its capacity
- * slot. `detach` does not yet check whether the given [ConnectionId] is still the entry's
- * *active* one before clearing it (FR-022) -- that guard is unreachable before T057, since
- * without reclaim a device can never hold more than one `ConnectionId` in its lifetime, so
- * there is nothing yet for a stale connectionId to be stale against. T057 adds that guard
- * alongside reclaim, and T051 adds capacity to `admit`.
+ * reclaim branch) and the `connected`/`entries` derivations. T051 adds `admit`'s
+ * capacity check (FR-015): a previously-unseen `deviceId` is refused with `AtCapacity`
+ * once `size == capacity`; a known `deviceId` never is, because that check only runs on
+ * the new-entry branch below, after the reclaim branch's `TODO` would already have been
+ * reached. T042 implements `detach`'s FR-023 retention: the entry survives with its
+ * connection cleared, keeping its capacity slot. `detach` does not yet check whether the
+ * given [ConnectionId] is still the entry's *active* one before clearing it (FR-022) --
+ * that guard is unreachable before T057, since without reclaim a device can never hold
+ * more than one `ConnectionId` in its lifetime, so there is nothing yet for a stale
+ * connectionId to be stale against. T057 adds that guard alongside reclaim.
  */
 class SessionRoster(private val capacity: Int = 10) {
 
@@ -43,6 +46,9 @@ class SessionRoster(private val capacity: Int = 10) {
                 "SessionRoster.admit's reclaim branch is completed by T057: deviceId=$deviceId " +
                     "existing=$existing connectionId=$connectionId capacity=$capacity",
             )
+        }
+        if (size == capacity) {
+            return RosterAdmission.AtCapacity
         }
         val entry = RosterEntry(
             deviceId = deviceId,

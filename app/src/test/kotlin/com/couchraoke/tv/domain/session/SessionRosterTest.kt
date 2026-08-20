@@ -11,8 +11,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * T030: covers [SessionRoster]'s admit path only (contracts/domain-api.md). Capacity (T051)
- * and reclaim (T057) belong to US2/US3 and are not exercised here.
+ * T030: covers [SessionRoster]'s admit path only (contracts/domain-api.md). T045 extends it
+ * with the capacity cases (FR-015); reclaim (T057) belongs to US3 and is not exercised here.
  *
  * T042 later extends this file to cover [SessionRoster.detach]'s FR-023 retention path,
  * which the disconnect flow needs alongside the admit path.
@@ -124,6 +124,49 @@ class SessionRosterTest {
         assertThrows(IllegalArgumentException::class.java) { SessionRoster(capacity = -1) }
     }
 
+    @Test(timeout = 30_000)
+    fun theEleventhPreviouslyUnseenDeviceReturnsAtCapacity() {
+        val roster = SessionRoster()
+        DEFAULT_CAPACITY_DEVICE_IDS.forEachIndexed { index, deviceId ->
+            roster.admit(deviceId, "Phone $index", "1.0.0", AssetPort(8080), ConnectionId(index + 1))
+        }
+        assertEquals("the roster must be full after admitting capacity distinct devices", 10, roster.size)
+
+        val result = roster.admit(
+            ELEVENTH_DEVICE,
+            "Phone 11",
+            "1.0.0",
+            AssetPort(8080),
+            ConnectionId(DEFAULT_CAPACITY_DEVICE_IDS.size + 1),
+        )
+
+        assertEquals(RosterAdmission.AtCapacity, result)
+        assertEquals(
+            "a device refused for capacity must not consume a roster slot",
+            10,
+            roster.size,
+        )
+    }
+
+    @Test(timeout = 30_000)
+    fun capacityIsEvaluatedOnlyForPreviouslyUnseenDevices() {
+        val roster = SessionRoster(capacity = 1)
+        roster.admit(DEVICE_A, "Alice's Phone", "1.0.0", AssetPort(8080), ConnectionId(1))
+
+        val unseenResult = roster.admit(DEVICE_B, "Bob's Phone", "1.0.0", AssetPort(8081), ConnectionId(2))
+        assertEquals(
+            "a previously-unseen device must be refused once the roster is full",
+            RosterAdmission.AtCapacity,
+            unseenResult,
+        )
+
+        // A known deviceId must never be refused for capacity (FR-015, FR-020, FR-021): it must
+        // still reach the reclaim branch (T057's TODO), not be short-circuited into AtCapacity.
+        assertThrows(NotImplementedError::class.java) {
+            roster.admit(DEVICE_A, "Alice's Phone (again)", "1.0.0", AssetPort(8082), ConnectionId(3))
+        }
+    }
+
     /**
      * Re-admitting a `deviceId` already on the roster is T057's reclaim job (see this
      * class's KDoc); this phase has no reclaim path to fall into, so it must fail loudly
@@ -144,5 +187,9 @@ class SessionRosterTest {
     private companion object {
         val DEVICE_A = DeviceId("device-aaaa")
         val DEVICE_B = DeviceId("device-bbbb")
+
+        // Ten distinct device ids filling the default capacity, plus one more previously-unseen.
+        val DEFAULT_CAPACITY_DEVICE_IDS = (1..10).map { DeviceId("device-000$it") }
+        val ELEVENTH_DEVICE = DeviceId("device-00011")
     }
 }
