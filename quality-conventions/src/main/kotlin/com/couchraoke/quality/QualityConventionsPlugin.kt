@@ -24,6 +24,7 @@ class QualityConventionsPlugin : Plugin<Project> {
         val extension = project.extensions.create<QualityConventionsExtension>("qualityConventions").apply {
             variantName.convention("debug")
             minimumCoverage.convention(0.80)
+            minimumBranchCoverage.convention(0.70)
         }
 
         project.pluginManager.withPlugin("com.android.application") { configureAndroidTesting(project) }
@@ -176,7 +177,14 @@ class QualityConventionsPlugin : Plugin<Project> {
                 violationRules {
                     rule {
                         limit {
+                            counter = "LINE"
+                            value = "COVEREDRATIO"
                             minimum = extension.minimumCoverage.get().toBigDecimal()
+                        }
+                        limit {
+                            counter = "BRANCH"
+                            value = "COVEREDRATIO"
+                            minimum = extension.minimumBranchCoverage.get().toBigDecimal()
                         }
                     }
                 }
@@ -347,10 +355,32 @@ class QualityConventionsPlugin : Plugin<Project> {
                     include("jacoco/testBranchSelectedTests.exec")
                 })
 
+                // Two limits, because neither counter is sufficient alone.
+                //
+                // BRANCH is the sharper signal — it distinguishes "this line ran" from "every
+                // decision on it was exercised" — but JaCoCo reports 0/0 for a class with no
+                // `if`/`when`, and `Limit.check` returns no violation when the ratio is NaN. A
+                // branch-only rule would therefore pass every straight-line class silently,
+                // which is most of `domain/`.
+                //
+                // LINE is always defined, so it supplies the floor. It is weaker per line — a
+                // line counts as covered once any one of its instructions executes — which is
+                // exactly the gap BRANCH closes.
+                //
+                // INSTRUCTION is deliberately not used: it counts Kotlin's generated `copy`,
+                // `componentN` and `equals`/`hashCode`, penalising data classes for code no one
+                // writes tests for.
                 violationRules {
                     rule {
                         limit {
+                            counter = "LINE"
+                            value = "COVEREDRATIO"
                             minimum = extension.minimumCoverage.get().toBigDecimal()
+                        }
+                        limit {
+                            counter = "BRANCH"
+                            value = "COVEREDRATIO"
+                            minimum = extension.minimumBranchCoverage.get().toBigDecimal()
                         }
                     }
                 }

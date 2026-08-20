@@ -44,6 +44,28 @@ class SessionCoordinator(
 
 **`PhaseTransitionResult`**: `Accepted(from, to)` | `Rejected(from, to)`. Rejected leaves the phase unchanged (FR-026).
 
+**`AdmissionDecision`**: `com.couchraoke.tv.domain.control.AdmissionDecision`
+
+```kotlin
+sealed interface AdmissionDecision {
+    data class Admitted(val connectionId: ConnectionId) : AdmissionDecision
+    data class Refused(val reason: RefusalReason, val message: String) : AdmissionDecision
+}
+```
+
+`Admitted` carries only the allocated `ConnectionId`. It deliberately does **not** embed the
+`sessionState` reply: that is a wire DTO, and putting it here would drag the wire schema into a pure
+`domain.control` type. The transport-facing caller builds the reply from `Admitted.connectionId` and
+`SessionCoordinator.snapshot` (T035).
+
+`Refused` carries the `RefusalReason` and the exact human-readable message, because F20 pins those
+strings and both halves travel together into `ControlConnection.refuse(code, message)`.
+
+> Added during implementation (T022). The original contract named `AdmissionDecision` in
+> `authorize`/`admit` without ever defining it; T049 was to create it "alongside"
+> `HandshakeValidator`, which left the type undefined for every earlier task that had to compile
+> against it. Shape inferred from T050's refusal vocabulary.
+
 ---
 
 ## SessionRoster
@@ -190,7 +212,23 @@ class ControlMessageCodec(private val json: Json) {
 
 Encoding omits absent optionals rather than writing `null`, because all three schemas set `additionalProperties: false` and `connectionId` must be **absent** outside the direct reply to a `hello` (FR-014).
 
-`Json` is configured `encodeDefaults = false`, `explicitNulls = false`, `ignoreUnknownKeys = false` — the last because an unknown field is a schema violation, not something to tolerate.
+The injected `Json` is configured `explicitNulls = false`, `ignoreUnknownKeys = false` — the last because an unknown field is a schema violation, not something to tolerate.
+
+`encodeDefaults` cannot be satisfied by a single `Json`, so the codec derives a second one internally
+for the two encode paths. `sessionState` and `error` both declare `type` and `protocolVersion` with
+Kotlin defaults while their schemas mark those fields **required**, so they must be written even when
+they hold the default value — that needs `encodeDefaults = true`. But every schema also sets
+`additionalProperties: false`, so absent nullable optionals must be omitted rather than written as
+`null` — that needs `explicitNulls = false`. `encodeDefaults = false` would drop the required
+constants; `encodeDefaults = true` alone would emit the optionals as explicit nulls.
+
+The constructor therefore keeps its single-`Json` signature and uses the injected instance for
+`decodeHello`, deriving `Json(from = json) { encodeDefaults = true; explicitNulls = false }` for
+`encodeSessionState` and `encodeError`. `ControlMessageCodecFixtureTest` asserts the resulting bytes.
+
+> Corrected during implementation (T014). The contract previously specified
+> `encodeDefaults = false`, which contradicts T014's own requirement that `sessionState` write its
+> required constants.
 
 ---
 
@@ -214,7 +252,21 @@ class JoinViewModel(
 
 **`JoinUiState`**: `data class(joinCodeDisplay: String, qrPayload: String, connectedCount: Int, startFailure: SessionStartFailure?)`.
 
+**`ControlEndpoint`**: `com.couchraoke.tv.presentation.join.ControlEndpoint`
+
+```kotlin
+data class ControlEndpoint(val address: Inet4Address, val port: Int)
+```
+
+The resolved address from `LocalAddressProvider` paired with the **actual** `StartedTransport.boundPort`.
+It exists so `JoinViewModel` can hand `QrPayloadEncoder` the endpoint a phone should dial without
+reaching for a port or a socket itself (FR-035).
+
+> Added during implementation. `JoinViewModel`'s binding constructor named `endpoint: ControlEndpoint`
+> but no task in `tasks.md` created the type. T040 owns constructing it.
+
 `connectedCount` is derived from `coordinator.connectedDevices.size` — the live connections, never the roster size (FR-025, SC-007). The view model performs no network I/O (FR-035); it maps host-owned state and nothing more.
+
 
 ---
 

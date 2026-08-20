@@ -65,6 +65,29 @@ One `spec.md`, one `plan.md`, one `tasks.md` (the latter produced by `/speckit.t
 
 Scoped `testBranch` per phase, listed in each phase below. Three rules apply throughout. First, adapters are excluded from `--src` selection because they are thin by construction and cannot reach 80% from JVM tests; their behaviour is proved by the loopback gate instead. Second, and per FR-038, a scoped `testBranch` pass alone never completes a phase that touches the transport — the loopback gate against the real peer must also pass, and neither substitutes for the other. Third, per constitution v2.0.0 Principle IV, the loopback gate is this slice's mandatory **L** gate: a slice proved only by U and S is not proved, and a gate satisfied by a skipped test is a failure rather than a pass.
 
+**The coverage gate enforces LINE ≥ 80% and BRANCH ≥ 70%, evaluated per bundle.**
+`QualityConventionsPlugin.kt` originally declared `violationRules { rule { limit { minimum = … } } }`
+with no `counter`, so JaCoCo silently applied its `INSTRUCTION` default while every document here
+described the gate as line coverage. That was corrected during this slice with explicit `counter`
+values. Three consequences worth budgeting against:
+
+- **BRANCH cannot be the only limit.** A class with no `if`/`when` has a 0/0 branch ratio, which
+  JaCoCo evaluates as `NaN`, and `Limit.check` returns no violation for `NaN`. A branch-only rule
+  would pass most of `domain/` without measuring anything. LINE supplies the floor; BRANCH sharpens
+  it where decisions exist.
+- **BRANCH runs 10–20 points below LINE on the same code**, which is why the thresholds differ. 70
+  is not a weaker standard than 80, it is the same rigor in a stricter metric.
+- **The rule evaluates `element = BUNDLE`**, JaCoCo's default — the aggregate over the `--src`
+  selection, not each class independently. Keep `--src` selections tight, or a well-covered class
+  will mask a poorly covered one.
+
+INSTRUCTION is deliberately not enforced: it counts Kotlin's generated `copy`, `componentN` and
+`equals`/`hashCode`, and it penalises `TODO()` stubs for instructions no test can reach.
+
+Run `testBranch`, never `testDebugUnitTest --tests "…"`, as a task gate. The latter skips detekt and
+JaCoCo entirely, so it reports green having checked strictly less than the gate claims.
+
+
 **Feature-level completion gate:**
 
 ```powershell
@@ -192,6 +215,17 @@ Driven by `fixtures/F20_websocket_message_validation/` (four cases) and `fixture
 `SessionCoordinator` joins Phase A and Phase B behind one host-owned surface and owns the two observable flows. Satisfies FR-023's ordering rule and FR-034.
 
 *Gate*: `testBranch` including `SessionCoordinator`, with virtual-time tests for the 5 s deadline and an explicit test that a drop is removed from the connected list before the next admission decision.
+
+**The gate's two named tests still fall due at the US2 checkpoint, not at T024**, because T042 writes
+the drop-ordering test and T052 the 5 s deadline test, and `authorize`/`admit`/`onDisconnected` stay
+stubbed until T035, T042 and T050.
+
+`SessionCoordinator` was briefly excluded from `--src` at T024 under the old INSTRUCTION gate, which
+measured it at 70.87%. **That exclusion has been withdrawn.** Under the corrected LINE/BRANCH gate the
+class measures 81.82% line and 100% branch at T024 — every implemented method is fully covered and
+every decision it makes is exercised. The old failure was the INSTRUCTION counter charging it for the
+bodies of three `TODO()` stubs, which is precisely the distortion the counter fix removed. The class
+is `--src` selected from T022 onward with no deferral.
 
 ### Phase D — Transport and announcement
 

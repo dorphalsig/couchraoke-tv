@@ -61,7 +61,10 @@ data class SessionState(
 )
 
 @Serializable
-data class Slots(val P1: SlotDto, val P2: SlotDto)
+data class Slots(
+    @SerialName("P1") val p1: SlotDto,
+    @SerialName("P2") val p2: SlotDto,
+)
 
 @Serializable
 data class SlotDto(val connected: Boolean, val deviceName: String)
@@ -77,7 +80,9 @@ data class ConnectedDeviceDto(
 
 `type` and `protocolVersion` carry defaults but are **required** by the schema, so `ControlMessageCodec` serializes this class with `encodeDefaults = true` for outbound `sessionState` specifically, while leaving the nullable optionals omitted via `explicitNulls = false`. This is the one place the two settings must differ, and it is why encoding goes through the codec rather than a bare `Json.encodeToString` call at each site.
 
-`Slots.P1` / `Slots.P2` violate Kotlin property-naming convention deliberately: the schema names them `P1` and `P2`, and matching the wire exactly is worth more than the convention. Detekt's naming rules need a scoped `@Suppress` here with this reason — not a blanket suppression.
+The wire names these fields `P1` and `P2`, which violate Kotlin's property-naming convention. `@SerialName` pins the wire spelling while the Kotlin properties stay conventional, so the emitted bytes are identical and no suppression is needed.
+
+> Corrected during implementation (T012). The contract originally declared `val P1: SlotDto` with a scoped `@Suppress("PropertyName")`. That suppression was incomplete — the constructor parameters also trip detekt's `ConstructorParameterNaming`, which failed `:app:detekt` module-wide. `@SerialName` removes the need for either suppression.
 
 **This slice's values**: `tsTvMs` omitted, both slots `connected = false, deviceName = ""`, every `ConnectedDeviceDto.state = "connected_unassigned"` with `slot = null`, `inSong = false`, `songTimeSec` omitted. `connectionId` is set **only** on the direct reply to a `hello` and omitted everywhere else (FR-014).
 

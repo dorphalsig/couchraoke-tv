@@ -23,14 +23,36 @@ All three are mandatory. Treat them as invariants for the session.
 ---
 
 ## §3 Skills
-Three skills govern specific workflows in this repository. They auto-load based on context.
+Four skills govern specific workflows in this repository. They auto-load based on context.
 **If a skill has not auto-loaded when you need it, read it explicitly before proceeding.**
+
+Skills live in `.github/skills/<name>/SKILL.md`, resolved **relative to the main checkout**, not
+`$HOME`. `.github/` is currently untracked, so it is absent from every git worktree. When you
+delegate to a subagent working in a worktree, pass the main-checkout absolute path or the subagent
+cannot load the skill at all.
+
 | Skill | Read when you are about to... | Explicit load |
 |---|---|---|
-| `navigation` | navigate code, look up a symbol, discover files, decide how much to read | `Read $HOME/.claude/skills/navigation/SKILL.md` |
-| `gradle-validation` | run any Gradle command, execute tests, check snapshots, claim completion | `Read $HOME/.claude/skills/gradle-validation/SKILL.md` |
-| `implementation` | start implementing, writing code | `Read $HOME/.claude/skills/implementation/SKILL.md` |
-| `orchestration` | manage tasks, make delegation decisions, manage worktrees/branches | `Read $HOME/.claude/skills/orchestration/SKILL.md` |
+| `navigation` | navigate code, look up a symbol, discover files, decide how much to read | `Read <main-checkout>/.github/skills/navigation/SKILL.md` |
+| `gradle-validation` | run any Gradle command, execute tests, check snapshots, claim completion | `Read <main-checkout>/.github/skills/gradle-validation/SKILL.md` |
+| `implementation` | start implementing, writing code | `Read <main-checkout>/.github/skills/implementation/SKILL.md` |
+| `orchestration` | manage tasks, make delegation decisions, manage worktrees/branches | `Read <main-checkout>/.github/skills/orchestration/SKILL.md` |
+---
+
+## §3a Environment
+This repository is developed on **Windows**. Assume PowerShell, not a POSIX shell.
+
+- **There is no bash.** Only `git.exe` is installed; there is no Git Bash. Every script under
+  `.specify/scripts/bash/` is unrunnable here. Inspect the repository directly instead of invoking
+  them, and do not report a task blocked solely because a `.sh` helper would not run.
+- Use `.\gradlew.bat`, not `./gradlew`. There is no `timeout` command; a wrapper like
+  `timeout 10m ./gradlew …` fails outright.
+- PowerShell splits an argument at a `.`, so `-Proborazzi.record=true` does not reach Gradle. Use
+  the camelCase property form instead.
+- Any `uv` invocation needs `UV_SYSTEM_CERTS=1` in its environment. Corporate TLS interception
+  otherwise fails the build with `invalid peer certificate: UnknownIssuer`. This applies to the
+  `mockphone` peer the loopback gate launches as a subprocess — set it in the **subprocess**
+  environment, not just your own shell.
 ---
 
 ## §4 Error Protocol
@@ -53,7 +75,10 @@ These apply at all times, no skill exempts them:
   `gradle/libs.versions.toml`
 - MUST define material producer or consumer contracts during planning as FQCN + method +
   signature, plus any required data contract
-- MUST use scoped `testBranch` as the authoritative task gate for completion
+- MUST use scoped `testBranch` as the authoritative task gate for completion — a
+  `testDebugUnitTest --tests …` run is **not** that gate and silently skips detekt and JaCoCo
+- MUST treat `specs/**/contracts/` as outranking any instruction from a human or an orchestrator;
+  implement the contract and report the discrepancy rather than the instruction
 - MUST NOT report task completion unless all required artifacts are present, fresh, and passing
 - MUST notify OOS problems — MUST NOT fix them
 
