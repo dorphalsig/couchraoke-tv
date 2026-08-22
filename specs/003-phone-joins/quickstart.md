@@ -99,6 +99,39 @@ This is the D-tier walk: the TV app on real hardware, the peer on a different ma
 multicast between them. Loopback cannot prove any of it, because `127.0.0.1` never touches a network
 interface.
 
+### First, shrink it: the LAN discovery probe
+
+Most of the discovery half can be verified from a developer machine, with no Android device and no
+second machine. `LanDiscoveryProbe` runs the real `SessionComponent.startSession` path — real
+`KtorControlTransport`, real `JmdnsSessionAnnouncer` on a real multicast socket, real join-code
+generation and instance-name readback — over this machine's LAN interface, then asks the real peer
+to find it by mDNS alone:
+
+```powershell
+.\gradlew.bat :app:testDebugUnitTest --tests "*LanDiscoveryProbe*" -PlanDiscoveryProbe=true
+```
+
+It is **opt-in and skipped by default**, because it needs a LAN that permits multicast. On a
+corporate or guest network that filters mDNS it would fail rather than skip, and that failure looks
+exactly like a product bug — a default-on network test would make the suite report the network's
+policy as our defect. The property name has no dots on purpose: PowerShell splits a `-P` argument at
+the first dot, the same trap that makes `-Proborazzi.record=true` unusable. Gradle's own system
+properties are not inherited by the test JVM either, so `app/build.gradle.kts` forwards this one
+explicitly; a bare `-Dlan.discovery.probe=true` silently does nothing.
+
+The probe hands the peer **no** `--tv-host` and no `--token`, so a successful join can only have come
+from the TXT record — address, port and join code all read off the announcement. It is verified
+non-vacuous by tripwire: swap `JmdnsSessionAnnouncer` for a no-op announcer, change nothing else, and
+it fails with exit 5.
+
+**What it still cannot tell you, and why the walk below is not optional:** it substitutes
+`MulticastLease` with a no-op, because a desktop has no WiFi multicast filtering to unlock. Android's
+WiFi driver drops multicast before it reaches userspace to save power, and `WifiMulticastLease` is
+what stops that. Nothing executes that class anywhere, and its failure mode is silent — jmDNS would
+register without error and simply never be found. Only a real device can close it.
+
+### Then the walk
+
 1. Install and launch: `.\gradlew.bat :app:installDebug`
 2. The song list appears in its empty state with a Join action in the header.
 3. Press Join. The overlay shows the QR code and the join code beneath it.
@@ -167,4 +200,7 @@ uv run mock-phone --join-only --client-id phone-03 --token …   # exit 0 — re
 - **The coverage gate enforces LINE ≥ 80% and BRANCH ≥ 70%, aggregated over the `--src` selection.** It measured INSTRUCTION until this slice, because `QualityConventionsPlugin.kt` set no `counter` and JaCoCo defaults to it. Two traps survive the fix: BRANCH is silently skipped on any class with no `if`/`when` (JaCoCo returns `NaN` for 0/0 and `Limit.check` ignores it), so BRANCH alone would prove nothing; and the rule evaluates the *bundle*, so a well-covered class can mask a weak one inside the same selection. Keep `--src` tight. See spec.md observation 10.
 - **`testBranch` and `testDebugUnitTest --tests "…"` are not interchangeable.** The `--tests` form runs the tests and nothing else: no detekt, no JaCoCo. Use it for a fast inner loop if you like, but never report it as a task gate.
 - **`mockphone` needs `UV_SYSTEM_CERTS=1`.** Without it `uv` fails with `invalid peer certificate: UnknownIssuer` behind TLS interception. The loopback harness launches the peer as a subprocess, so set it in the **subprocess** environment — your own shell's copy is not inherited.
+- **`mock-phone --help` is wrong about `--discover`.** It says `--discover` "Ignores --tv-host/--tv-port/--token", which reads as *overrides*. It does not: `--discover` and `--tv-host` sit in a mutually exclusive group, so passing both is an argparse usage error (exit 2) and the peer never runs. Only `--token` is genuinely ignored. Pass `--discover` alone.
+- **A scoped `--src` FQCN that matches nothing is silently dropped, not rejected.** `testBranch` will print `BUILD SUCCESSFUL` and satisfy both thresholds having measured strictly less than you asked for — a misspelled or wrongly-packaged class simply vanishes from the selection. After any gate run that matters, check the per-class list in `testBranchJacocoReport.xml` actually contains every class the command named. See spec.md observation 26.
+- **Gradle's system properties do not reach the unit-test JVM.** `-Dlan.discovery.probe=true` or `-Dmockphone.dir=…` on the command line has no effect on its own; `app/build.gradle.kts` forwards both explicitly from dot-free Gradle properties (`-PlanDiscoveryProbe`, `-PmockphoneDir`).
 - **There is no bash on the Windows dev machines.** Every `.specify/scripts/bash/*.sh` helper is unrunnable; inspect the repository directly instead.

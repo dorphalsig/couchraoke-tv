@@ -48,6 +48,22 @@ android {
     }
 }
 
+/**
+ * The unit-test JVM does not inherit Gradle's own system properties, so the two knobs the
+ * loopback gate documents have to be forwarded explicitly or they silently do nothing —
+ * including the `-Dmockphone.dir` hint `MockPhonePeer` prints when it cannot find the peer.
+ *
+ * Gradle property names here are deliberately dot-free: PowerShell splits a `-P` argument at
+ * the first dot, which is the same trap that makes `-Proborazzi.record=true` unusable.
+ */
+tasks.withType<Test>().configureEach {
+    systemProperty(
+        "lan.discovery.probe",
+        providers.gradleProperty("lanDiscoveryProbe").getOrElse("false"),
+    )
+    providers.gradleProperty("mockphoneDir").orNull?.let { systemProperty("mockphone.dir", it) }
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

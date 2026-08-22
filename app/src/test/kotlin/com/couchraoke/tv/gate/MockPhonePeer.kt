@@ -72,6 +72,14 @@ object MockPhonePeer {
      * `--protocol-version 2`, `--malformed-hello clientId`, `--silent-handshake`,
      * `--client-id`, `--hold`), and waits up to [timeoutSeconds] for it to exit.
      *
+     * Passing `null` for [tvHost] omits `--tv-host` **and** `--tv-port` entirely, which is
+     * required by `--discover`: the peer's `--help` claims `--discover` "Ignores
+     * --tv-host/--tv-port/--token", but argparse actually declares them in a mutually
+     * exclusive group — `(--discover | --tv-host HOST)` — so supplying both is a usage
+     * error (exit 2), not an override. Omitting the host is therefore also the positive
+     * control for a discovery test: with no address on the command line at all, a
+     * successful join can only have come from the mDNS TXT record.
+     *
      * [timeoutSeconds] is this harness's own bound, not the peer's `--join-timeout` —
      * it must stay comfortably above whatever `--join-timeout` [extraArgs] carries (the
      * peer defaults that to 15s) so a hung peer fails the test instead of hanging the
@@ -80,7 +88,7 @@ object MockPhonePeer {
      */
     fun run(
         tvPort: Int,
-        tvHost: String = "127.0.0.1",
+        tvHost: String? = "127.0.0.1",
         token: String? = null,
         extraArgs: List<String> = emptyList(),
         timeoutSeconds: Long = DEFAULT_TIMEOUT_SECONDS,
@@ -112,12 +120,14 @@ object MockPhonePeer {
         return result
     }
 
-    private fun buildArgs(tvHost: String, tvPort: Int, token: String?, extraArgs: List<String>): List<String> =
+    private fun buildArgs(tvHost: String?, tvPort: Int, token: String?, extraArgs: List<String>): List<String> =
         buildList {
-            add("--tv-host")
-            add(tvHost)
-            add("--tv-port")
-            add(tvPort.toString())
+            if (tvHost != null) {
+                add("--tv-host")
+                add(tvHost)
+                add("--tv-port")
+                add(tvPort.toString())
+            }
             if (token != null) {
                 add("--token")
                 add(token)
