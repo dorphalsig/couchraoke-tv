@@ -48,6 +48,22 @@ android {
     }
 }
 
+/**
+ * The unit-test JVM does not inherit Gradle's own system properties, so the two knobs the
+ * loopback gate documents have to be forwarded explicitly or they silently do nothing —
+ * including the `-Dmockphone.dir` hint `MockPhonePeer` prints when it cannot find the peer.
+ *
+ * Gradle property names here are deliberately dot-free: PowerShell splits a `-P` argument at
+ * the first dot, which is the same trap that makes `-Proborazzi.record=true` unusable.
+ */
+tasks.withType<Test>().configureEach {
+    systemProperty(
+        "lan.discovery.probe",
+        providers.gradleProperty("lanDiscoveryProbe").getOrElse("false"),
+    )
+    providers.gradleProperty("mockphoneDir").orNull?.let { systemProperty("mockphone.dir", it) }
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -59,6 +75,7 @@ dependencies {
     implementation(libs.androidx.tv.foundation)
     implementation(libs.androidx.tv.material)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
     implementation(libs.coil.compose)
     implementation(libs.jmdns)
@@ -74,9 +91,11 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.libvlc.all)
+    implementation(libs.zxing.core)
     testImplementation(libs.junit)
     testImplementation(libs.androidx.compose.ui.test.junit4)
     testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)

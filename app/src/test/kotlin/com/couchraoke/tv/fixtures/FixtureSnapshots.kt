@@ -73,8 +73,7 @@ data class ParsedSongSnapshot(
     val diagnostics: List<ParsedSongDiagnostic>,
 ) {
     fun ordered(): ParsedSongSnapshot = copy(
-        header = header.ordered(),
-        tracks = tracks.sortedBy(ParsedSongTrack::trackIndex).map(ParsedSongTrack::ordered),
+        tracks = tracks.sortedBy(ParsedSongTrack::playerId).map(ParsedSongTrack::ordered),
         diagnostics = diagnostics.sortedWith(
             compareBy<ParsedSongDiagnostic> { it.lineNumber ?: Int.MAX_VALUE }
                 .thenBy { it.severity }
@@ -90,39 +89,44 @@ data class ParsedSongHeader(
     val artist: String,
     val bpmFile: Float,
     val gapMs: Float,
-    val audio: String,
+    val audio: String? = null,
+    val startSec: Float? = null,
+    val endMs: Int? = null,
+    val videoGapSec: Float? = null,
+    val previewStartSec: Float? = null,
     val video: String? = null,
     val cover: String? = null,
     val background: String? = null,
+    val instrumental: String? = null,
+    val vocals: String? = null,
+    val version: String,
+    val year: Int? = null,
+    val genre: String? = null,
+    val album: String? = null,
+    val isDuet: Boolean = false,
     val p1Name: String? = null,
     val p2Name: String? = null,
-    val relativeMode: Boolean? = null,
-    val version: String,
-    val customTags: JsonObject,
-) {
-    fun ordered(): ParsedSongHeader = copy(
-        customTags = FixtureSnapshotOrdering.orderedJsonObject(customTags),
-    )
-}
-
-@Serializable
-data class ParsedSongTiming(
-    val bpmChanges: List<ParsedSongBpmChange>,
-    val startBeatFile: Int? = null,
-    val endBeatFile: Int? = null,
-    val notesGapBeatsFile: Int? = null,
+    val medleyStartBeat: Int? = null,
+    val medleyEndBeat: Int? = null,
+    val customTags: List<ParsedSongCustomTag> = emptyList(),
 )
 
 @Serializable
-data class ParsedSongBpmChange(
-    val startBeatFile: Int,
+data class ParsedSongCustomTag(
+    val tag: String,
+    val content: String,
+)
+
+@Serializable
+data class ParsedSongTiming(
     val bpmFile: Float,
 )
 
 @Serializable
 data class ParsedSongTrack(
-    val trackIndex: Int,
+    val playerId: String,
     val lines: List<ParsedSongLine>,
+    val trackScoreValue: Long,
 ) {
     fun ordered(): ParsedSongTrack = copy(
         lines = lines.sortedBy(ParsedSongLine::lineIndex),
@@ -133,6 +137,10 @@ data class ParsedSongTrack(
 data class ParsedSongLine(
     val lineIndex: Int,
     val notes: List<ParsedSongNote>,
+    val lineScoreValue: Long,
+    val startBeatFile: Int,
+    val endBeatFileExclusive: Int,
+    val isEmpty: Boolean,
 )
 
 @Serializable
@@ -140,8 +148,9 @@ data class ParsedSongNote(
     val noteType: String,
     val startBeatFile: Int,
     val durationBeats: Int,
-    val toneUsdx: Int,
+    val toneSemitone: Int,
     val lyric: String,
+    val endBeatFileExclusive: Int,
 )
 
 @Serializable
@@ -157,7 +166,8 @@ data class ScoreSnapshot(
     val description: String,
     val assumptions: ScoreAssumptions? = null,
     val derived: JsonObject? = null,
-    val perBeat: List<ScorePerBeat>,
+    val perBeat: List<ScorePerBeat> = emptyList(),
+    val noteWindow: ScoreNoteWindow? = null,
     val lineBonus: ScoreLineBonus? = null,
     val expectedTotals: ScoreExpectedTotals,
 ) {
@@ -167,6 +177,38 @@ data class ScoreSnapshot(
         lineBonus = lineBonus?.ordered(),
     )
 }
+
+/**
+ * F08's deadline-driven projection, which replaced its `perBeat` table in the 2026-05-17 fixture
+ * revision. Notes are finalized by range query over `noteStartTvMs <= tvTimeMs < noteEndTvMs`,
+ * so the fixture asserts the qualifying frame set rather than a per-beat walk.
+ */
+@Serializable
+data class ScoreNoteWindow(
+    val startBeat: Int,
+    val endBeatExclusive: Int,
+    val qualifyingFrameSeq: List<Long> = emptyList(),
+    val hits: Int,
+    val samplesInNote: Int,
+    val expectedNoteScore: Int,
+)
+
+/** Shape used by the F03 scoring subcases: totals only, keyed by player. */
+@Serializable
+data class PlayerScoresSnapshot(
+    val description: String,
+    val playerScores: Map<String, PlayerScoreTotals>,
+)
+
+@Serializable
+data class PlayerScoreTotals(
+    val score: Int? = null,
+    val scoreGolden: Int? = null,
+    val scoreInt: Int? = null,
+    val scoreGoldenInt: Int? = null,
+    val scoreLineInt: Int? = null,
+    val scoreTotalInt: Int,
+)
 
 @Serializable
 data class ScoreAssumptions(

@@ -90,7 +90,8 @@ object UsdxDiscoveryHarness {
         songTxtRel: String,
         parsed: ParsedSong,
     ): JsonObject {
-        if (!requiredAudioExists(songDir, parsed.header.audio)) {
+        val mixPair = MixPairResolver.resolve(songDir, parsed.header)
+        if (!requiredPlaybackSourceExists(songDir, parsed.header, mixPair)) {
             return invalidSong(
                 fixtureId = fixtureId,
                 songDirRel = songDirRel,
@@ -116,7 +117,7 @@ object UsdxDiscoveryHarness {
 
             when (fixtureId) {
                 "F01_song_discovery_validation_acceptance" -> {
-                    applyF01ValidSong(this, songDirRel, songDir, parsed)
+                    applyF01ValidSong(this, songDirRel, songDir, parsed, mixPair)
                 }
 
                 "F02_header_parsing_edge_cases" -> {
@@ -230,32 +231,49 @@ object UsdxDiscoveryHarness {
     private fun String.normalizeNewlines(): String =
         replace("\r\n", "\n").replace('\r', '\n')
 
-    private fun requiredAudioExists(songDir: Path, audio: String): Boolean =
-        songDir.resolve(audio).exists()
+    /**
+     * tv_app.md §2.5.5: the selected playback source must be available — base audio must exist on
+     * disk, or both accepted mix sources must exist. Missing source file → invalid.
+     */
+    private fun requiredPlaybackSourceExists(
+        songDir: Path,
+        header: SongHeader,
+        mixPair: MixPairResolver.Resolution,
+    ): Boolean =
+        if (mixPair.usesGeneratedMix) {
+            true
+        } else {
+            header.audio?.let { audio -> songDir.resolve(audio).exists() } == true
+        }
 
-    private fun headerLineNumber(txtPath: Path, audioName: String): Int? =
-        Files.readAllLines(txtPath)
-            .indexOfFirst { line ->
-                line.trim() == "#AUDIO:$audioName" ||
-                    line.trim() == "#MP3:$audioName"
-            }
-            .takeIf { it >= 0 }
-            ?.plus(1)
+    private fun headerLineNumber(txtPath: Path, audioName: String?): Int? =
+        audioName?.let { name ->
+            Files.readAllLines(txtPath)
+                .indexOfFirst { line ->
+                    line.trim() == "#AUDIO:$name" ||
+                        line.trim() == "#MP3:$name"
+                }
+                .takeIf { it >= 0 }
+                ?.plus(1)
+        }
 
     private fun applyF01ValidSong(
         json: JsonObjectBuilder,
         songDirRel: String,
         songDir: Path,
         parsed: ParsedSong,
+        mixPair: MixPairResolver.Resolution,
     ) {
         json.put("artist", JsonPrimitive(parsed.header.artist))
         json.put("title", JsonPrimitive(parsed.header.title))
-        when (songDirRel) {
-            "c/v1_audio_precedence", "c/legacy_mp3_preferred" -> {
-                json.put("resolvedAudioRel", JsonPrimitive(parsed.header.audio))
+        when {
+            songDirRel.startsWith("d/") -> applyF01MixPair(json, mixPair)
+
+            songDirRel == "c/v1_audio_precedence" || songDirRel == "c/legacy_mp3_preferred" -> {
+                json.put("resolvedAudioRel", JsonPrimitive(requireNotNull(parsed.header.audio)))
             }
 
-            "c/v1_missing_optional_video" -> {
+            songDirRel == "c/v1_missing_optional_video" -> {
                 json.put(
                     "hasVideo",
                     JsonPrimitive(
@@ -265,6 +283,26 @@ object UsdxDiscoveryHarness {
                     )
                 )
             }
+        }
+    }
+
+    private fun applyF01MixPair(json: JsonObjectBuilder, mixPair: MixPairResolver.Resolution) {
+        mixPair.resolvedAudioRel?.let { audio -> json.put("resolvedAudioRel", JsonPrimitive(audio)) }
+        json.put("hasInstrumental", JsonPrimitive(mixPair.hasInstrumental))
+        json.put("mixMode", JsonPrimitive(mixPair.mixMode))
+        if (mixPair.usesGeneratedMix) {
+            json.put("generatedAudioPathPrefix", JsonPrimitive(MixPairResolver.GENERATED_AUDIO_PATH_PREFIX))
+            json.put("generatedAudioExtension", JsonPrimitive(MixPairResolver.GENERATED_AUDIO_EXTENSION))
+            json.put(
+                "manifestExcludes",
+                buildJsonArray { MixPairResolver.MANIFEST_EXCLUDES.forEach { add(JsonPrimitive(it)) } }
+            )
+        }
+        if (mixPair.warnCodes.isNotEmpty()) {
+            json.put(
+                "expectedWarnCodes",
+                buildJsonArray { mixPair.warnCodes.forEach { add(JsonPrimitive(it)) } }
+            )
         }
     }
 
@@ -320,7 +358,7 @@ object UsdxDiscoveryHarness {
             put("artist", JsonPrimitive(header.artist))
             put("version", JsonPrimitive(header.version))
             put("bpmFile", JsonPrimitive(header.bpmFile))
-            put("audioResolved", JsonPrimitive(header.audio))
+            put("audioResolved", JsonPrimitive(requireNotNull(header.audio)))
             put(
                 "customTagsOrdered",
                 buildJsonArray {
@@ -398,13 +436,7 @@ object UsdxDiscoveryHarness {
         when (fixtureId) {
             "F04_duet_parsing_track_routing" -> "F04_${songDirRel.substringAfterLast('/')}"
             "F05_legacy_relative_mode_semantics" -> "F05_${songDirRel.substringAfterLast('/')}"
-            "F03_body_grammar_token_recognition" -> {
-                if (songDirRel == "scoring/freestyle_only") {
-                    "F03_freestyle_only"
-                } else {
-                    "F03_${songDirRel.substringAfterLast('/')}"
-                }
-            }
+            "F03_body_grammar_token_recognition" -> "F03_${songDirRel.substringAfterLast('/')}"
             else -> "${fixtureId}_${songDirRel.replace('/', '_')}"
         }
 }

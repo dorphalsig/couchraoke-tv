@@ -24,6 +24,7 @@ class QualityConventionsPlugin : Plugin<Project> {
         val extension = project.extensions.create<QualityConventionsExtension>("qualityConventions").apply {
             variantName.convention("debug")
             minimumCoverage.convention(0.80)
+            minimumBranchCoverage.convention(0.70)
         }
 
         project.pluginManager.withPlugin("com.android.application") { configureAndroidTesting(project) }
@@ -176,7 +177,14 @@ class QualityConventionsPlugin : Plugin<Project> {
                 violationRules {
                     rule {
                         limit {
+                            counter = "LINE"
+                            value = "COVEREDRATIO"
                             minimum = extension.minimumCoverage.get().toBigDecimal()
+                        }
+                        limit {
+                            counter = "BRANCH"
+                            value = "COVEREDRATIO"
+                            minimum = extension.minimumBranchCoverage.get().toBigDecimal()
                         }
                     }
                 }
@@ -205,6 +213,15 @@ class QualityConventionsPlugin : Plugin<Project> {
             description = "Runs selective tests, detekt, and jacoco on provided FQCNs."
         }
 
+        // Screenshots are a verify gate, not a record step: recording always passes and so can
+        // never catch a layout regression. Opt into recording explicitly with -ProborazziRecord=true
+        // (or the dotted alias, which needs quoting on PowerShell).
+        val recordScreenshots = project.providers
+            .gradleProperty("roborazziRecord")
+            .orElse(project.providers.gradleProperty("roborazzi.record"))
+            .map(String::toBoolean)
+            .getOrElse(false)
+
         val srcProvider = testBranch.flatMap { it.srcSelectors }
         val testProvider = testBranch.flatMap { it.testSelectors }
 
@@ -220,9 +237,17 @@ class QualityConventionsPlugin : Plugin<Project> {
 
         val testBranchRoborazzi = project.tasks.register<Test>("testBranchRoborazzi") {
             group = "verification"
-            description = "Runs selective screenshots with Roborazzi."
+            description = if (recordScreenshots) {
+                "Records selective Roborazzi baselines (-ProborazziRecord=true)."
+            } else {
+                "Verifies selective screenshots against committed Roborazzi baselines."
+            }
             useJUnit()
-            systemProperty("roborazzi.test.record", "true")
+            if (recordScreenshots) {
+                systemProperty("roborazzi.test.record", "true")
+            } else {
+                systemProperty("roborazzi.test.verify", "true")
+            }
             systemProperty("robolectric.pixelCopyRenderMode", "hardware")
             extensions.configure(JacocoTaskExtension::class.java) {
                 isIncludeNoLocationClasses = true
@@ -330,10 +355,32 @@ class QualityConventionsPlugin : Plugin<Project> {
                     include("jacoco/testBranchSelectedTests.exec")
                 })
 
+                // Two limits, because neither counter is sufficient alone.
+                //
+                // BRANCH is the sharper signal — it distinguishes "this line ran" from "every
+                // decision on it was exercised" — but JaCoCo reports 0/0 for a class with no
+                // `if`/`when`, and `Limit.check` returns no violation when the ratio is NaN. A
+                // branch-only rule would therefore pass every straight-line class silently,
+                // which is most of `domain/`.
+                //
+                // LINE is always defined, so it supplies the floor. It is weaker per line — a
+                // line counts as covered once any one of its instructions executes — which is
+                // exactly the gap BRANCH closes.
+                //
+                // INSTRUCTION is deliberately not used: it counts Kotlin's generated `copy`,
+                // `componentN` and `equals`/`hashCode`, penalising data classes for code no one
+                // writes tests for.
                 violationRules {
                     rule {
                         limit {
+                            counter = "LINE"
+                            value = "COVEREDRATIO"
                             minimum = extension.minimumCoverage.get().toBigDecimal()
+                        }
+                        limit {
+                            counter = "BRANCH"
+                            value = "COVEREDRATIO"
+                            minimum = extension.minimumBranchCoverage.get().toBigDecimal()
                         }
                     }
                 }

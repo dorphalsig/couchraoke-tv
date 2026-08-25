@@ -1,0 +1,206 @@
+# Quickstart: Phone Joins
+
+**Feature**: `003-phone-joins` | **Date**: 2026-08-19
+
+How to build, run and prove this slice. Every command is PowerShell — there is no bash in this environment.
+
+---
+
+## Prerequisites
+
+- Android TV device, API 30+, on the **same LAN** as the machine running the peer. This is not optional: the whole slice is LAN discovery, and an emulator on a NAT'd network will not be found by mDNS. Any real Android device will do for the network claim — TV form factor matters to the screenshot gate, not to multicast.
+- The `mockphone` peer checked out with branch `DH1-peer-negative-case-flags` merged, and `uv` on `PATH`.
+
+**There is no companion phone app.** `settings.gradle.kts` builds `:app` (the TV host) and nothing
+else, and no companion module exists on any branch. `mockphone` is the only phone-side peer there
+is, for the manual walk exactly as for the loopback gate. It speaks the full protocol including mDNS
+discovery, so every claim in this slice except the QR *scan* gesture is provable without one.
+
+Verify the peer first — if it is not runnable, every gate in Phase D and F is unprovable:
+
+```powershell
+cd 'C:\Users\DSarmie\Github Copilot\mockphone'
+uv run mock-phone --help
+```
+
+---
+
+## Build
+
+```powershell
+cd 'C:\Users\DSarmie\Github Copilot\copilot-worktrees\couchraoke-tv\DH1-special-parakeet'
+.\gradlew.bat :app:assembleDebug
+```
+
+Expect roughly 25 s incremental, up to 3 min cold.
+
+---
+
+## Per-phase gates
+
+Each phase's gate must pass fresh before the next phase starts. Use `--rerun-tasks` when you need evidence rather than an up-to-date check — a cached green is not evidence.
+
+**Phase A — pure session core**
+
+```powershell
+.\gradlew.bat :app:testBranch `
+  --src com.couchraoke.tv.domain.session.SessionRoster `
+  --src com.couchraoke.tv.domain.session.GamePhaseMachine `
+  --src com.couchraoke.tv.domain.session.JoinCodeGenerator `
+  --src com.couchraoke.tv.domain.session.ConnectionIdAllocator `
+  --test com.couchraoke.tv.domain.session.SessionRosterTest `
+  --test com.couchraoke.tv.domain.session.GamePhaseMachineFixtureTest `
+  --test com.couchraoke.tv.domain.session.JoinCodeGeneratorTest `
+  --test com.couchraoke.tv.domain.session.ConnectionIdAllocatorTest
+```
+
+**Phase B — protocol logic**
+
+```powershell
+.\gradlew.bat :app:testBranch `
+  --src com.couchraoke.tv.domain.control.HandshakeValidator `
+  --src com.couchraoke.tv.domain.control.JoinCodeMatcher `
+  --src com.couchraoke.tv.domain.control.ControlMessageCodec `
+  --test com.couchraoke.tv.domain.control.HandshakeValidatorFixtureTest `
+  --test com.couchraoke.tv.domain.control.JoinCodeMatcherTest `
+  --test com.couchraoke.tv.domain.control.ControlMessageCodecFixtureTest
+```
+
+**Phase C — coordinator**: add `--src …SessionCoordinator` and `--test …SessionCoordinatorTest`.
+
+**Phase D — transport**: the loopback gate, below. The adapters are not `--src` selected; see [research.md](./research.md) R8.
+
+**Phase E — host surface**: add `--src …JoinViewModel --src …QrPayloadEncoder` with their tests plus `JoinOverlayBoundsTest`.
+
+**Phase F**: the full command in [plan.md](./plan.md), then the loopback gate, then a device run.
+
+---
+
+## Loopback gate
+
+```powershell
+.\gradlew.bat :app:testDebugUnitTest --tests "*LoopbackJoinGateTest*"
+```
+
+This starts the real Ktor server on an ephemeral port and drives the real `mockphone` process over `127.0.0.1`. It is the only thing that can satisfy SC-003, SC-005 and SC-010, because FR-039 bars an in-process fake from proving the transport works.
+
+**Two peer exit statuses are assertions against us, not diagnostics:**
+
+- **exit 4** — a refusal closed without delivering its reason. Violates FR-016/FR-017.
+- **exit 6** — the peer neither got an answer nor a close within its timeout. The 5 s handshake deadline was not enforced (FR-017).
+
+Both must fail the gate. Neither is an acceptable pass.
+
+---
+
+## Manual run on a real LAN
+
+This is the D-tier walk: the TV app on real hardware, the peer on a different machine, real
+multicast between them. Loopback cannot prove any of it, because `127.0.0.1` never touches a network
+interface.
+
+### First, shrink it: the LAN discovery probe
+
+Most of the discovery half can be verified from a developer machine, with no Android device and no
+second machine. `LanDiscoveryProbe` runs the real `SessionComponent.startSession` path — real
+`KtorControlTransport`, real `JmdnsSessionAnnouncer` on a real multicast socket, real join-code
+generation and instance-name readback — over this machine's LAN interface, then asks the real peer
+to find it by mDNS alone:
+
+```powershell
+.\gradlew.bat :app:testDebugUnitTest --tests "*LanDiscoveryProbe*" -PlanDiscoveryProbe=true
+```
+
+It is **opt-in and skipped by default**, because it needs a LAN that permits multicast. On a
+corporate or guest network that filters mDNS it would fail rather than skip, and that failure looks
+exactly like a product bug — a default-on network test would make the suite report the network's
+policy as our defect. The property name has no dots on purpose: PowerShell splits a `-P` argument at
+the first dot, the same trap that makes `-Proborazzi.record=true` unusable. Gradle's own system
+properties are not inherited by the test JVM either, so `app/build.gradle.kts` forwards this one
+explicitly; a bare `-Dlan.discovery.probe=true` silently does nothing.
+
+The probe hands the peer **no** `--tv-host` and no `--token`, so a successful join can only have come
+from the TXT record — address, port and join code all read off the announcement. It is verified
+non-vacuous by tripwire: swap `JmdnsSessionAnnouncer` for a no-op announcer, change nothing else, and
+it fails with exit 5.
+
+**What it still cannot tell you, and why the walk below is not optional:** it substitutes
+`MulticastLease` with a no-op, because a desktop has no WiFi multicast filtering to unlock. Android's
+WiFi driver drops multicast before it reaches userspace to save power, and `WifiMulticastLease` is
+what stops that. Nothing executes that class anywhere, and its failure mode is silent — jmDNS would
+register without error and simply never be found. Only a real device can close it.
+
+### Then the walk
+
+1. Install and launch: `.\gradlew.bat :app:installDebug`
+2. The song list appears in its empty state with a Join action in the header.
+3. Press Join. The overlay shows the QR code and the join code beneath it.
+4. From the peer machine:
+
+```powershell
+cd 'C:\Users\DSarmie\Github Copilot\mockphone'
+uv run mock-phone --join-only --tv-host <tv-ip> --token SWIFT-PANDA
+```
+
+Discovery instead of an explicit host is what proves FR-004 end to end:
+
+```powershell
+uv run mock-phone --join-only --discover
+```
+
+`--discover` is required to browse mDNS. Omitting `--tv-host` does **not** fall back to discovery —
+the two live in a `required=True` mutually exclusive group, so passing neither is an argparse error,
+not a discovery attempt. `--discover` also ignores `--token`: the join code comes from the
+service's TXT `code` record, which is the point of the test. If it connects, the TV registered the
+service, published the right code, and the peer found it without being told where to look.
+
+5. The overlay's connected count increments. Dismiss the overlay — the count is unaffected and no phone is disconnected (FR-033).
+
+**Verifying the QR (SC-002).** No companion app exists, so the scan gesture cannot be walked. The
+substantive half still can: point any stock camera or QR-reader app at the on-screen code and read
+the decoded payload. Confirm it carries the address the TV is actually reachable on — not a
+loopback or link-local address — then dial exactly that with `--tv-host`/`--tv-port`/`--token` and
+confirm it joins on the first attempt with no manual correction. That proves the payload is
+correct and dialable. What stays unproven is only "in a single scan, with no manual address entry",
+which needs a companion app; see spec.md Out-of-Scope Observation 14.
+
+**Negative cases**, matching the gate:
+
+```powershell
+uv run mock-phone --join-only --token WRONG-WORD              # exit 3, invalid_token
+uv run mock-phone --join-only --protocol-version 2 --token …  # exit 3, protocol_mismatch
+uv run mock-phone --join-only --malformed-hello clientId --token …
+uv run mock-phone --join-only --malformed-hello invalid-json --token …
+uv run mock-phone --silent-handshake --join-timeout 10 --token …   # exit 3 within 5 s
+```
+
+**Capacity.** Because a disconnected device keeps its roster slot in this slice (FR-023/FR-024, and neither Kick nor song end exists yet), ten *sequential* `--join-only` runs fill the roster — none needs to stay connected:
+
+```powershell
+0..9 | ForEach-Object { uv run mock-phone --join-only --client-id "phone-0$_" --token … }
+uv run mock-phone --join-only --client-id phone-99 --token …   # exit 3, session_full
+uv run mock-phone --join-only --client-id phone-03 --token …   # exit 0 — reclaim at capacity
+```
+
+`--hold` is needed only where the *connected count* matters, since that counts live connections rather than roster entries:
+
+```powershell
+0..2 | ForEach-Object { Start-Process uv -ArgumentList "run","mock-phone","--join-only","--hold","30","--client-id","hold-0$_","--token","…" }
+```
+
+---
+
+## Things that will bite you
+
+- **`-Proborazzi.record=true` does not work in PowerShell.** It splits at the dot and Gradle reports `Task '.record=true' not found`. Use the dot-free alias: `-ProborazziRecord=true`.
+- **Do not record a screenshot baseline in this slice.** The gate is in verify mode with no baselines. `plan.md` schedules baselines for Slice 3 and warns the previous ones were captured at twice the intended viewport; recording here would bake in the wrong scale. Layout is proved by `JoinOverlayBoundsTest` instead ([research.md](./research.md) R9).
+- **`ACCESS_NETWORK_STATE` must be in the manifest** before `ConnectivityLocalAddressProvider` will return anything. Without it the lookup returns `null` and every session start fails through the FR-028 modal — which looks like a logic bug and is not.
+- **Concurrent peers need distinct `--client-id`.** Sharing one makes each reclaim the same roster entry, so the roster never fills and the capacity case silently passes for the wrong reason.
+- **A cached green is not evidence.** Use `--rerun-tasks` when reporting a gate.
+- **The coverage gate enforces LINE ≥ 80% and BRANCH ≥ 70%, aggregated over the `--src` selection.** It measured INSTRUCTION until this slice, because `QualityConventionsPlugin.kt` set no `counter` and JaCoCo defaults to it. Two traps survive the fix: BRANCH is silently skipped on any class with no `if`/`when` (JaCoCo returns `NaN` for 0/0 and `Limit.check` ignores it), so BRANCH alone would prove nothing; and the rule evaluates the *bundle*, so a well-covered class can mask a weak one inside the same selection. Keep `--src` tight. See spec.md observation 10.
+- **`testBranch` and `testDebugUnitTest --tests "…"` are not interchangeable.** The `--tests` form runs the tests and nothing else: no detekt, no JaCoCo. Use it for a fast inner loop if you like, but never report it as a task gate.
+- **`mockphone` needs `UV_SYSTEM_CERTS=1`.** Without it `uv` fails with `invalid peer certificate: UnknownIssuer` behind TLS interception. The loopback harness launches the peer as a subprocess, so set it in the **subprocess** environment — your own shell's copy is not inherited.
+- **`mock-phone --help` is wrong about `--discover`.** It says `--discover` "Ignores --tv-host/--tv-port/--token", which reads as *overrides*. It does not: `--discover` and `--tv-host` sit in a mutually exclusive group, so passing both is an argparse usage error (exit 2) and the peer never runs. Only `--token` is genuinely ignored. Pass `--discover` alone.
+- **A scoped `--src` FQCN that matches nothing is silently dropped, not rejected.** `testBranch` will print `BUILD SUCCESSFUL` and satisfy both thresholds having measured strictly less than you asked for — a misspelled or wrongly-packaged class simply vanishes from the selection. After any gate run that matters, check the per-class list in `testBranchJacocoReport.xml` actually contains every class the command named. See spec.md observation 26.
+- **Gradle's system properties do not reach the unit-test JVM.** `-Dlan.discovery.probe=true` or `-Dmockphone.dir=…` on the command line has no effect on its own; `app/build.gradle.kts` forwards both explicitly from dot-free Gradle properties (`-PlanDiscoveryProbe`, `-PmockphoneDir`).
+- **There is no bash on the Windows dev machines.** Every `.specify/scripts/bash/*.sh` helper is unrunnable; inspect the repository directly instead.
